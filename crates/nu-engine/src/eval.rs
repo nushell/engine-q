@@ -215,6 +215,10 @@ pub fn eval_expression(state: &State, expr: &Expression) -> Result<Value, ShellE
             val: *f,
             span: expr.span,
         }),
+        Expr::Range(r) => Ok(Value::Range {
+            val: *r,
+            span: expr.span,
+        }),
         Expr::Var(var_id) => state
             .get_var(*var_id)
             .map_err(move |_| ShellError::VariableNotFound(expr.span)),

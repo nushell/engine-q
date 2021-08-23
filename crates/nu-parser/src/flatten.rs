@@ -6,6 +6,7 @@ pub enum FlatShape {
     Bool,
     Int,
     Float,
+    Range,
     InternalCall,
     External,
     Literal,
@@ -60,6 +61,9 @@ impl<'a> ParserWorkingSet<'a> {
             }
             Expr::Float(_) => {
                 vec![(expr.span, FlatShape::Float)]
+            }
+            Expr::Range(_) => {
+                vec![(expr.span, FlatShape::Range)]
             }
             Expr::Bool(_) => {
                 vec![(expr.span, FlatShape::Bool)]

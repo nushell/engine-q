@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use nu_parser::{BlockId, Span, Type};
+use nu_parser::{BlockId, Range, Span, Type};
 
 use crate::ShellError;
 
@@ -9,6 +9,7 @@ pub enum Value {
     Bool { val: bool, span: Span },
     Int { val: i64, span: Span },
     Float { val: f64, span: Span },
+    Range { val: Range, span: Span },
     String { val: String, span: Span },
     List { val: Vec<Value>, span: Span },
     Block { val: BlockId, span: Span },
@@ -28,6 +29,7 @@ impl Value {
             Value::Bool { span, .. } => *span,
             Value::Int { span, .. } => *span,
             Value::Float { span, .. } => *span,
+            Value::Range { span, .. } => *span,
             Value::String { span, .. } => *span,
             Value::List { span, .. } => *span,
             Value::Block { span, .. } => *span,
@@ -40,6 +42,7 @@ impl Value {
             Value::Bool { span, .. } => *span = new_span,
             Value::Int { span, .. } => *span = new_span,
             Value::Float { span, .. } => *span = new_span,
+            Value::Range { span, .. } => *span = new_span,
             Value::String { span, .. } => *span = new_span,
             Value::List { span, .. } => *span = new_span,
             Value::Block { span, .. } => *span = new_span,
@@ -54,6 +57,7 @@ impl Value {
             Value::Bool { .. } => Type::Bool,
             Value::Int { .. } => Type::Int,
             Value::Float { .. } => Type::Float,
+            Value::Range { .. } => Type::Unknown,
             Value::String { .. } => Type::String,
             Value::List { .. } => Type::List(Box::new(Type::Unknown)), // FIXME
             Value::Nothing { .. } => Type::Nothing,
@@ -87,6 +91,12 @@ impl Display for Value {
             }
             Value::Float { val, .. } => {
                 write!(f, "{}", val)
+            }
+            Value::Range { val, .. } => {
+                let iter = (val.from..=val.to).step_by(1);
+                let vals: Vec<String> = iter.map(|x| format!("{}", x)).collect();
+
+                write!(f, "{}", vals.join(" "))
             }
             Value::String { val, .. } => write!(f, "{}", val),
             Value::List { val, .. } => {

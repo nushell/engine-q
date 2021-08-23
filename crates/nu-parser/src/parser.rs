@@ -187,10 +187,17 @@ impl Call {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct Range {
+    pub from: i64,
+    pub to: i64,
+}
+
 #[derive(Debug, Clone)]
 pub enum Expr {
     Bool(bool),
     Int(i64),
+    Range(Range),
     Float(f64),
     Var(VarId),
     Call(Box<Call>),
@@ -213,6 +220,7 @@ pub struct Expression {
     pub span: Span,
     pub ty: Type,
 }
+
 impl Expression {
     pub fn garbage(span: Span) -> Expression {
         Expression {
@@ -1028,6 +1036,46 @@ impl<'a> ParserWorkingSet<'a> {
                 Some(ParseError::Expected("int".into(), span)),
             )
         }
+    }
+
+    pub fn parse_range(&mut self, token: &str, span: Span) -> (Expression, Option<ParseError>) {
+        let operator_str = "..";
+
+        let numbers: Vec<_> = token.split(operator_str).collect();
+
+        if numbers.len() != 2 {
+            return (
+                garbage(span),
+                Some(ParseError::Expected("range".into(), span)),
+            );
+        }
+
+        let lhs = if let Ok(x) = numbers[0].parse::<i64>() {
+            x
+        } else {
+            return (
+                garbage(span),
+                Some(ParseError::Expected("range".into(), span)),
+            );
+        };
+
+        let rhs = if let Ok(x) = numbers[1].parse::<i64>() {
+            x
+        } else {
+            return (
+                garbage(span),
+                Some(ParseError::Expected("range".into(), span)),
+            );
+        };
+
+        (
+            Expression {
+                expr: Expr::Range(Range { from: lhs, to: rhs }),
+                span,
+                ty: Type::Range,
+            },
+            None,
+        )
     }
 
     pub fn parse_float(&mut self, token: &str, span: Span) -> (Expression, Option<ParseError>) {
@@ -2054,6 +2102,16 @@ impl<'a> ParserWorkingSet<'a> {
                     )
                 }
             }
+            SyntaxShape::Range => {
+                if let Ok(token) = String::from_utf8(bytes.into()) {
+                    self.parse_range(&token, span)
+                } else {
+                    (
+                        garbage(span),
+                        Some(ParseError::Expected("range".into(), span)),
+                    )
+                }
+            }
             SyntaxShape::String | SyntaxShape::GlobPattern | SyntaxShape::FilePath => {
                 self.parse_string(span)
             }
@@ -2733,5 +2791,25 @@ mod tests {
         working_set.add_decl(sig.into());
         let (_, err) = working_set.parse_source(b"foo", true);
         assert!(matches!(err, Some(ParseError::MissingRequiredFlag(..))));
+    }
+
+    mod range {
+        use super::*;
+
+        #[test]
+        fn parse_basic_range() {
+            let parser_state = ParserState::new();
+            let mut working_set = ParserWorkingSet::new(&parser_state);
+
+            let (block, err) = working_set.parse_source(b"0..10", true);
+
+            assert!(err.is_none());
+            assert!(block.len() == 1);
+            assert!(matches!(block[0], Statement::Expression(Expression {
+                expr: Expr::Range(Range { from: 0, to: 10 }),
+                span: _,
+                ty: Type::Range,
+            })));
+        }
     }
 }
