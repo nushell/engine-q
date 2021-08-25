@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use nu_parser::{BlockId, Range, Span, Type};
+use nu_parser::{BlockId, Range, RangeOperator, Span, Type};
 
 use crate::ShellError;
 
@@ -93,8 +93,11 @@ impl Display for Value {
                 write!(f, "{}", val)
             }
             Value::Range { val, .. } => {
-                let iter = (val.from..=val.to).step_by(1);
-                let vals: Vec<String> = iter.map(|x| format!("{}", x)).collect();
+                let vals: Vec<i64> = match val.operator {
+                    RangeOperator::Inclusive => (val.from..=val.to).step_by(1).collect(),
+                    RangeOperator::RightExclusive => (val.from..val.to).step_by(1).collect(),
+                };
+                let vals: Vec<String> = vals.iter().map(|x| format!("{}", x)).collect();
 
                 write!(f, "{}", vals.join(" "))
             }

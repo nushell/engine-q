@@ -188,9 +188,16 @@ impl Call {
 }
 
 #[derive(Debug, Copy, Clone)]
+pub enum RangeOperator {
+    Inclusive,
+    RightExclusive,
+}
+
+#[derive(Debug, Copy, Clone)]
 pub struct Range {
     pub from: i64,
     pub to: i64,
+    pub operator: RangeOperator,
 }
 
 #[derive(Debug, Clone)]
@@ -1039,18 +1046,36 @@ impl<'a> ParserWorkingSet<'a> {
     }
 
     pub fn parse_range(&mut self, token: &str, span: Span) -> (Expression, Option<ParseError>) {
-        let operator_str = "..";
+        let dotdot_pos: Vec<_> = token.match_indices("..").map(|(pos, _)| pos).collect();
 
-        let numbers: Vec<_> = token.split(operator_str).collect();
-
-        if numbers.len() != 2 {
+        if dotdot_pos.len() != 1 {
             return (
                 garbage(span),
                 Some(ParseError::Expected("range".into(), span)),
             );
         }
 
-        let lhs = if let Ok(x) = numbers[0].parse::<i64>() {
+        let (bounds, operator): (Vec<_>, _) = if let Some(pos) = token.find("..<") {
+            if pos == dotdot_pos[0] {
+                (token.split("..<").collect(), RangeOperator::RightExclusive)
+            } else {
+                return (
+                    garbage(span),
+                    Some(ParseError::Expected("range".into(), span)),
+                );
+            }
+        } else {
+            (token.split("..").collect(), RangeOperator::Inclusive)
+        };
+
+        if bounds.len() != 2 {
+            return (
+                garbage(span),
+                Some(ParseError::Expected("range".into(), span)),
+            );
+        }
+
+        let lhs = if let Ok(x) = bounds[0].parse::<i64>() {
             x
         } else {
             return (
@@ -1059,7 +1084,7 @@ impl<'a> ParserWorkingSet<'a> {
             );
         };
 
-        let rhs = if let Ok(x) = numbers[1].parse::<i64>() {
+        let rhs = if let Ok(x) = bounds[1].parse::<i64>() {
             x
         } else {
             return (
@@ -1070,7 +1095,11 @@ impl<'a> ParserWorkingSet<'a> {
 
         (
             Expression {
-                expr: Expr::Range(Range { from: lhs, to: rhs }),
+                expr: Expr::Range(Range {
+                    from: lhs,
+                    to: rhs,
+                    operator,
+                }),
                 span,
                 ty: Type::Range,
             },
@@ -2805,11 +2834,41 @@ mod tests {
 
             assert!(err.is_none());
             assert!(block.len() == 1);
-            assert!(matches!(block[0], Statement::Expression(Expression {
-                expr: Expr::Range(Range { from: 0, to: 10 }),
-                span: _,
-                ty: Type::Range,
-            })));
+            assert!(matches!(
+                block[0],
+                Statement::Expression(Expression {
+                    expr: Expr::Range(Range {
+                        from: 0,
+                        to: 10,
+                        operator: RangeOperator::Inclusive
+                    }),
+                    span: _,
+                    ty: Type::Range,
+                })
+            ));
+        }
+
+        #[test]
+        fn parse_exclusive_range() {
+            let parser_state = ParserState::new();
+            let mut working_set = ParserWorkingSet::new(&parser_state);
+
+            let (block, err) = working_set.parse_source(b"0..<10", true);
+
+            assert!(err.is_none());
+            assert!(block.len() == 1);
+            assert!(matches!(
+                block[0],
+                Statement::Expression(Expression {
+                    expr: Expr::Range(Range {
+                        from: 0,
+                        to: 10,
+                        operator: RangeOperator::RightExclusive
+                    }),
+                    span: _,
+                    ty: Type::Range,
+                })
+            ));
         }
     }
 }
