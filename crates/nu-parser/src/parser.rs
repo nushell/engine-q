@@ -1055,9 +1055,14 @@ impl<'a> ParserWorkingSet<'a> {
             );
         }
 
-        let (bounds, operator): (Vec<_>, _) = if let Some(pos) = token.find("..<") {
+        let (bounds, operator_str, operator): (Vec<_>, _, _) = if let Some(pos) = token.find("..<")
+        {
             if pos == dotdot_pos[0] {
-                (token.split("..<").collect(), RangeOperator::RightExclusive)
+                (
+                    token.split("..<").collect(),
+                    "..<",
+                    RangeOperator::RightExclusive,
+                )
             } else {
                 return (
                     garbage(span),
@@ -1065,7 +1070,7 @@ impl<'a> ParserWorkingSet<'a> {
                 );
             }
         } else {
-            (token.split("..").collect(), RangeOperator::Inclusive)
+            (token.split("..").collect(), "..", RangeOperator::Inclusive)
         };
 
         if bounds.len() != 2 {
@@ -1075,22 +1080,36 @@ impl<'a> ParserWorkingSet<'a> {
             );
         }
 
-        let lhs = if let Ok(x) = bounds[0].parse::<i64>() {
-            x
-        } else {
-            return (
-                garbage(span),
-                Some(ParseError::Expected("range".into(), span)),
-            );
+        let span_lhs = Span::new(span.start, span.start + dotdot_pos[0]);
+        let lhs = match self.parse_number(bounds[0], span_lhs) {
+            (
+                Expression {
+                    expr: Expr::Int(x), ..
+                },
+                None,
+            ) => x,
+            _ => {
+                return (
+                    garbage(span),
+                    Some(ParseError::Expected("range".into(), span)),
+                )
+            }
         };
 
-        let rhs = if let Ok(x) = bounds[1].parse::<i64>() {
-            x
-        } else {
-            return (
-                garbage(span),
-                Some(ParseError::Expected("range".into(), span)),
-            );
+        let span_rhs = Span::new(span_lhs.end + operator_str.len(), span.end);
+        let rhs = match self.parse_number(bounds[1], span_rhs) {
+            (
+                Expression {
+                    expr: Expr::Int(x), ..
+                },
+                None,
+            ) => x,
+            _ => {
+                return (
+                    garbage(span),
+                    Some(ParseError::Expected("range".into(), span)),
+                )
+            }
         };
 
         (
