@@ -1,7 +1,7 @@
 use std::time::Instant;
 
-use crate::{state::State, value::Value};
-use nu_parser::{Block, Call, Expr, Expression, Operator, Span, Statement, Type};
+use crate::{state::State, value::Range, value::Value};
+use nu_parser::{Block, Call, Expr, Expression, Operator, RangeOperator, Span, Statement, Type};
 
 #[derive(Debug)]
 pub enum ShellError {
@@ -215,10 +215,63 @@ pub fn eval_expression(state: &State, expr: &Expression) -> Result<Value, ShellE
             val: *f,
             span: expr.span,
         }),
-        Expr::Range(r) => Ok(Value::Range {
-            val: *r,
-            span: expr.span,
-        }),
+        Expr::Range(from, to, operator) => {
+            let from = eval_expression(state, from)?;
+            let to = eval_expression(state, to)?;
+
+            let range = match (from, to) {
+                (
+                    Value::Int {
+                        val: lhs,
+                        span: lhs_span,
+                    },
+                    Value::Int {
+                        val: rhs,
+                        span: rhs_span,
+                    },
+                ) => match operator {
+                    RangeOperator::Inclusive(_) => Range {
+                        from: Value::Int {
+                            val: lhs,
+                            span: lhs_span,
+                        },
+                        to: Value::Int {
+                            val: rhs,
+                            span: rhs_span,
+                        },
+                        inclusive: true,
+                    },
+                    RangeOperator::RightExclusive(_) => Range {
+                        from: Value::Int {
+                            val: lhs,
+                            span: lhs_span,
+                        },
+                        to: Value::Int {
+                            val: rhs,
+                            span: rhs_span,
+                        },
+                        inclusive: false,
+                    },
+                },
+                (lhs, rhs) => {
+                    return Err(ShellError::OperatorMismatch {
+                        op_span: match operator {
+                            RangeOperator::Inclusive(span) => *span,
+                            RangeOperator::RightExclusive(span) => *span,
+                        },
+                        lhs_ty: lhs.get_type(),
+                        lhs_span: lhs.span(),
+                        rhs_ty: rhs.get_type(),
+                        rhs_span: rhs.span(),
+                    })
+                }
+            };
+
+            Ok(Value::Range {
+                val: Box::new(range),
+                span: expr.span,
+            })
+        }
         Expr::Var(var_id) => state
             .get_var(*var_id)
             .map_err(move |_| ShellError::VariableNotFound(expr.span)),

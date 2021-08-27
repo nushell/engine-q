@@ -62,7 +62,7 @@ impl<'a> ParserWorkingSet<'a> {
             Expr::Float(_) => {
                 vec![(expr.span, FlatShape::Float)]
             }
-            Expr::Range(_) => {
+            Expr::Range(_, _, _) => {
                 vec![(expr.span, FlatShape::Range)]
             }
             Expr::Bool(_) => {

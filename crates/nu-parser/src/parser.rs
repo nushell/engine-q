@@ -189,22 +189,15 @@ impl Call {
 
 #[derive(Debug, Copy, Clone)]
 pub enum RangeOperator {
-    Inclusive,
-    RightExclusive,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct Range {
-    pub from: i64,
-    pub to: i64,
-    pub operator: RangeOperator,
+    Inclusive(Span),
+    RightExclusive(Span),
 }
 
 #[derive(Debug, Clone)]
 pub enum Expr {
     Bool(bool),
     Int(i64),
-    Range(Range),
+    Range(Box<Expression>, Box<Expression>, RangeOperator), // from, to, operator
     Float(f64),
     Var(VarId),
     Call(Box<Call>),
@@ -1061,7 +1054,10 @@ impl<'a> ParserWorkingSet<'a> {
                 (
                     token.split("..<").collect(),
                     "..<",
-                    RangeOperator::RightExclusive,
+                    RangeOperator::RightExclusive(Span::new(
+                        dotdot_pos[0],
+                        dotdot_pos[0] + "..<".len(),
+                    )),
                 )
             } else {
                 return (
@@ -1070,7 +1066,11 @@ impl<'a> ParserWorkingSet<'a> {
                 );
             }
         } else {
-            (token.split("..").collect(), "..", RangeOperator::Inclusive)
+            (
+                token.split("..").collect(),
+                "..",
+                RangeOperator::Inclusive(Span::new(dotdot_pos[0], dotdot_pos[0] + "..".len())),
+            )
         };
 
         if bounds.len() != 2 {
@@ -1082,12 +1082,7 @@ impl<'a> ParserWorkingSet<'a> {
 
         let span_lhs = Span::new(span.start, span.start + dotdot_pos[0]);
         let lhs = match self.parse_number(bounds[0], span_lhs) {
-            (
-                Expression {
-                    expr: Expr::Int(x), ..
-                },
-                None,
-            ) => x,
+            (expression, None) => expression,
             _ => {
                 return (
                     garbage(span),
@@ -1098,12 +1093,7 @@ impl<'a> ParserWorkingSet<'a> {
 
         let span_rhs = Span::new(span_lhs.end + operator_str.len(), span.end);
         let rhs = match self.parse_number(bounds[1], span_rhs) {
-            (
-                Expression {
-                    expr: Expr::Int(x), ..
-                },
-                None,
-            ) => x,
+            (expression, None) => expression,
             _ => {
                 return (
                     garbage(span),
@@ -1114,11 +1104,7 @@ impl<'a> ParserWorkingSet<'a> {
 
         (
             Expression {
-                expr: Expr::Range(Range {
-                    from: lhs,
-                    to: rhs,
-                    operator,
-                }),
+                expr: Expr::Range(Box::new(lhs), Box::new(rhs), operator),
                 span,
                 ty: Type::Range,
             },
@@ -2845,7 +2831,7 @@ mod tests {
         use super::*;
 
         #[test]
-        fn parse_basic_range() {
+        fn parse_inclusive_range() {
             let parser_state = ParserState::new();
             let mut working_set = ParserWorkingSet::new(&parser_state);
 
@@ -2856,11 +2842,7 @@ mod tests {
             assert!(matches!(
                 block[0],
                 Statement::Expression(Expression {
-                    expr: Expr::Range(Range {
-                        from: 0,
-                        to: 10,
-                        operator: RangeOperator::Inclusive
-                    }),
+                    expr: Expr::Range(_, _, RangeOperator::Inclusive(_),),
                     span: _,
                     ty: Type::Range,
                 })
@@ -2879,11 +2861,7 @@ mod tests {
             assert!(matches!(
                 block[0],
                 Statement::Expression(Expression {
-                    expr: Expr::Range(Range {
-                        from: 0,
-                        to: 10,
-                        operator: RangeOperator::RightExclusive
-                    }),
+                    expr: Expr::Range(_, _, RangeOperator::RightExclusive(_)),
                     span: _,
                     ty: Type::Range,
                 })

@@ -1,15 +1,22 @@
 use std::fmt::Display;
 
-use nu_parser::{BlockId, Range, RangeOperator, Span, Type};
+use nu_parser::{BlockId, Span, Type};
 
 use crate::ShellError;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Range {
+    pub from: Value,
+    pub to: Value,
+    pub inclusive: bool,
+}
 
 #[derive(Debug, Clone)]
 pub enum Value {
     Bool { val: bool, span: Span },
     Int { val: i64, span: Span },
     Float { val: f64, span: Span },
-    Range { val: Range, span: Span },
+    Range { val: Box<Range>, span: Span },
     String { val: String, span: Span },
     List { val: Vec<Value>, span: Span },
     Block { val: BlockId, span: Span },
@@ -57,7 +64,7 @@ impl Value {
             Value::Bool { .. } => Type::Bool,
             Value::Int { .. } => Type::Int,
             Value::Float { .. } => Type::Float,
-            Value::Range { .. } => Type::Unknown,
+            Value::Range { .. } => Type::Float,
             Value::String { .. } => Type::String,
             Value::List { .. } => Type::List(Box::new(Type::Unknown)), // FIXME
             Value::Nothing { .. } => Type::Nothing,
@@ -72,6 +79,7 @@ impl PartialEq for Value {
             (Value::Bool { val: lhs, .. }, Value::Bool { val: rhs, .. }) => lhs == rhs,
             (Value::Int { val: lhs, .. }, Value::Int { val: rhs, .. }) => lhs == rhs,
             (Value::Float { val: lhs, .. }, Value::Float { val: rhs, .. }) => lhs == rhs,
+            (Value::Range { val: lhs, .. }, Value::Range { val: rhs, .. }) => *lhs == *rhs,
             (Value::String { val: lhs, .. }, Value::String { val: rhs, .. }) => lhs == rhs,
             (Value::List { val: l1, .. }, Value::List { val: l2, .. }) => l1 == l2,
             (Value::Block { val: b1, .. }, Value::Block { val: b2, .. }) => b1 == b2,
@@ -93,13 +101,24 @@ impl Display for Value {
                 write!(f, "{}", val)
             }
             Value::Range { val, .. } => {
-                let vals: Vec<i64> = match val.operator {
-                    RangeOperator::Inclusive => (val.from..=val.to).step_by(1).collect(),
-                    RangeOperator::RightExclusive => (val.from..val.to).step_by(1).collect(),
+                let vals: Vec<i64> = match (&val.from, &val.to) {
+                    (Value::Int { val: from, .. }, Value::Int { val: to, .. }) => {
+                        match val.inclusive {
+                            true => (*from..=*to).collect(),
+                            false => (*from..*to).collect(),
+                        }
+                    }
+                    _ => Vec::new(),
                 };
-                let vals: Vec<String> = vals.iter().map(|x| format!("{}", x)).collect();
 
-                write!(f, "{}", vals.join(" "))
+                write!(
+                    f,
+                    "range: [{}]",
+                    vals.iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ".into())
+                )
             }
             Value::String { val, .. } => write!(f, "{}", val),
             Value::List { val, .. } => {
