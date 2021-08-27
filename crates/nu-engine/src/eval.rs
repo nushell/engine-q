@@ -219,37 +219,16 @@ pub fn eval_expression(state: &State, expr: &Expression) -> Result<Value, ShellE
             let from = eval_expression(state, from)?;
             let to = eval_expression(state, to)?;
 
-            let range = match (from, to) {
-                (
-                    Value::Int {
-                        val: lhs,
-                        span: lhs_span,
-                    },
-                    Value::Int {
-                        val: rhs,
-                        span: rhs_span,
-                    },
-                ) => match operator {
+            let range = match (&from, &to) {
+                (&Value::Int { .. }, &Value::Int { .. }) => match operator {
                     RangeOperator::Inclusive(_) => Range {
-                        from: Value::Int {
-                            val: lhs,
-                            span: lhs_span,
-                        },
-                        to: Value::Int {
-                            val: rhs,
-                            span: rhs_span,
-                        },
+                        from: from.clone(),
+                        to: to.clone(),
                         inclusive: true,
                     },
                     RangeOperator::RightExclusive(_) => Range {
-                        from: Value::Int {
-                            val: lhs,
-                            span: lhs_span,
-                        },
-                        to: Value::Int {
-                            val: rhs,
-                            span: rhs_span,
-                        },
+                        from: from.clone(),
+                        to: to.clone(),
                         inclusive: false,
                     },
                 },
