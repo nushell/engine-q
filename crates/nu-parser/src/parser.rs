@@ -2920,5 +2920,25 @@ mod tests {
                 })
             ));
         }
+
+        #[test]
+        fn parse_range_without_panic() {
+            let parser_state = ParserState::new();
+            let mut working_set = ParserWorkingSet::new(&parser_state);
+
+            // FIXME: This causes panic in REPL
+            let (block, err) = working_set.parse_source(b"(0)..\"a\"", true);
+
+            assert!(err.is_none());
+            assert!(block.len() == 1);
+            assert!(matches!(
+                block[0],
+                Statement::Expression(Expression {
+                    expr: Expr::Range(_, _, RangeOperator::RightExclusive(_)),
+                    span: _,
+                    ty: Type::Range,
+                })
+            ));
+        }
     }
 }
