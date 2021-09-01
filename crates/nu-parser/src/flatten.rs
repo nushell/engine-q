@@ -62,8 +62,12 @@ impl<'a> ParserWorkingSet<'a> {
             Expr::Float(_) => {
                 vec![(expr.span, FlatShape::Float)]
             }
-            Expr::Range(_, _, _) => {
-                vec![(expr.span, FlatShape::Range)]
+            Expr::Range(from, to, op) => {
+                let mut output = vec![];
+                output.extend(self.flatten_expression(from));
+                output.extend(self.flatten_expression(to));
+                output.extend(vec![(op.span(), FlatShape::Operator)]);
+                output
             }
             Expr::Bool(_) => {
                 vec![(expr.span, FlatShape::Bool)]

@@ -188,9 +188,19 @@ impl Call {
 }
 
 #[derive(Debug, Copy, Clone)]
+// FIXME: Move the span somewhere else, it's annoying to match within enum
 pub enum RangeOperator {
     Inclusive(Span),
     RightExclusive(Span),
+}
+
+impl RangeOperator {
+    pub fn span(&self) -> Span {
+        match self {
+            &RangeOperator::Inclusive(span) => span,
+            &RangeOperator::RightExclusive(span) => span,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
