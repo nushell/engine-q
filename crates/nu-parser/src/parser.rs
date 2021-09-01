@@ -1103,9 +1103,16 @@ impl<'a> ParserWorkingSet<'a> {
             }
         };
 
-        println!("dotdot: {}", dotdot_pos[0]);
-        println!("lhs ({} -- {}): '{:?}'", span_lhs.start, span_lhs.end, lhs.expr);
-        println!("rhs ({} -- {}): '{:?}'", span_rhs.start, span_rhs.end, rhs.expr);
+        println!("dotdot (token): {}", dotdot_pos[0]);
+        println!("operator: '{:?}'", operator);
+        println!(
+            "lhs ({} -- {}): '{:?}'",
+            span_lhs.start, span_lhs.end, lhs.expr
+        );
+        println!(
+            "rhs ({} -- {}): '{:?}'",
+            span_rhs.start, span_rhs.end, rhs.expr
+        );
 
         (
             Expression {
