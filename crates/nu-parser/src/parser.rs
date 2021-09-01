@@ -1039,7 +1039,7 @@ impl<'a> ParserWorkingSet<'a> {
     }
 
     pub fn parse_range(&mut self, token: &str, span: Span) -> (Expression, Option<ParseError>) {
-        println!("Parsing range: {}", token);
+        // println!("Parsing range: {}", token);
         let dotdot_pos: Vec<_> = token.match_indices("..").map(|(pos, _)| pos).collect();
 
         if dotdot_pos.len() != 1 {
@@ -1106,16 +1106,16 @@ impl<'a> ParserWorkingSet<'a> {
             }
         };
 
-        println!("dotdot (token): {}", dotdot_pos[0]);
-        println!("operator: '{:?}'", operator);
-        println!(
-            "lhs ({} -- {}): '{:?}'",
-            span_lhs.start, span_lhs.end, lhs.expr
-        );
-        println!(
-            "rhs ({} -- {}): '{:?}'",
-            span_rhs.start, span_rhs.end, rhs.expr
-        );
+        // println!("dotdot (token): {}", dotdot_pos[0]);
+        // println!("operator: '{:?}'", operator);
+        // println!(
+        //     "lhs ({} -- {}): '{:?}'",
+        //     span_lhs.start, span_lhs.end, lhs.expr
+        // );
+        // println!(
+        //     "rhs ({} -- {}): '{:?}'",
+        //     span_rhs.start, span_rhs.end, rhs.expr
+        // );
 
         (
             Expression {
@@ -1363,7 +1363,7 @@ impl<'a> ParserWorkingSet<'a> {
     pub fn parse_full_column_path(&mut self, span: Span) -> (Expression, Option<ParseError>) {
         // FIXME: assume for now a paren expr, but needs more
         let bytes = self.get_span_contents(span);
-        println!("Parsing col path: {}", String::from_utf8_lossy(bytes));
+        // println!("Parsing col path: {}", String::from_utf8_lossy(bytes));
         let mut error = None;
 
         let mut start = span.start;
@@ -2111,7 +2111,7 @@ impl<'a> ParserWorkingSet<'a> {
         shape: &SyntaxShape,
     ) -> (Expression, Option<ParseError>) {
         let bytes = self.get_span_contents(span);
-        println!("Parsing value '{}'", String::from_utf8_lossy(bytes));
+        // println!("Parsing value '{}'", String::from_utf8_lossy(bytes));
         let token_res = String::from_utf8(bytes.into());
 
         // First, check the special-cases. These will likely represent specific values as expressions
