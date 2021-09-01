@@ -2112,6 +2112,7 @@ impl<'a> ParserWorkingSet<'a> {
     ) -> (Expression, Option<ParseError>) {
         let bytes = self.get_span_contents(span);
         println!("Parsing value '{}'", String::from_utf8_lossy(bytes));
+        let token_res = String::from_utf8(bytes.into());
 
         // First, check the special-cases. These will likely represent specific values as expressions
         // and may fit a variety of shapes.
@@ -2124,7 +2125,15 @@ impl<'a> ParserWorkingSet<'a> {
         } else if bytes.starts_with(b"$") {
             return self.parse_dollar_expr(span);
         } else if bytes.starts_with(b"(") {
-            return self.parse_full_column_path(span);
+            if let Ok(token) = token_res {
+                if let (expr, None) = self.parse_range(&token, span) {
+                    return (expr, None);
+                } else {
+                    return self.parse_full_column_path(span);
+                }
+            } else {
+                return self.parse_full_column_path(span);
+            }
         } else if bytes.starts_with(b"[") {
             match shape {
                 SyntaxShape::Any
@@ -2142,7 +2151,7 @@ impl<'a> ParserWorkingSet<'a> {
 
         match shape {
             SyntaxShape::Number => {
-                if let Ok(token) = String::from_utf8(bytes.into()) {
+                if let Ok(token) = token_res {
                     self.parse_number(&token, span)
                 } else {
                     (
