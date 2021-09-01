@@ -1056,8 +1056,8 @@ impl<'a> ParserWorkingSet<'a> {
                     token.split("..<").collect(),
                     "..<",
                     RangeOperator::RightExclusive(Span::new(
-                        dotdot_pos[0],
-                        dotdot_pos[0] + "..<".len(),
+                        span.start + dotdot_pos[0],
+                        span.start + dotdot_pos[0] + "..<".len(),
                     )),
                 )
             } else {
@@ -1070,7 +1070,10 @@ impl<'a> ParserWorkingSet<'a> {
             (
                 token.split("..").collect(),
                 "..",
-                RangeOperator::Inclusive(Span::new(dotdot_pos[0], dotdot_pos[0] + "..".len())),
+                RangeOperator::Inclusive(Span::new(
+                    span.start + dotdot_pos[0],
+                    span.start + dotdot_pos[0] + "..".len(),
+                )),
             )
         };
 
