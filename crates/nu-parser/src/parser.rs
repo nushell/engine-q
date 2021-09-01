@@ -2934,7 +2934,7 @@ mod tests {
             assert!(matches!(
                 block[0],
                 Statement::Expression(Expression {
-                    expr: Expr::Range(_, _, RangeOperator::RightExclusive(_)),
+                    expr: Expr::Range(_, _, RangeOperator::Inclusive(_)),
                     span: _,
                     ty: Type::Range,
                 })
