@@ -1081,7 +1081,7 @@ impl<'a> ParserWorkingSet<'a> {
         }
 
         let span_lhs = Span::new(span.start, span.start + dotdot_pos[0]);
-        let lhs = match self.parse_number(bounds[0], span_lhs) {
+        let lhs = match self.parse_value(span_lhs, &SyntaxShape::Number) {
             (expression, None) => expression,
             _ => {
                 return (
@@ -1092,7 +1092,7 @@ impl<'a> ParserWorkingSet<'a> {
         };
 
         let span_rhs = Span::new(span_lhs.end + operator_str.len(), span.end);
-        let rhs = match self.parse_number(bounds[1], span_rhs) {
+        let rhs = match self.parse_value(span_rhs, &SyntaxShape::Number) {
             (expression, None) => expression,
             _ => {
                 return (
@@ -1149,7 +1149,15 @@ impl<'a> ParserWorkingSet<'a> {
         if contents.starts_with(b"$\"") {
             self.parse_string_interpolation(span)
         } else {
-            self.parse_variable_expr(span)
+            if let Ok(token) = String::from_utf8(contents.into()) {
+                if let (expr, None) = self.parse_range(&token, span) {
+                    (expr, None)
+                } else {
+                    self.parse_variable_expr(span)
+                }
+            } else {
+                self.parse_variable_expr(span)
+            }
         }
     }
 
