@@ -1045,7 +1045,7 @@ impl<'a> ParserWorkingSet<'a> {
         if dotdot_pos.len() != 1 {
             return (
                 garbage(span),
-                Some(ParseError::Expected("range".into(), span)),
+                Some(ParseError::Expected("only two range bounds".into(), span)),
             );
         }
 
@@ -1080,7 +1080,7 @@ impl<'a> ParserWorkingSet<'a> {
         if bounds.len() != 2 {
             return (
                 garbage(span),
-                Some(ParseError::Expected("range".into(), span)),
+                Some(ParseError::Expected("only two range bounds".into(), span)),
             );
         }
 
@@ -1090,7 +1090,7 @@ impl<'a> ParserWorkingSet<'a> {
             _ => {
                 return (
                     garbage(span),
-                    Some(ParseError::Expected("range".into(), span)),
+                    Some(ParseError::Expected("number".into(), span)),
                 )
             }
         };
@@ -1101,7 +1101,7 @@ impl<'a> ParserWorkingSet<'a> {
             _ => {
                 return (
                     garbage(span),
-                    Some(ParseError::Expected("range".into(), span)),
+                    Some(ParseError::Expected("number".into(), span)),
                 )
             }
         };
