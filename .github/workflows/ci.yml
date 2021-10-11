@@ -4,8 +4,7 @@ name: Continuous integration
 
 jobs:
   ci:
-    runs-on:
-      platform: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: [ubuntu-latest, macos-latest, windows-latest]
     strategy:
       matrix:
         rust:
