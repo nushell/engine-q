@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
+serde_json = "1.0.61"
 nu-engine = { path = "../nu-engine" }
 nu-path = { path = "../nu-path" }
 nu-parser = { path = "../nu-parser" }
@@ -12,4 +13,4 @@ nu-protocol = { path = "../nu-protocol" }
 miette = { version = "3.0.0", features = ["fancy"] }
 thiserror = "1.0.29"
 nu-ansi-term = "0.36.0"
-reedline = { git = "https://github.com/nushell/reedline", branch = "main" }
+reedline = { git = "https://github.com/rsteube/reedline", branch = "main" }

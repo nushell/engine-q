@@ -3,7 +3,7 @@ use std::{cell::RefCell, io::Write, rc::Rc};
 use dialoguer::{
     console::{Style, Term},
     theme::ColorfulTheme,
-    Select,
+    FuzzySelect,
 };
 use miette::{IntoDiagnostic, Result};
 use nu_cli::{report_error, NuCompleter, NuHighlighter, NuValidator, NushellPrompt};
@@ -39,13 +39,13 @@ impl CompletionActionHandler for FuzzyCompletion {
             let span = completions[0].0;
 
             let mut offset = present_buffer.offset();
-            offset += completions[0].1.len() - (span.end - span.start);
+            offset += completions[0].1.replacement.len() - (span.end - span.start);
 
             // TODO improve the support for multiline replace
-            present_buffer.replace(span.start..span.end, &completions[0].1);
+            present_buffer.replace(span.start..span.end, &completions[0].1.replacement);
             present_buffer.set_insertion_point(offset);
         } else {
-            let selections: Vec<_> = completions.iter().map(|(_, string)| string).collect();
+            let selections: Vec<_> = completions.iter().map(|(_, suggestion)| suggestion).collect();
 
             let _ = crossterm::terminal::disable_raw_mode();
             println!();
@@ -53,7 +53,7 @@ impl CompletionActionHandler for FuzzyCompletion {
                 active_item_style: Style::new().for_stderr().on_green().black(),
                 ..Default::default()
             };
-            let result = Select::with_theme(&theme)
+            let result = FuzzySelect::with_theme(&theme)
                 .default(0)
                 .items(&selections[..])
                 .interact_on_opt(&Term::stdout())
@@ -64,10 +64,10 @@ impl CompletionActionHandler for FuzzyCompletion {
                 let span = completions[result].0;
 
                 let mut offset = present_buffer.offset();
-                offset += completions[result].1.len() - (span.end - span.start);
+                offset += completions[result].1.replacement.len() - (span.end - span.start);
 
                 // TODO improve the support for multiline replace
-                present_buffer.replace(span.start..span.end, &completions[result].1);
+                present_buffer.replace(span.start..span.end, &completions[result].1.replacement);
                 present_buffer.set_insertion_point(offset);
             }
         }

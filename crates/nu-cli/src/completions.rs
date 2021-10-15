@@ -7,6 +7,9 @@ use nu_protocol::{
     Value,
 };
 use reedline::Completer;
+use serde_json::Value as JsonValue;
+use std::process::Command;
+use std::str::from_utf8;
 
 const SEP: char = std::path::MAIN_SEPARATOR;
 
@@ -21,7 +24,7 @@ impl NuCompleter {
 }
 
 impl Completer for NuCompleter {
-    fn complete(&self, line: &str, pos: usize) -> Vec<(reedline::Span, String)> {
+    fn complete(&self, line: &str, pos: usize) -> Vec<(reedline::Span, reedline::Suggestion)> {
         let engine_state = self.engine_state.borrow();
         let mut working_set = StateWorkingSet::new(&*engine_state);
         let offset = working_set.next_span_start();
@@ -29,6 +32,90 @@ impl Completer for NuCompleter {
         let (output, _err) = parse(&mut working_set, Some("completer"), line.as_bytes(), false);
 
         let flattened = flatten_block(&working_set, &output);
+
+        let mut index = 0;
+        let mut start = 0;
+        let mut end = 0;
+        let mut words = vec![];
+        let mut current_span = reedline::Span { start: 0, end: 0 };
+        for flat in &flattened {
+            end = flat.0.end;
+            match &flat.1 {
+                nu_parser::FlatShape::External | nu_parser::FlatShape::InternalCall => {
+                    if flat.0.start > pos {
+                        break;
+                    }
+                    start = index;
+                }
+                _ => {}
+            }
+            index += 1;
+
+            let word = working_set.get_span_contents(flat.0);
+            let wordstr = String::from_utf8_lossy(word).to_string();
+
+            current_span = reedline::Span {
+                start: flat.0.start - offset,
+                end: flat.0.end - offset,
+            };
+            if flat.0.start <= pos && flat.0.end >= pos {
+                words.push(wordstr); // TODO crop to pos
+                break;
+            } else if flat.0.end < pos {
+                words.push(wordstr);
+            }
+            // TODO
+        }
+
+        if end < pos {
+            current_span = reedline::Span {
+                start: pos,
+                end: pos,
+            };
+            words.push("".to_owned());
+        }
+
+        let cmd = match words[0].as_str() {
+            "example" => "example",
+            _ => "carapace",
+        };
+
+        let subcmd = match words[0].as_str() {
+            "example" => "_carapace",
+            _ => &words[0],
+        };
+
+        // quick fix multiparts by simply removing `'` and `"`
+        let mut cloned = words.clone();
+        let patched = words[words.len() - 1].replace("'", "").replace('"', "");
+        cloned[words.len() - 1] = patched;
+
+        let output = Command::new(cmd)
+            .arg(subcmd)
+            .arg("nushell")
+            .arg("_")
+            .args(cloned)
+            .output();
+
+        let output_str = match output {
+            Ok(o) => from_utf8(&o.stdout).expect("ignore error").to_owned(),
+            _ => "".to_owned(),
+        };
+
+        if output_str != "" {
+            let empty = serde_json::from_str("[]").expect("ignore error");
+            let v: JsonValue = serde_json::from_str(&output_str).unwrap_or(empty);
+            let a = v.as_array().expect("ignore error");
+
+            return a
+                .into_iter()
+                .map(|entry| {
+                    let r = entry["replacement"].as_str().expect("ignore error").to_string();
+                    let d = entry["display"].as_str().expect("ignore error").to_string();
+                    (current_span, reedline::Suggestion{replacement: r, display: d})
+                })
+                .collect();
+        }
 
         for flat in flattened {
             if pos >= flat.0.start && pos <= flat.0.end {
@@ -44,7 +131,10 @@ impl Completer for NuCompleter {
                                         start: flat.0.start - offset,
                                         end: flat.0.end - offset,
                                     },
-                                    String::from_utf8_lossy(v.0).to_string(),
+                                    reedline::Suggestion{
+                                        replacement: String::from_utf8_lossy(v.0).to_string(),
+                                        display: String::from_utf8_lossy(v.0).to_string(),
+                                    },
                                 ));
                             }
                         }
@@ -57,7 +147,10 @@ impl Completer for NuCompleter {
                                         start: flat.0.start - offset,
                                         end: flat.0.end - offset,
                                     },
-                                    String::from_utf8_lossy(v.0).to_string(),
+                                    reedline::Suggestion{
+                                        replacement: String::from_utf8_lossy(v.0).to_string(),
+                                        display: String::from_utf8_lossy(v.0).to_string(),
+                                    },
                                 ));
                             }
                         }
@@ -91,10 +184,13 @@ impl Completer for NuCompleter {
                                             start: flat.0.start - offset,
                                             end: flat.0.end - offset,
                                         },
-                                        s,
+                                        reedline::Suggestion{
+                                            replacement: s.clone(),
+                                            display: s.clone(),
+                                        },
                                     )
                                 })
-                                .filter(|x| x.1.as_bytes().starts_with(&prefix))
+                                .filter(|x| x.1.replacement.as_bytes().starts_with(&prefix))
                                 .collect(),
                             _ => vec![],
                         };
@@ -113,7 +209,10 @@ impl Completer for NuCompleter {
                                         start: flat.0.start - offset,
                                         end: flat.0.end - offset,
                                     },
-                                    String::from_utf8_lossy(&x).to_string(),
+                                    reedline::Suggestion{
+                                        replacement: String::from_utf8_lossy(&x).to_string(),
+                                        display: String::from_utf8_lossy(&x).to_string(),
+                                    },
                                 )
                             })
                             .collect();
@@ -134,7 +233,10 @@ impl Completer for NuCompleter {
                                         start: x.0.start - offset,
                                         end: x.0.end - offset,
                                     },
-                                    x.1,
+                                    reedline::Suggestion{
+                                        replacement: x.1.clone(),
+                                        display: x.1.clone(),
+                                    },
                                 )
                             })
                             .collect();
