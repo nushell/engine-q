@@ -41,7 +41,12 @@ impl Command for External {
         input: Value,
     ) -> Result<Value, ShellError> {
         let command = ExternalCommand::try_new(call, context)?;
-        command.run_with_input(input)
+        let output = command.run_with_input(input);
+        eprintln!(
+            "exit:{}",
+            context.stack.get_env_var("LAST_EXIT_CODE").unwrap()
+        );
+        output
     }
 }
 
@@ -119,11 +124,17 @@ impl<'call, 'contex> ExternalCommand<'call, 'contex> {
                 match input {
                     Value::String { val, span: _ } => {
                         if let Some(mut stdin_write) = child.stdin.take() {
+                            self.context
+                                .stack
+                                .add_env_var("LAST_EXIT_CODE".to_string(), 0.to_string());
                             self.write_to_stdin(&mut stdin_write, val.as_bytes())?
                         }
                     }
                     Value::Binary { val, span: _ } => {
                         if let Some(mut stdin_write) = child.stdin.take() {
+                            self.context
+                                .stack
+                                .add_env_var("LAST_EXIT_CODE".to_string(), 0.to_string());
                             self.write_to_stdin(&mut stdin_write, &val)?
                         }
                     }
@@ -132,9 +143,17 @@ impl<'call, 'contex> ExternalCommand<'call, 'contex> {
                             for value in stream {
                                 match value {
                                     Value::String { val, span: _ } => {
+                                        self.context.stack.add_env_var(
+                                            "LAST_EXIT_CODE".to_string(),
+                                            0.to_string(),
+                                        );
                                         self.write_to_stdin(&mut stdin_write, val.as_bytes())?
                                     }
                                     Value::Binary { val, span: _ } => {
+                                        self.context.stack.add_env_var(
+                                            "LAST_EXIT_CODE".to_string(),
+                                            0.to_string(),
+                                        );
                                         self.write_to_stdin(&mut stdin_write, &val)?
                                     }
                                     _ => continue,
@@ -190,15 +209,35 @@ impl<'call, 'contex> ExternalCommand<'call, 'contex> {
                         span: Span::unknown(),
                     }
                 } else {
+                    self.context
+                        .stack
+                        .add_env_var("LAST_EXIT_CODE".to_string(), 0.to_string());
                     Value::nothing()
                 };
 
                 match child.wait() {
-                    Err(err) => Err(ShellError::ExternalCommand(
-                        format!("{}", err),
-                        self.name.span,
-                    )),
-                    Ok(_) => Ok(value),
+                    Err(err) => {
+                        self.context
+                            .stack
+                            .add_env_var("LAST_EXIT_CODE".to_string(), "-1".to_string());
+                        Err(ShellError::ExternalCommand(
+                            format!("{}", err),
+                            self.name.span,
+                        ))
+                    }
+                    Ok(exit_status) => {
+                        self.context.stack.add_env_var(
+                            "LAST_EXIT_CODE".to_string(),
+                            match exit_status.code() {
+                                Some(e) => {
+                                    // eprintln!("exit:{}", e);
+                                    e.to_string()
+                                }
+                                None => 0.to_string(),
+                            },
+                        );
+                        Ok(value)
+                    }
                 }
             }
         }
