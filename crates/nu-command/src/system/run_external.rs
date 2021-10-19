@@ -41,12 +41,7 @@ impl Command for External {
         input: Value,
     ) -> Result<Value, ShellError> {
         let command = ExternalCommand::try_new(call, context)?;
-        let output = command.run_with_input(input);
-        eprintln!(
-            "exit:{}",
-            context.stack.get_env_var("LAST_EXIT_CODE").unwrap()
-        );
-        output
+        command.run_with_input(input)
     }
 }
 
