@@ -200,11 +200,18 @@ fn main() -> Result<()> {
                         continue;
                     }
 
+                    let command_start_time = std::time::Instant::now();
+
                     eval_source(
                         engine_state.clone(),
                         &stack,
                         &s,
                         &format!("entry #{}", entry_num),
+                    );
+
+                    stack.add_env_var(
+                        "CMD_DURATION_MS".to_string(),
+                        command_start_time.elapsed().as_millis().to_string(),
                     );
                 }
                 Ok(Signal::CtrlC) => {
