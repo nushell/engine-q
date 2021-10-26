@@ -1,9 +1,10 @@
 use nu_protocol::{
     ast::Call,
-    engine::{Command, EvaluationContext},
-    Example, ShellError, Signature, Span, Type, Value,
+    engine::{Command, EngineState, Stack},
+    Example, PipelineData, ShellError, Signature, Span, Type, Value,
 };
 
+#[derive(Clone)]
 pub struct SubCommand;
 
 impl Command for SubCommand {
@@ -25,26 +26,11 @@ impl Command for SubCommand {
             example: "'hello' | split chars",
             result: Some(Value::List {
                 vals: vec![
-                    Value::String {
-                        val: "h".into(),
-                        span: Span::unknown(),
-                    },
-                    Value::String {
-                        val: "e".into(),
-                        span: Span::unknown(),
-                    },
-                    Value::String {
-                        val: "l".into(),
-                        span: Span::unknown(),
-                    },
-                    Value::String {
-                        val: "l".into(),
-                        span: Span::unknown(),
-                    },
-                    Value::String {
-                        val: "o".into(),
-                        span: Span::unknown(),
-                    },
+                    Value::test_string("h"),
+                    Value::test_string("e"),
+                    Value::test_string("l"),
+                    Value::test_string("l"),
+                    Value::test_string("o"),
                 ],
                 span: Span::unknown(),
             }),
@@ -53,18 +39,22 @@ impl Command for SubCommand {
 
     fn run(
         &self,
-        _context: &EvaluationContext,
+        _engine_state: &EngineState,
+        _stack: &mut Stack,
         call: &Call,
-        input: Value,
-    ) -> Result<nu_protocol::Value, nu_protocol::ShellError> {
+        input: PipelineData,
+    ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
         split_chars(call, input)
     }
 }
 
-fn split_chars(call: &Call, input: Value) -> Result<nu_protocol::Value, nu_protocol::ShellError> {
+fn split_chars(
+    call: &Call,
+    input: PipelineData,
+) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
     let span = call.head;
 
-    Ok(input.flat_map(span, move |x| split_chars_helper(&x, span)))
+    input.flat_map(move |x| split_chars_helper(&x, span))
 }
 
 fn split_chars_helper(v: &Value, name: Span) -> Vec<Value> {
@@ -74,10 +64,7 @@ fn split_chars_helper(v: &Value, name: Span) -> Vec<Value> {
                 s.chars()
                     .collect::<Vec<_>>()
                     .into_iter()
-                    .map(move |x| Value::String {
-                        val: x.to_string(),
-                        span: v_span,
-                    })
+                    .map(move |x| Value::string(x, v_span))
                     .collect()
             } else {
                 vec![Value::Error {

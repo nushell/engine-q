@@ -1,9 +1,10 @@
 use nu_protocol::{
     ast::Call,
-    engine::{Command, EvaluationContext},
-    Example, IntoValueStream, ShellError, Signature, Span, SyntaxShape, Value,
+    engine::{Command, EngineState, Stack},
+    Example, PipelineData, ShellError, Signature, Span, SyntaxShape, Value,
 };
 
+#[derive(Clone)]
 pub struct SubCommand;
 
 impl Command for SubCommand {
@@ -25,11 +26,12 @@ impl Command for SubCommand {
 
     fn run(
         &self,
-        context: &EvaluationContext,
+        _engine_state: &EngineState,
+        _stack: &mut Stack,
         call: &Call,
-        input: Value,
-    ) -> Result<nu_protocol::Value, nu_protocol::ShellError> {
-        into_int(context, call, input)
+        input: PipelineData,
+    ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
+        into_int(call, input)
     }
 
     fn examples(&self) -> Vec<Example> {
@@ -55,26 +57,17 @@ impl Command for SubCommand {
             Example {
                 description: "Convert string to integer",
                 example: "'2' | into int",
-                result: Some(Value::Int {
-                    val: 2,
-                    span: Span::unknown(),
-                }),
+                result: Some(Value::test_int(2)),
             },
             Example {
                 description: "Convert decimal to integer",
                 example: "5.9 | into int",
-                result: Some(Value::Int {
-                    val: 5,
-                    span: Span::unknown(),
-                }),
+                result: Some(Value::test_int(5)),
             },
             Example {
                 description: "Convert decimal string to integer",
                 example: "'5.9' | into int",
-                result: Some(Value::Int {
-                    val: 5,
-                    span: Span::unknown(),
-                }),
+                result: Some(Value::test_int(5)),
             },
             Example {
                 description: "Convert file size to integer",
@@ -87,19 +80,8 @@ impl Command for SubCommand {
             Example {
                 description: "Convert bool to integer",
                 example: "[$false, $true] | into int",
-                result: Some(Value::Stream {
-                    stream: vec![
-                        Value::Int {
-                            val: 0,
-                            span: Span::unknown(),
-                        },
-                        Value::Int {
-                            val: 1,
-                            span: Span::unknown(),
-                        },
-                    ]
-                    .into_iter()
-                    .into_value_stream(),
+                result: Some(Value::List {
+                    vals: vec![Value::test_int(0), Value::test_int(1)],
                     span: Span::unknown(),
                 }),
             },
@@ -108,14 +90,13 @@ impl Command for SubCommand {
 }
 
 fn into_int(
-    _context: &EvaluationContext,
     call: &Call,
-    input: Value,
-) -> Result<nu_protocol::Value, nu_protocol::ShellError> {
+    input: PipelineData,
+) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
     let head = call.head;
     // let column_paths: Vec<CellPath> = call.rest(context, 0)?;
 
-    input.map(head, move |v| {
+    input.map(move |v| {
         action(v, head)
         // FIXME: Add back cell_path support
         // if column_paths.is_empty() {

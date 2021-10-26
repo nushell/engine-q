@@ -1,9 +1,10 @@
 use chrono::{DateTime, Utc};
 use nu_engine::eval_expression;
 use nu_protocol::ast::Call;
-use nu_protocol::engine::{Command, EvaluationContext};
-use nu_protocol::{IntoValueStream, Signature, SyntaxShape, Value};
+use nu_protocol::engine::{Command, EngineState, Stack};
+use nu_protocol::{IntoPipelineData, PipelineData, Signature, SyntaxShape, Value};
 
+#[derive(Clone)]
 pub struct Ls;
 
 //NOTE: this is not a real implementation :D. It's just a simple one to test with until we port the real one.
