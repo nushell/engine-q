@@ -1,15 +1,16 @@
 pub mod camel_case;
 pub mod command;
 pub mod kebab_case;
-// pub mod pascal_case;
+pub mod pascal_case;
 // pub mod screaming_snake_case;
 // pub mod snake_case;
 pub use command::Case;
 
 pub use camel_case::SubCommand as CamelCase;
 pub use kebab_case::SubCommand as KebabCase;
+pub use pascal_case::SubCommand as PascalCase;
+
 use nu_protocol::{ShellError, Span, Value};
-// pub use pascal_case::SubCommand as PascalCase;
 // pub use screaming_snake_case::SubCommand as ScreamingSnakeCase;
 // pub use snake_case::SubCommand as SnakeCase;
 

@@ -75,6 +75,7 @@ pub fn create_default_context() -> EngineState {
             Mkdir,
             Module,
             Mv,
+            PascalCase,
             ParEach,
             Ps,
             Register,
