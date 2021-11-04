@@ -84,6 +84,8 @@ pub fn create_default_context() -> EngineState {
             RunPlugin,
             Select,
             Size,
+            ScreamingSnakeCase,
+            SnakeCase,
             Split,
             SplitChars,
             SplitColumn,
