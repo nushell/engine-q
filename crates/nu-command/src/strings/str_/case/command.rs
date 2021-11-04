@@ -18,7 +18,7 @@ impl Command for Case {
     }
 
     fn usage(&self) -> &str {
-        "str"
+        "Converts strings into different kind of cases: camel, kebab, pascal, snake, and screaming snake."
     }
 
     fn run(

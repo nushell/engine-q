@@ -42,7 +42,7 @@ impl Command for SubCommand {
         vec![
             Example {
                 description: "convert a string to camelCase",
-                example: r#" "NuShell" | str camel-case"#,
+                example: " 'NuShell' | str camel-case",
                 result: Some(Value::String {
                     val: "nuShell".to_string(),
                     span: Span::unknown(),
@@ -50,17 +50,17 @@ impl Command for SubCommand {
             },
             Example {
                 description: "convert a string to camelCase",
-                example: r#" "this_is_the_second_case" | str camel-case"#,
+                example: "'this-is-the-first-case' | str camel-case",
                 result: Some(Value::String {
-                    val: "thisIsTheSecondCase".to_string(),
+                    val: "thisIsTheFirstCase".to_string(),
                     span: Span::unknown(),
                 }),
             },
             Example {
                 description: "convert a string to camelCase",
-                example: r#""this-is-the-first-case" | str camel-case"#,
+                example: " 'this_is_the_second_case' | str camel-case",
                 result: Some(Value::String {
-                    val: "thisIsTheFirstCase".to_string(),
+                    val: "thisIsTheSecondCase".to_string(),
                     span: Span::unknown(),
                 }),
             },
@@ -79,32 +79,3 @@ mod test {
         test_examples(SubCommand {})
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::{to_camel_case, SubCommand};
-
-//     #[test]
-//     fn examples_work_as_expected() -> Result<(), ShellError> {
-//         use crate::examples::test as test_examples;
-
-//         test_examples(SubCommand {})
-//     }
-
-//     #[test]
-//     fn camel_case_from_kebab() {
-//         let word = string("this-is-the-first-case");
-//         let expected = string("thisIsTheFirstCase");
-
-//         let actual = action(&word, Tag::unknown(), &to_camel_case).unwrap();
-//         assert_eq!(actual, expected);
-//     }
-//     #[test]
-//     fn camel_case_from_snake() {
-//         let word = string("this_is_the_second_case");
-//         let expected = string("thisIsTheSecondCase");
-
-//         let actual = action(&word, Tag::unknown(), &to_camel_case).unwrap();
-//         assert_eq!(actual, expected);
-//     }
-// }
