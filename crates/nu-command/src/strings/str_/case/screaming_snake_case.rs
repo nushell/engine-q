@@ -1,10 +1,9 @@
 use inflector::cases::screamingsnakecase::to_screaming_snake_case;
-
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
-use nu_protocol::{Example, PipelineData, ShellError, Signature, Span, Value};
+use nu_protocol::{Example, PipelineData, ShellError, Signature, Span, SyntaxShape, Value};
 
-use crate::action;
+use crate::operate;
 #[derive(Clone)]
 pub struct SubCommand;
 
@@ -14,11 +13,11 @@ impl Command for SubCommand {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("str screaming-snake-case") /*.rest(
-                                                         "rest",
-                                                         SyntaxShape::ColumnPath,
-                                                         "optionally convert text to SCREAMING_SNAKE_CASE by column paths",
-                                                     )*/
+        Signature::build("str screaming-snake-case").rest(
+            "rest",
+            SyntaxShape::CellPath,
+            "optionally convert text to SCREAMING_SNAKE_CASE by column paths",
+        )
     }
 
     fn usage(&self) -> &str {
@@ -28,15 +27,13 @@ impl Command for SubCommand {
     fn run(
         &self,
         engine_state: &EngineState,
-        _stack: &mut Stack,
-        _call: &Call,
+        stack: &mut Stack,
+        call: &Call,
         input: PipelineData,
     ) -> Result<PipelineData, ShellError> {
-        input.map(
-            move |val| action(&val, &to_screaming_snake_case),
-            engine_state.ctrlc.clone(),
-        )
+        operate(engine_state, stack, call, input, &to_screaming_snake_case)
     }
+
     fn examples(&self) -> Vec<Example> {
         vec![
             Example {

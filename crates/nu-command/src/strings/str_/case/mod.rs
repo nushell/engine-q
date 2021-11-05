@@ -12,51 +12,55 @@ pub use pascal_case::SubCommand as PascalCase;
 pub use screaming_snake_case::SubCommand as ScreamingSnakeCase;
 pub use snake_case::SubCommand as SnakeCase;
 
-use nu_protocol::{ShellError, Span, Value};
+use nu_engine::CallExt;
 
-// struct Arguments {
-//     column_paths: Vec<ColumnPath>,
-// }
+use nu_protocol::ast::{Call, CellPath};
+use nu_protocol::engine::{EngineState, Stack};
+use nu_protocol::{PipelineData, ShellError, Span, Value};
 
-// pub fn operate<F>(args: CommandArgs, case_operation: &'static F) -> Result<OutputStream, ShellError>
-// where
-//     F: Fn(&str) -> String + Send + Sync + 'static,
-// {
-//     let (options, input) = (
-//         Arguments {
-//             column_paths: args.rest(0)?,
-//         },
-//         args.input,
-//     );
+pub fn operate<F>(
+    engine_state: &EngineState,
+    stack: &mut Stack,
+    call: &Call,
+    input: PipelineData,
+    case_operation: &'static F,
+) -> Result<PipelineData, ShellError>
+where
+    F: Fn(&str) -> String + Send + Sync + 'static,
+{
+    let head = call.head;
+    let column_paths: Vec<CellPath> = call.rest(engine_state, stack, 0)?;
 
-//     Ok(input
-//         .map(move |v| {
-//             if options.column_paths.is_empty() {
-//                 action(&v, v.tag(), &case_operation)
-//             } else {
-//                 let mut ret = v;
+    input.map(
+        move |v| {
+            if column_paths.is_empty() {
+                action(&v, case_operation, head)
+            } else {
+                let mut ret = v;
+                for path in &column_paths {
+                    let r = ret.update_cell_path(
+                        &path.members,
+                        Box::new(move |old| action(old, case_operation, head)),
+                    );
+                    if let Err(error) = r {
+                        return Value::Error { error };
+                    }
+                }
+                ret
+            }
+        },
+        engine_state.ctrlc.clone(),
+    )
+}
 
-//                 for path in &options.column_paths {
-//                     ret = ret.swap_data_by_column_path(
-//                         path,
-//                         Box::new(move |old| action(old, old.tag(), &case_operation)),
-//                     )?;
-//                 }
-
-//                 Ok(ret)
-//             }
-//         })
-//         .into_input_stream())
-// }
-
-pub fn action<F>(input: &Value, case_operation: &F) -> Value
+pub fn action<F>(input: &Value, case_operation: &F, head: Span) -> Value
 where
     F: Fn(&str) -> String + Send + Sync + 'static,
 {
     match input {
-        Value::String { val, span } => Value::String {
+        Value::String { val, .. } => Value::String {
             val: case_operation(val),
-            span: *span,
+            span: head,
         },
         other => Value::Error {
             error: ShellError::UnsupportedInput(
