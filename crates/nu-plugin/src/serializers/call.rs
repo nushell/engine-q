@@ -5,7 +5,11 @@ use nu_protocol::{
     Span, Spanned, Type,
 };
 
+use log::{info, trace, warn};
+use simple_logger::SimpleLogger;
+
 pub(crate) fn serialize_call(call: &Call, mut builder: call::Builder) -> Result<(), PluginError> {
+    trace!("call serialize_call");
     let mut head = builder.reborrow().init_head();
     head.set_start(call.head.start as u64);
     head.set_end(call.head.end as u64);
@@ -17,6 +21,7 @@ pub(crate) fn serialize_call(call: &Call, mut builder: call::Builder) -> Result<
 }
 
 fn serialize_positional(positional: &[Expression], mut builder: call::Builder) {
+    trace!("call serialize_positional");
     let mut positional_builder = builder.reborrow().init_positional(positional.len() as u32);
 
     for (index, expression) in positional.iter().enumerate() {
@@ -28,6 +33,7 @@ fn serialize_named(
     named: &[(Spanned<String>, Option<Expression>)],
     mut builder: call::Builder,
 ) -> Result<(), PluginError> {
+    trace!("call serialize_named");
     let mut named_builder = builder
         .reborrow()
         .init_named()
@@ -54,6 +60,7 @@ fn serialize_named(
 }
 
 fn serialize_expression(expression: &Expression, mut builder: expression::Builder) {
+    trace!("call serialize_expression");
     match &expression.expr {
         Expr::Garbage => builder.set_garbage(()),
         Expr::Bool(val) => builder.set_bool(*val),
@@ -75,6 +82,7 @@ fn serialize_expression(expression: &Expression, mut builder: expression::Builde
 }
 
 pub(crate) fn deserialize_call(reader: call::Reader) -> Result<Call, PluginError> {
+    trace!("call deserialize_call");
     let head_reader = reader
         .get_head()
         .map_err(|e| PluginError::DecodingError(e.to_string()))?;
@@ -99,6 +107,7 @@ fn deserialize_positionals(
     span: Span,
     reader: call::Reader,
 ) -> Result<Vec<Expression>, PluginError> {
+    trace!("call deserialize_positionals");
     let positional_reader = reader
         .get_positional()
         .map_err(|e| PluginError::DecodingError(e.to_string()))?;
@@ -112,6 +121,7 @@ fn deserialize_positionals(
 type NamedList = Vec<(Spanned<String>, Option<Expression>)>;
 
 fn deserialize_named(span: Span, reader: call::Reader) -> Result<NamedList, PluginError> {
+    trace!("call deserialize_named");
     let named_reader = reader
         .get_named()
         .map_err(|e| PluginError::DecodingError(e.to_string()))?;
@@ -159,6 +169,7 @@ fn deserialize_expression(
     span: Span,
     reader: expression::Reader,
 ) -> Result<Expression, PluginError> {
+    trace!("call deserialize_expression");
     let expr = match reader.which() {
         Ok(expression::Garbage(())) => Expr::Garbage,
         Ok(expression::Bool(val)) => Expr::Bool(val),

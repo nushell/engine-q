@@ -2,7 +2,11 @@ use crate::plugin::PluginError;
 use crate::plugin_capnp::value;
 use nu_protocol::{Span, Value};
 
+use log::{info, trace, warn};
+use simple_logger::SimpleLogger;
+
 pub(crate) fn serialize_value(value: &Value, mut builder: value::Builder) {
+    trace!("value serialize_value");
     let value_span = match value {
         Value::Nothing { span } => {
             builder.set_void(());
@@ -46,6 +50,7 @@ pub(crate) fn serialize_value(value: &Value, mut builder: value::Builder) {
 }
 
 pub(crate) fn deserialize_value(reader: value::Reader) -> Result<Value, PluginError> {
+    trace!("value deserialize_value");
     let span_reader = reader
         .get_span()
         .map_err(|e| PluginError::DecodingError(e.to_string()))?;

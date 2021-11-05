@@ -1,6 +1,9 @@
 use nu_plugin::plugin::PluginError;
 use nu_protocol::{Span, Value};
 
+use log::{info, trace, warn};
+use simple_logger::SimpleLogger;
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum Action {
     SemVerAction(SemVerAction),
@@ -22,10 +25,12 @@ pub struct Inc {
 
 impl Inc {
     pub fn new() -> Self {
+        trace!("inc new");
         Default::default()
     }
 
     fn apply(&self, input: &str) -> Value {
+        trace!("inc apply");
         match &self.action {
             Some(Action::SemVerAction(act_on)) => {
                 let mut ver = match semver::Version::parse(input) {
@@ -63,6 +68,7 @@ impl Inc {
     }
 
     pub fn for_semver(&mut self, part: SemVerAction) {
+        trace!("inc for_semver");
         if self.permit() {
             self.action = Some(Action::SemVerAction(part));
         } else {
@@ -71,18 +77,22 @@ impl Inc {
     }
 
     fn permit(&mut self) -> bool {
+        trace!("inc permit");
         self.action.is_none()
     }
 
     fn log_error(&mut self, message: &str) {
+        trace!("inc log_error");
         self.error = Some(message.to_string());
     }
 
     pub fn usage() -> &'static str {
+        trace!("inc usage");
         "Usage: inc field [--major|--minor|--patch]"
     }
 
     pub fn inc(&self, value: &Value) -> Result<Value, PluginError> {
+        trace!("inc inc");
         match value {
             Value::Int { val, span } => Ok(Value::Int {
                 val: val + 1,

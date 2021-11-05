@@ -13,5 +13,6 @@ doctest = false
 nu-plugin = { path="../nu-plugin", version = "0.1.0" }
 nu-protocol = { path="../nu-protocol", version = "0.1.0" }
 nu-engine = { path="../nu-engine", version = "0.1.0" }
-
+log = "0.4.14"
+simple_logger = { version = "1.13.0", features = ["stderr", "colors", "timestamps"] }
 semver = "0.11.0"

@@ -4,8 +4,12 @@ use nu_plugin::{plugin::PluginError, Plugin};
 use nu_protocol::ast::Call;
 use nu_protocol::{Signature, Span, Value};
 
+use log::{info, trace, warn};
+use simple_logger::SimpleLogger;
+
 impl Plugin for Inc {
     fn signature(&self) -> Vec<Signature> {
+        trace!("mod signature");
         vec![Signature::build("inc")
             .desc("Increment a value or version. Optionally use the column of a table.")
             .switch(
@@ -26,6 +30,7 @@ impl Plugin for Inc {
     }
 
     fn run(&mut self, name: &str, call: &Call, input: &Value) -> Result<Value, PluginError> {
+        trace!("mod run");
         if name != "inc" {
             return Ok(Value::Nothing {
                 span: Span::unknown(),

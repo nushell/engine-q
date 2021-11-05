@@ -5,10 +5,14 @@ use crate::serializers::{call, signature, value};
 use capnp::serialize_packed;
 use nu_protocol::Signature;
 
+use log::{info, trace, warn};
+use simple_logger::SimpleLogger;
+
 pub fn encode_call(
     plugin_call: &PluginCall,
     writer: &mut impl std::io::Write,
 ) -> Result<(), PluginError> {
+    trace!("plugin_call encode call");
     let mut message = ::capnp::message::Builder::new_default();
 
     let mut builder = message.init_root::<plugin_call::Builder>();
@@ -45,6 +49,7 @@ pub fn encode_call(
 }
 
 pub fn decode_call(reader: &mut impl std::io::BufRead) -> Result<PluginCall, PluginError> {
+    trace!("plugin_call decode_call");
     let message_reader =
         serialize_packed::read_message(reader, ::capnp::message::ReaderOptions::new()).unwrap();
 
@@ -89,6 +94,7 @@ pub fn encode_response(
     plugin_response: &PluginResponse,
     writer: &mut impl std::io::Write,
 ) -> Result<(), PluginError> {
+    trace!("plugin_call encode_response");
     let mut message = ::capnp::message::Builder::new_default();
 
     let mut builder = message.init_root::<plugin_response::Builder>();
@@ -115,6 +121,7 @@ pub fn encode_response(
 }
 
 pub fn decode_response(reader: &mut impl std::io::BufRead) -> Result<PluginResponse, PluginError> {
+    trace!("plugin_call decode_response");
     let message_reader =
         serialize_packed::read_message(reader, ::capnp::message::ReaderOptions::new()).unwrap();
 

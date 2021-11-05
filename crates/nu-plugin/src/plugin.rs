@@ -7,6 +7,9 @@ use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{ast::Call, Signature, Value};
 use nu_protocol::{PipelineData, ShellError};
 
+use log::{info, trace, warn};
+use simple_logger::SimpleLogger;
+
 const OUTPUT_BUFFER_SIZE: usize = 8192;
 
 #[derive(Debug)]
@@ -43,6 +46,7 @@ pub enum PluginError {
 
 impl Display for PluginError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        trace!("plugin fmt");
         match self {
             PluginError::MissingSignature => write!(f, "missing signature in plugin"),
             PluginError::UnableToGetStdout => write!(f, "couldn't get stdout from child process"),
@@ -63,6 +67,7 @@ impl Display for PluginError {
 }
 
 pub fn get_signature(path: &Path) -> Result<Vec<Signature>, PluginError> {
+    trace!("plugin get_signature");
     let mut plugin_cmd = create_command(path);
 
     // Both stdout and stdin are piped so we can get the information from the plugin
@@ -101,6 +106,7 @@ pub fn get_signature(path: &Path) -> Result<Vec<Signature>, PluginError> {
 }
 
 fn create_command(path: &Path) -> CommandSys {
+    trace!("plugin create_command");
     //TODO. The selection of shell could be modifiable from the config file.
     if cfg!(windows) {
         let mut process = CommandSys::new("cmd");
@@ -125,6 +131,7 @@ pub struct PluginDeclaration {
 
 impl PluginDeclaration {
     pub fn new(filename: String, signature: Signature) -> Self {
+        trace!("plugin new");
         Self {
             name: signature.name.clone(),
             signature,
@@ -135,14 +142,17 @@ impl PluginDeclaration {
 
 impl Command for PluginDeclaration {
     fn name(&self) -> &str {
+        trace!("plugin name");
         &self.name
     }
 
     fn signature(&self) -> Signature {
+        trace!("plugin signature");
         self.signature.clone()
     }
 
     fn usage(&self) -> &str {
+        trace!("plugin usage");
         self.signature.usage.as_str()
     }
 
@@ -153,6 +163,7 @@ impl Command for PluginDeclaration {
         call: &Call,
         input: PipelineData,
     ) -> Result<PipelineData, ShellError> {
+        trace!("plugin run");
         // Call the command with self path
         // Decode information from plugin
         // Create PipelineData
@@ -221,6 +232,7 @@ impl Command for PluginDeclaration {
     }
 
     fn is_plugin(&self) -> bool {
+        trace!("plugin is_plugin");
         true
     }
 }
@@ -236,6 +248,7 @@ pub trait Plugin {
 // If you want to create a new plugin you have to use this function as the main
 // entry point for the plugin
 pub fn serve_plugin(plugin: &mut impl Plugin) {
+    trace!("plugin serve_plugin");
     let mut stdin_buf = BufReader::with_capacity(OUTPUT_BUFFER_SIZE, std::io::stdin());
     let plugin_call = decode_call(&mut stdin_buf);
 

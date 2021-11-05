@@ -2,7 +2,11 @@ use crate::plugin::PluginError;
 use crate::plugin_capnp::{argument, flag, option, signature, Shape};
 use nu_protocol::{Flag, PositionalArg, Signature, SyntaxShape};
 
+use log::{info, trace, warn};
+use simple_logger::SimpleLogger;
+
 pub(crate) fn serialize_signature(signature: &Signature, mut builder: signature::Builder) {
+    trace!("signature serialize_signature");
     builder.set_name(signature.name.as_str());
     builder.set_usage(signature.usage.as_str());
     builder.set_extra_usage(signature.extra_usage.as_str());
@@ -48,6 +52,7 @@ pub(crate) fn serialize_signature(signature: &Signature, mut builder: signature:
 }
 
 fn serialize_argument(arg: &PositionalArg, mut builder: argument::Builder) {
+    trace!("signature serialize_argument");
     builder.set_name(arg.name.as_str());
     builder.set_desc(arg.desc.as_str());
 
@@ -61,6 +66,7 @@ fn serialize_argument(arg: &PositionalArg, mut builder: argument::Builder) {
 }
 
 fn serialize_flag(arg: &Flag, mut builder: flag::Builder) {
+    trace!("signature serialize_flag");
     builder.set_long(arg.long.as_str());
     builder.set_required(arg.required);
     builder.set_desc(arg.desc.as_str());
@@ -87,6 +93,7 @@ fn serialize_flag(arg: &Flag, mut builder: flag::Builder) {
 }
 
 pub(crate) fn deserialize_signature(reader: signature::Reader) -> Result<Signature, PluginError> {
+    trace!("signature deserialize_signature");
     let name = reader
         .get_name()
         .map_err(|e| PluginError::EncodingError(e.to_string()))?;
@@ -156,6 +163,7 @@ pub(crate) fn deserialize_signature(reader: signature::Reader) -> Result<Signatu
 }
 
 fn deserialize_argument(reader: argument::Reader) -> Result<PositionalArg, PluginError> {
+    trace!("signature deserialize_argument");
     let name = reader
         .get_name()
         .map_err(|e| PluginError::EncodingError(e.to_string()))?;
@@ -186,6 +194,7 @@ fn deserialize_argument(reader: argument::Reader) -> Result<PositionalArg, Plugi
 }
 
 fn deserialize_flag(reader: flag::Reader) -> Result<Flag, PluginError> {
+    trace!("signature deserialize_flag");
     let long = reader
         .get_long()
         .map_err(|e| PluginError::EncodingError(e.to_string()))?;

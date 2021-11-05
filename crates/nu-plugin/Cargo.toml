@@ -6,6 +6,8 @@ edition = "2018"
 [dependencies]
 capnp = "0.14.3"
 nu-protocol = { path = "../nu-protocol" }
+log = "0.4.14"
+simple_logger = { version = "1.13.0", features = ["stderr", "colors", "timestamps"] }
 
 [build-dependencies]
 capnpc = "0.14.3"
