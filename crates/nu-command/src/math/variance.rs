@@ -99,7 +99,7 @@ pub fn compute_variance(sample: bool) -> impl Fn(&[Value], &Span) -> Result<Valu
         let sum_of_squares = sum_of_squares(values, span);
         let ss = match sum_of_squares {
             Err(ShellError::UnsupportedInput(_, err_span)) => Err(ShellError::UnsupportedInput(
-                "Attempted to compute the variance with a item that cannot be used for that."
+                "Attempted to compute the variance with an item that cannot be used for that."
                     .to_string(),
                 err_span,
             )),

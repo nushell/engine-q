@@ -64,7 +64,7 @@ pub fn compute_stddev(sample: bool) -> impl Fn(&[Value], &Span) -> Result<Value,
             Ok(Value::Float { val, span }) => Ok(Value::Float { val: val.sqrt(), span }),
             Ok(Value::Int { val, span }) => Ok(Value::Float { val: (val as f64).sqrt(), span }),
             Err(ShellError::UnsupportedInput(_, err_span)) => Err(ShellError::UnsupportedInput(
-                    "Attempted to compute the standard deviation with a item that cannot be used for that.".to_string(),
+                    "Attempted to compute the standard deviation with an item that cannot be used for that.".to_string(),
                     err_span,
                 )),
             other => other
