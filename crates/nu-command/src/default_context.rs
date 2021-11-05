@@ -66,8 +66,12 @@ pub fn create_default_context() -> EngineState {
             Math,
             MathAbs,
             MathAvg,
+            MathCeil,
+            MathFloor,
             MathMax,
+            MathMedian,
             MathMin,
+            MathMode,
             MathProduct,
             MathRound,
             MathSqrt,
@@ -78,10 +82,8 @@ pub fn create_default_context() -> EngineState {
             PascalCase,
             ParEach,
             Ps,
-            Register,
             Range,
             Rm,
-            RunPlugin,
             Select,
             Size,
             ScreamingSnakeCase,
@@ -101,6 +103,9 @@ pub fn create_default_context() -> EngineState {
             Wrap,
             Zip
         );
+
+        #[cfg(feature = "plugin")]
+        bind_command!(Register);
 
         // This is a WIP proof of concept
         bind_command!(ListGitBranches, Git, GitCheckout, Source);
