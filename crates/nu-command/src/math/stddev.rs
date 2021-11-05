@@ -39,17 +39,17 @@ impl Command for SubCommand {
         vec![
             Example {
                 description: "Get the stddev of a list of numbers",
-                example: "echo [1 2 3 4 5] | math stddev",
+                example: "[1 2 3 4 5] | math stddev",
                 result: Some(Value::Float {
-                    val: 2.5,
+                    val: std::f64::consts::SQRT_2,
                     span: Span::unknown(),
                 }),
             },
             Example {
                 description: "Get the sample stddev of a list of numbers",
-                example: "echo [1 2 3 4 5] | math stddev -s",
+                example: "[1 2 3 4 5] | math stddev -s",
                 result: Some(Value::Float {
-                    val: 2.5,
+                    val: 1.5811388300841898,
                     span: Span::unknown(),
                 }),
             },
@@ -73,13 +73,12 @@ pub fn compute_stddev(sample: bool) -> impl Fn(&[Value], &Span) -> Result<Value,
 }
 
 #[cfg(test)]
-mod tests {
-    use super::ShellError;
-    use super::SubCommand;
+mod test {
+    use super::*;
 
     #[test]
-    fn examples_work_as_expected() -> Result<(), ShellError> {
-        use crate::examples::test as test_examples;
+    fn test_examples() {
+        use crate::test_examples;
 
         test_examples(SubCommand {})
     }

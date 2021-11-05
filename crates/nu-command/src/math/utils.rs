@@ -61,7 +61,11 @@ fn helper_for_tables(
     })
 }
 
-pub fn calculate(values: PipelineData, name: Span, mf: impl Fn(&[Value], &Span) -> Result<Value, ShellError>) -> Result<Value, ShellError> {
+pub fn calculate(
+    values: PipelineData,
+    name: Span,
+    mf: impl Fn(&[Value], &Span) -> Result<Value, ShellError>,
+) -> Result<Value, ShellError> {
     match values {
         PipelineData::Stream(_) => helper_for_tables(values, name, mf),
         PipelineData::Value(Value::List { ref vals, .. }) => match &vals[..] {
