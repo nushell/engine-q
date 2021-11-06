@@ -60,6 +60,24 @@ impl Command for SubCommand {
                     span: Span::unknown(),
                 }),
             },
+            Example {
+                description: "convert a column from a table to SCREAMING_SNAKE_CASE",
+                example: r#"[[lang, gems]; [nu_test, 100]] | str screaming-snake-case lang"#,
+                result: Some(Value::List {
+                    vals: vec![Value::Record {
+                        span: Span::unknown(),
+                        cols: vec!["lang".to_string(), "gems".to_string()],
+                        vals: vec![
+                            Value::String {
+                                val: "NU_TEST".to_string(),
+                                span: Span::unknown(),
+                            },
+                            Value::test_int(100),
+                        ],
+                    }],
+                    span: Span::unknown(),
+                }),
+            },
         ]
     }
 }

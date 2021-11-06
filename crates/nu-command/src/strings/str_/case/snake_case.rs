@@ -59,6 +59,24 @@ impl Command for SubCommand {
                     span: Span::unknown(),
                 }),
             },
+            Example {
+                description: "convert a column from a table to snake-case",
+                example: r#"[[lang, gems]; [nuTest, 100]] | str snake-case lang"#,
+                result: Some(Value::List {
+                    vals: vec![Value::Record {
+                        span: Span::unknown(),
+                        cols: vec!["lang".to_string(), "gems".to_string()],
+                        vals: vec![
+                            Value::String {
+                                val: "nu_test".to_string(),
+                                span: Span::unknown(),
+                            },
+                            Value::test_int(100),
+                        ],
+                    }],
+                    span: Span::unknown(),
+                }),
+            },
         ]
     }
 }
