@@ -839,3 +839,43 @@ fn update_cell_path_1() -> TestResult {
         "1",
     )
 }
+
+#[test]
+fn str_case_camel_cell_path() -> TestResult {
+    run_test(
+        r#"([[lang, gems]; [nu_test, 100]]).lang | get 0 | str camel-case"#,
+        "nuTest",
+    )
+}
+
+#[test]
+fn str_case_kebab_cell_path() -> TestResult {
+    run_test(
+        r#"([[lang, gems]; [nuTest, 100]]).lang | get 0 | str kebab-case"#,
+        "nu-test",
+    )
+}
+
+#[test]
+fn str_case_pascal_cell_path() -> TestResult {
+    run_test(
+        r#"([[lang, gems]; [nu_test, 100]]).lang | get 0 | str pascal-case"#,
+        "NuTest",
+    )
+}
+
+#[test]
+fn str_case_snake_cell_path() -> TestResult {
+    run_test(
+        r#"([[lang, gems]; [nuTest, 100]]).lang | get 0 | str snake-case"#,
+        "nu_test",
+    )
+}
+
+#[test]
+fn str_case_screaming_snake_cell_path() -> TestResult {
+    run_test(
+        r#"([[lang, gems]; [nuTest, 100]]).lang | get 0 | str screaming-snake-case"#,
+        "NU_TEST",
+    )
+}
