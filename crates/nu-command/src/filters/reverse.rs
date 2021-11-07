@@ -1,6 +1,8 @@
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
-use nu_protocol::{IntoInterruptiblePipelineData, PipelineData, ShellError, Signature};
+use nu_protocol::{
+    Example, IntoInterruptiblePipelineData, PipelineData, ShellError, Signature, Span, Value,
+};
 
 #[derive(Clone)]
 pub struct Reverse;
@@ -18,6 +20,22 @@ impl Command for Reverse {
         "Reverses the table."
     }
 
+    fn examples(&self) -> Vec<Example> {
+        vec![Example {
+            example: "[0,1,2,3] | reverse",
+            description: "Reverse the items",
+            result: Some(Value::List {
+                vals: vec![
+                    Value::test_int(3),
+                    Value::test_int(2),
+                    Value::test_int(1),
+                    Value::test_int(0),
+                ],
+                span: Span::unknown(),
+            }),
+        }]
+    }
+
     fn run(
         &self,
         engine_state: &EngineState,
@@ -28,5 +46,17 @@ impl Command for Reverse {
         let v: Vec<_> = input.into_iter().collect();
         let iter = v.into_iter().rev();
         Ok(iter.into_pipeline_data(engine_state.ctrlc.clone()))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_examples() {
+        use crate::test_examples;
+
+        test_examples(Reverse {})
     }
 }
