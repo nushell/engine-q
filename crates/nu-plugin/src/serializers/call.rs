@@ -1,5 +1,5 @@
 use crate::plugin::PluginError;
-use crate::plugin_capnp::{call, expression, option};
+use crate::plugin_capnp::{call, expression};
 use nu_protocol::{
     ast::{Call, Expr, Expression},
     Span, Spanned, Type,
@@ -46,13 +46,9 @@ fn serialize_named(
             .set_key(key.item.as_str())
             .map_err(|e| PluginError::EncodingError(e.to_string()))?;
 
-        let mut value_builder = entry_builder.init_value();
-        match expression {
-            None => value_builder.set_none(()),
-            Some(expr) => {
-                let expression_builder = value_builder.init_some();
-                serialize_expression(expr, expression_builder);
-            }
+        if let Some(expr) = expression {
+            let value_builder = entry_builder.init_value();
+            serialize_expression(expr, value_builder);
         }
     }
 
@@ -139,22 +135,17 @@ fn deserialize_named(span: Span, reader: call::Reader) -> Result<NamedList, Plug
             .map_err(|e| PluginError::DecodingError(e.to_string()))?
             .to_string();
 
-        let value_reader = entry_reader
-            .get_value()
-            .map_err(|e| PluginError::DecodingError(e.to_string()))?;
+        let value = if entry_reader.has_value() {
+            let value_reader = entry_reader
+                .get_value()
+                .map_err(|e| PluginError::DecodingError(e.to_string()))?;
 
-        let value = match value_reader.which() {
-            Ok(option::None(())) => None,
-            Ok(option::Some(expression_reader)) => {
-                let expression_reader =
-                    expression_reader.map_err(|e| PluginError::DecodingError(e.to_string()))?;
+            let expression = deserialize_expression(span, value_reader)
+                .map_err(|e| PluginError::DecodingError(e.to_string()))?;
 
-                let expression = deserialize_expression(span, expression_reader)
-                    .map_err(|e| PluginError::DecodingError(e.to_string()))?;
-
-                Some(expression)
-            }
-            Err(capnp::NotInSchema(_)) => None,
+            Some(expression)
+        } else {
+            None
         };
 
         let key = Spanned { item, span };
@@ -205,7 +196,7 @@ fn deserialize_expression(
 
 #[cfg(test)]
 mod tests {
-    use capnp::serialize_packed;
+    use capnp::serialize;
     use core::panic;
 
     use super::*;
@@ -220,13 +211,13 @@ mod tests {
         let builder = message.init_root::<call::Builder>();
         serialize_call(call, builder)?;
 
-        serialize_packed::write_message(writer, &message)
+        serialize::write_message(writer, &message)
             .map_err(|e| PluginError::EncodingError(e.to_string()))
     }
 
     fn read_buffer(reader: &mut impl std::io::BufRead) -> Result<Call, PluginError> {
         let message_reader =
-            serialize_packed::read_message(reader, ::capnp::message::ReaderOptions::new()).unwrap();
+            serialize::read_message(reader, ::capnp::message::ReaderOptions::new()).unwrap();
 
         let reader = message_reader
             .get_root::<call::Reader>()
@@ -264,18 +255,27 @@ mod tests {
                     custom_completion: None,
                 },
             ],
-            named: vec![(
-                Spanned {
-                    item: "name".to_string(),
-                    span: Span { start: 0, end: 10 },
-                },
-                Some(Expression {
-                    expr: Expr::Float(1.0),
-                    span: Span { start: 0, end: 10 },
-                    ty: nu_protocol::Type::Float,
-                    custom_completion: None,
-                }),
-            )],
+            named: vec![
+                (
+                    Spanned {
+                        item: "name".to_string(),
+                        span: Span { start: 0, end: 10 },
+                    },
+                    Some(Expression {
+                        expr: Expr::Float(1.0),
+                        span: Span { start: 0, end: 10 },
+                        ty: nu_protocol::Type::Float,
+                        custom_completion: None,
+                    }),
+                ),
+                (
+                    Spanned {
+                        item: "flag".to_string(),
+                        span: Span { start: 0, end: 10 },
+                    },
+                    None,
+                ),
+            ],
         };
 
         let mut buffer: Vec<u8> = Vec::new();

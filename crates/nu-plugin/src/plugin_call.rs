@@ -2,7 +2,7 @@ use crate::plugin::{CallInfo, PluginCall, PluginError, PluginResponse};
 use crate::plugin_capnp::{plugin_call, plugin_response};
 use crate::serializers::signature::deserialize_signature;
 use crate::serializers::{call, signature, value};
-use capnp::serialize_packed;
+use capnp::serialize;
 use nu_protocol::Signature;
 
 use log::{info, trace, warn};
@@ -44,14 +44,14 @@ pub fn encode_call(
         }
     };
 
-    serialize_packed::write_message(writer, &message)
+    serialize::write_message(writer, &message)
         .map_err(|e| PluginError::EncodingError(e.to_string()))
 }
 
 pub fn decode_call(reader: &mut impl std::io::BufRead) -> Result<PluginCall, PluginError> {
     trace!("plugin_call decode_call");
-    let message_reader =
-        serialize_packed::read_message(reader, ::capnp::message::ReaderOptions::new()).unwrap();
+    let message_reader = serialize::read_message(reader, ::capnp::message::ReaderOptions::new())
+        .map_err(|e| PluginError::DecodingError(e.to_string()))?;
 
     let reader = message_reader
         .get_root::<plugin_call::Reader>()
@@ -116,14 +116,14 @@ pub fn encode_response(
         }
     };
 
-    serialize_packed::write_message(writer, &message)
+    serialize::write_message(writer, &message)
         .map_err(|e| PluginError::EncodingError(e.to_string()))
 }
 
 pub fn decode_response(reader: &mut impl std::io::BufRead) -> Result<PluginResponse, PluginError> {
     trace!("plugin_call decode_response");
-    let message_reader =
-        serialize_packed::read_message(reader, ::capnp::message::ReaderOptions::new()).unwrap();
+    let message_reader = serialize::read_message(reader, ::capnp::message::ReaderOptions::new())
+        .map_err(|e| PluginError::DecodingError(e.to_string()))?;
 
     let reader = message_reader
         .get_root::<plugin_response::Reader>()

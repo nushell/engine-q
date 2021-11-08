@@ -2,12 +2,12 @@ use nu_engine::eval_block;
 use nu_parser::parse;
 use nu_protocol::{
     engine::{Command, EngineState, Stack, StateWorkingSet},
-    PipelineData,
+    PipelineData, Span,
 };
 
 use crate::To;
 
-use super::{Date, From, Into, Math, Split};
+use super::{Case, Date, From, Into, Math, Split};
 
 pub fn test_examples(cmd: impl Command + 'static) {
     let examples = cmd.examples();
@@ -17,6 +17,7 @@ pub fn test_examples(cmd: impl Command + 'static) {
         // Base functions that are needed for testing
         // Try to keep this working set small to keep tests running as fast as possible
         let mut working_set = StateWorkingSet::new(&*engine_state);
+        working_set.add_decl(Box::new(Case));
         working_set.add_decl(Box::new(From));
         working_set.add_decl(Box::new(To));
         working_set.add_decl(Box::new(Into));
@@ -56,10 +57,15 @@ pub fn test_examples(cmd: impl Command + 'static) {
 
         let mut stack = Stack::new();
 
-        match eval_block(&engine_state, &mut stack, &block, PipelineData::new()) {
+        match eval_block(
+            &engine_state,
+            &mut stack,
+            &block,
+            PipelineData::new(Span::unknown()),
+        ) {
             Err(err) => panic!("test eval error in `{}`: {:?}", example.example, err),
             Ok(result) => {
-                let result = result.into_value();
+                let result = result.into_value(Span::unknown());
                 println!("input: {}", example.example);
                 println!("result: {:?}", result);
                 println!("done: {:?}", start.elapsed());

@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use std::{cmp::Ordering, fmt::Debug};
 
 use crate::ast::{CellPath, PathMember};
-use crate::{span, BlockId, Span, Spanned, Type};
+use crate::{did_you_mean, span, BlockId, Span, Spanned, Type};
 
 use crate::ShellError;
 
@@ -87,7 +87,14 @@ impl Value {
     pub fn as_string(&self) -> Result<String, ShellError> {
         match self {
             Value::String { val, .. } => Ok(val.to_string()),
-            _ => Err(ShellError::CantConvert("string".into(), self.span()?)),
+            x => {
+                println!("{:?}", x);
+                Err(ShellError::CantConvert(
+                    "string".into(),
+                    x.get_type().to_string(),
+                    self.span()?,
+                ))
+            }
         }
     }
 
@@ -225,10 +232,8 @@ impl Value {
     }
 
     /// Create a new `Nothing` value
-    pub fn nothing() -> Value {
-        Value::Nothing {
-            span: Span::unknown(),
-        }
+    pub fn nothing(span: Span) -> Value {
+        Value::Nothing { span }
     }
 
     /// Follow a given column path into the value: for example accessing nth elements in a stream or list
@@ -264,17 +269,16 @@ impl Value {
                     span: origin_span,
                 } => match &mut current {
                     Value::Record { cols, vals, span } => {
+                        let cols = cols.clone();
                         let span = *span;
-                        let mut found = false;
-                        for col in cols.iter().zip(vals.iter()) {
-                            if col.0 == column_name {
-                                current = col.1.clone();
-                                found = true;
-                                break;
-                            }
-                        }
 
-                        if !found {
+                        if let Some(found) =
+                            cols.iter().zip(vals.iter()).find(|x| x.0 == column_name)
+                        {
+                            current = found.1.clone();
+                        } else if let Some(suggestion) = did_you_mean(&cols, column_name) {
+                            return Err(ShellError::DidYouMean(suggestion, *origin_span));
+                        } else {
                             return Err(ShellError::CantFindColumn(*origin_span, span));
                         }
                     }
@@ -425,7 +429,9 @@ impl Value {
 
 impl Default for Value {
     fn default() -> Self {
-        Value::nothing()
+        Value::Nothing {
+            span: Span::unknown(),
+        }
     }
 }
 
@@ -529,16 +535,24 @@ impl Value {
                 span,
             }),
             (Value::Duration { val: lhs, .. }, Value::Duration { val: rhs, .. }) => {
-                Ok(Value::Duration {
-                    val: *lhs + *rhs,
-                    span,
-                })
+                if let Some(val) = lhs.checked_add(*rhs) {
+                    Ok(Value::Duration { val, span })
+                } else {
+                    Err(ShellError::OperatorOverflow(
+                        "add operation overflowed".into(),
+                        span,
+                    ))
+                }
             }
             (Value::Filesize { val: lhs, .. }, Value::Filesize { val: rhs, .. }) => {
-                Ok(Value::Filesize {
-                    val: *lhs + *rhs,
-                    span,
-                })
+                if let Some(val) = lhs.checked_add(*rhs) {
+                    Ok(Value::Filesize { val, span })
+                } else {
+                    Err(ShellError::OperatorOverflow(
+                        "add operation overflowed".into(),
+                        span,
+                    ))
+                }
             }
 
             _ => Err(ShellError::OperatorMismatch {
@@ -554,10 +568,16 @@ impl Value {
         let span = span(&[self.span()?, rhs.span()?]);
 
         match (self, rhs) {
-            (Value::Int { val: lhs, .. }, Value::Int { val: rhs, .. }) => Ok(Value::Int {
-                val: lhs - rhs,
-                span,
-            }),
+            (Value::Int { val: lhs, .. }, Value::Int { val: rhs, .. }) => {
+                if let Some(val) = lhs.checked_sub(*rhs) {
+                    Ok(Value::Int { val, span })
+                } else {
+                    Err(ShellError::OperatorOverflow(
+                        "subtraction operation overflowed".into(),
+                        span,
+                    ))
+                }
+            }
             (Value::Int { val: lhs, .. }, Value::Float { val: rhs, .. }) => Ok(Value::Float {
                 val: *lhs as f64 - *rhs,
                 span,
@@ -571,16 +591,24 @@ impl Value {
                 span,
             }),
             (Value::Duration { val: lhs, .. }, Value::Duration { val: rhs, .. }) => {
-                Ok(Value::Duration {
-                    val: *lhs - *rhs,
-                    span,
-                })
+                if let Some(val) = lhs.checked_sub(*rhs) {
+                    Ok(Value::Duration { val, span })
+                } else {
+                    Err(ShellError::OperatorOverflow(
+                        "subtraction operation overflowed".into(),
+                        span,
+                    ))
+                }
             }
             (Value::Filesize { val: lhs, .. }, Value::Filesize { val: rhs, .. }) => {
-                Ok(Value::Filesize {
-                    val: *lhs - *rhs,
-                    span,
-                })
+                if let Some(val) = lhs.checked_sub(*rhs) {
+                    Ok(Value::Filesize { val, span })
+                } else {
+                    Err(ShellError::OperatorOverflow(
+                        "add operation overflowed".into(),
+                        span,
+                    ))
+                }
             }
 
             _ => Err(ShellError::OperatorMismatch {
@@ -596,10 +624,16 @@ impl Value {
         let span = span(&[self.span()?, rhs.span()?]);
 
         match (self, rhs) {
-            (Value::Int { val: lhs, .. }, Value::Int { val: rhs, .. }) => Ok(Value::Int {
-                val: lhs * rhs,
-                span,
-            }),
+            (Value::Int { val: lhs, .. }, Value::Int { val: rhs, .. }) => {
+                if let Some(val) = lhs.checked_mul(*rhs) {
+                    Ok(Value::Int { val, span })
+                } else {
+                    Err(ShellError::OperatorOverflow(
+                        "multiply operation overflowed".into(),
+                        span,
+                    ))
+                }
+            }
             (Value::Int { val: lhs, .. }, Value::Float { val: rhs, .. }) => Ok(Value::Float {
                 val: *lhs as f64 * *rhs,
                 span,
@@ -977,10 +1011,16 @@ impl Value {
         let span = span(&[self.span()?, rhs.span()?]);
 
         match (self, rhs) {
-            (Value::Int { val: lhs, .. }, Value::Int { val: rhs, .. }) => Ok(Value::Int {
-                val: lhs.pow(*rhs as u32),
-                span,
-            }),
+            (Value::Int { val: lhs, .. }, Value::Int { val: rhs, .. }) => {
+                if let Some(val) = lhs.checked_pow(*rhs as u32) {
+                    Ok(Value::Int { val, span })
+                } else {
+                    Err(ShellError::OperatorOverflow(
+                        "pow operation overflowed".into(),
+                        span,
+                    ))
+                }
+            }
             (Value::Int { val: lhs, .. }, Value::Float { val: rhs, .. }) => Ok(Value::Float {
                 val: (*lhs as f64).powf(*rhs),
                 span,

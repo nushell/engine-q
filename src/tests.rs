@@ -730,7 +730,7 @@ fn earlier_errors() -> TestResult {
 fn missing_column_error() -> TestResult {
     fail_test(
         r#"([([[name, size]; [ABC, 10], [DEF, 20]]).1, ([[name]; [HIJ]]).0]).size | table"#,
-        "cannot find column",
+        "did you mean 'name'?",
     )
 }
 
@@ -804,7 +804,7 @@ fn help_works_with_missing_requirements() -> TestResult {
 
 #[test]
 fn scope_variable() -> TestResult {
-    run_test(r#"let x = 3; $scope.vars.0"#, "$x")
+    run_test(r#"let x = 3; $scope.vars.'$x'"#, "int")
 }
 
 #[test]
@@ -829,7 +829,7 @@ fn shorthand_env_3() -> TestResult {
 
 #[test]
 fn shorthand_env_4() -> TestResult {
-    fail_test(r#"FOO=BAZ FOO= $nu.env.FOO"#, "cannot find column")
+    fail_test(r#"FOO=BAZ FOO= $nu.env.FOO"#, "did you mean")
 }
 
 #[test]
@@ -838,4 +838,54 @@ fn update_cell_path_1() -> TestResult {
         r#"[[name, size]; [a, 1.1]] | into int size | get size.0"#,
         "1",
     )
+}
+
+#[test]
+fn range_and_reduction() -> TestResult {
+    run_test(r#"1..6..36 | math sum"#, "148")
+}
+
+#[test]
+fn precedence_of_or_groups() -> TestResult {
+    run_test(r#"4 mod 3 == 0 || 5 mod 5 == 0"#, "true")
+}
+
+#[test]
+fn where_on_ranges() -> TestResult {
+    run_test(r#"1..10 | where $it > 8 | math sum"#, "19")
+}
+
+#[test]
+fn index_on_list() -> TestResult {
+    run_test(r#"[1, 2, 3].1"#, "2")
+}
+
+#[test]
+fn in_variable_1() -> TestResult {
+    run_test(r#"[3] | if $in.0 > 4 { "yay!" } else { "boo" }"#, "boo")
+}
+
+#[test]
+fn in_variable_2() -> TestResult {
+    run_test(r#"3 | if $in > 2 { "yay!" } else { "boo" }"#, "yay!")
+}
+
+#[test]
+fn in_variable_3() -> TestResult {
+    run_test(r#"3 | if $in > 4 { "yay!" } else { $in }"#, "3")
+}
+
+#[test]
+fn in_variable_4() -> TestResult {
+    run_test(r#"3 | do { $in }"#, "3")
+}
+
+#[test]
+fn in_variable_5() -> TestResult {
+    run_test(r#"3 | if $in > 2 { $in - 10 } else { $in * 10 }"#, "-7")
+}
+
+#[test]
+fn in_variable_6() -> TestResult {
+    run_test(r#"3 | if $in > 6 { $in - 10 } else { $in * 10 }"#, "30")
 }
