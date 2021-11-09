@@ -94,6 +94,27 @@ impl Command for SubCommand {
                 }),
             },
             Example {
+                description: "Check if string contains pattern in a table",
+                example: " [[ColA ColB]; [test hello]] | str contains 'e' ColA ColB",
+                result: Some(Value::List {
+                    vals: vec![Value::Record {
+                        cols: vec!["ColA".to_string(), "ColB".to_string()],
+                        vals: vec![
+                            Value::Bool {
+                                val: true,
+                                span: Span::unknown(),
+                            },
+                            Value::Bool {
+                                val: true,
+                                span: Span::unknown(),
+                            },
+                        ],
+                        span: Span::unknown(),
+                    }],
+                    span: Span::unknown(),
+                }),
+            },
+            Example {
                 description: "Check if string contains pattern",
                 example: "'hello' | str contains 'banana'",
                 result: Some(Value::Bool {
