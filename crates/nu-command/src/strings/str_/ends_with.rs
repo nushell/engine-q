@@ -6,7 +6,6 @@ use nu_protocol::Spanned;
 use nu_protocol::{Example, PipelineData, ShellError, Signature, Span, SyntaxShape, Value};
 
 #[derive(Clone)]
-
 pub struct SubCommand;
 
 impl Command for SubCommand {
