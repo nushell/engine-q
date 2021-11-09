@@ -25,6 +25,7 @@ pub fn create_default_context() -> EngineState {
             Alias,
             Benchmark,
             BuildString,
+            Capitalize,
             CamelCase,
             Cd,
             Collect,
