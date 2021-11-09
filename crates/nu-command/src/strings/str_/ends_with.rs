@@ -93,7 +93,7 @@ fn operate(
     )
 }
 
-fn action(input: &Value, pattern: &String, head: Span) -> Value {
+fn action(input: &Value, pattern: &str, head: Span) -> Value {
     match input {
         Value::String { val, .. } => Value::Bool {
             val: val.ends_with(pattern),
