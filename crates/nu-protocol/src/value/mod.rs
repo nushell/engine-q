@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use std::{cmp::Ordering, fmt::Debug};
 
 use crate::ast::{CellPath, PathMember};
-use crate::{span, BlockId, Span, Spanned, Type};
+use crate::{did_you_mean, span, BlockId, Span, Spanned, Type};
 
 use crate::ShellError;
 
@@ -87,14 +87,11 @@ impl Value {
     pub fn as_string(&self) -> Result<String, ShellError> {
         match self {
             Value::String { val, .. } => Ok(val.to_string()),
-            x => {
-                println!("{:?}", x);
-                Err(ShellError::CantConvert(
-                    "string".into(),
-                    x.get_type().to_string(),
-                    self.span()?,
-                ))
-            }
+            x => Err(ShellError::CantConvert(
+                "string".into(),
+                x.get_type().to_string(),
+                self.span()?,
+            )),
         }
     }
 
@@ -166,7 +163,7 @@ impl Value {
     }
 
     /// Convert Value into string. Note that Streams will be consumed.
-    pub fn into_string(self) -> String {
+    pub fn into_string(self, separator: &str) -> String {
         match self {
             Value::Bool { val, .. } => val.to_string(),
             Value::Int { val, .. } => val.to_string(),
@@ -175,23 +172,27 @@ impl Value {
             Value::Duration { val, .. } => format_duration(val),
             Value::Date { val, .. } => HumanTime::from(val).to_string(),
             Value::Range { val, .. } => {
-                format!("{}..{}", val.from.into_string(), val.to.into_string())
+                format!(
+                    "{}..{}",
+                    val.from.into_string(", "),
+                    val.to.into_string(", ")
+                )
             }
             Value::String { val, .. } => val,
             Value::List { vals: val, .. } => format!(
                 "[{}]",
                 val.into_iter()
-                    .map(|x| x.into_string())
+                    .map(|x| x.into_string(", "))
                     .collect::<Vec<_>>()
-                    .join(", ")
+                    .join(separator)
             ),
             Value::Record { cols, vals, .. } => format!(
                 "{{{}}}",
                 cols.iter()
                     .zip(vals.iter())
-                    .map(|(x, y)| format!("{}: {}", x, y.clone().into_string()))
+                    .map(|(x, y)| format!("{}: {}", x, y.clone().into_string(", ")))
                     .collect::<Vec<_>>()
-                    .join(", ")
+                    .join(separator)
             ),
             Value::Block { val, .. } => format!("<Block {}>", val),
             Value::Nothing { .. } => String::new(),
@@ -201,7 +202,8 @@ impl Value {
         }
     }
 
-    pub fn collect_string(self) -> String {
+    /// Convert Value into string. Note that Streams will be consumed.
+    pub fn debug_string(self, separator: &str) -> String {
         match self {
             Value::Bool { val, .. } => val.to_string(),
             Value::Int { val, .. } => val.to_string(),
@@ -210,24 +212,33 @@ impl Value {
             Value::Duration { val, .. } => format_duration(val),
             Value::Date { val, .. } => format!("{:?}", val),
             Value::Range { val, .. } => {
-                format!("{}..{}", val.from.into_string(), val.to.into_string())
+                format!(
+                    "{}..{}",
+                    val.from.into_string(", "),
+                    val.to.into_string(", ")
+                )
             }
             Value::String { val, .. } => val,
-            Value::List { vals: val, .. } => val
-                .into_iter()
-                .map(|x| x.collect_string())
-                .collect::<Vec<_>>()
-                .join("\n"),
-            Value::Record { vals, .. } => vals
-                .into_iter()
-                .map(|y| y.collect_string())
-                .collect::<Vec<_>>()
-                .join("\n"),
+            Value::List { vals: val, .. } => format!(
+                "[{}]",
+                val.into_iter()
+                    .map(|x| x.into_string(", "))
+                    .collect::<Vec<_>>()
+                    .join(separator)
+            ),
+            Value::Record { cols, vals, .. } => format!(
+                "{{{}}}",
+                cols.iter()
+                    .zip(vals.iter())
+                    .map(|(x, y)| format!("{}: {}", x, y.clone().into_string(", ")))
+                    .collect::<Vec<_>>()
+                    .join(separator)
+            ),
             Value::Block { val, .. } => format!("<Block {}>", val),
             Value::Nothing { .. } => String::new(),
             Value::Error { error } => format!("{:?}", error),
             Value::Binary { val, .. } => format!("{:?}", val),
-            Value::CellPath { .. } => self.into_string(),
+            Value::CellPath { val, .. } => val.into_string(),
         }
     }
 
@@ -256,6 +267,23 @@ impl Value {
                                 return Err(ShellError::AccessBeyondEnd(val.len(), *origin_span));
                             }
                         }
+                        Value::Binary { val, .. } => {
+                            if let Some(item) = val.get(*count) {
+                                current = Value::Int {
+                                    val: *item as i64,
+                                    span: *origin_span,
+                                };
+                            } else {
+                                return Err(ShellError::AccessBeyondEnd(val.len(), *origin_span));
+                            }
+                        }
+                        Value::Range { val, .. } => {
+                            if let Some(item) = val.clone().into_range_iter()?.nth(*count) {
+                                current = item.clone();
+                            } else {
+                                return Err(ShellError::AccessBeyondEndOfStream(*origin_span));
+                            }
+                        }
                         x => {
                             return Err(ShellError::IncompatiblePathAccess(
                                 format!("{}", x.get_type()),
@@ -269,17 +297,16 @@ impl Value {
                     span: origin_span,
                 } => match &mut current {
                     Value::Record { cols, vals, span } => {
+                        let cols = cols.clone();
                         let span = *span;
-                        let mut found = false;
-                        for col in cols.iter().zip(vals.iter()) {
-                            if col.0 == column_name {
-                                current = col.1.clone();
-                                found = true;
-                                break;
-                            }
-                        }
 
-                        if !found {
+                        if let Some(found) =
+                            cols.iter().zip(vals.iter()).find(|x| x.0 == column_name)
+                        {
+                            current = found.1.clone();
+                        } else if let Some(suggestion) = did_you_mean(&cols, column_name) {
+                            return Err(ShellError::DidYouMean(suggestion, *origin_span));
+                        } else {
                             return Err(ShellError::CantFindColumn(*origin_span, span));
                         }
                     }
@@ -535,17 +562,34 @@ impl Value {
                 val: lhs.to_string() + rhs,
                 span,
             }),
+            (Value::Date { val: lhs, .. }, Value::Duration { val: rhs, .. }) => {
+                match lhs.checked_add_signed(chrono::Duration::nanoseconds(*rhs)) {
+                    Some(val) => Ok(Value::Date { val, span }),
+                    _ => Err(ShellError::OperatorOverflow(
+                        "addition operation overflowed".into(),
+                        span,
+                    )),
+                }
+            }
             (Value::Duration { val: lhs, .. }, Value::Duration { val: rhs, .. }) => {
-                Ok(Value::Duration {
-                    val: *lhs + *rhs,
-                    span,
-                })
+                if let Some(val) = lhs.checked_add(*rhs) {
+                    Ok(Value::Duration { val, span })
+                } else {
+                    Err(ShellError::OperatorOverflow(
+                        "add operation overflowed".into(),
+                        span,
+                    ))
+                }
             }
             (Value::Filesize { val: lhs, .. }, Value::Filesize { val: rhs, .. }) => {
-                Ok(Value::Filesize {
-                    val: *lhs + *rhs,
-                    span,
-                })
+                if let Some(val) = lhs.checked_add(*rhs) {
+                    Ok(Value::Filesize { val, span })
+                } else {
+                    Err(ShellError::OperatorOverflow(
+                        "add operation overflowed".into(),
+                        span,
+                    ))
+                }
             }
 
             _ => Err(ShellError::OperatorMismatch {
@@ -561,10 +605,16 @@ impl Value {
         let span = span(&[self.span()?, rhs.span()?]);
 
         match (self, rhs) {
-            (Value::Int { val: lhs, .. }, Value::Int { val: rhs, .. }) => Ok(Value::Int {
-                val: lhs - rhs,
-                span,
-            }),
+            (Value::Int { val: lhs, .. }, Value::Int { val: rhs, .. }) => {
+                if let Some(val) = lhs.checked_sub(*rhs) {
+                    Ok(Value::Int { val, span })
+                } else {
+                    Err(ShellError::OperatorOverflow(
+                        "subtraction operation overflowed".into(),
+                        span,
+                    ))
+                }
+            }
             (Value::Int { val: lhs, .. }, Value::Float { val: rhs, .. }) => Ok(Value::Float {
                 val: *lhs as f64 - *rhs,
                 span,
@@ -577,17 +627,34 @@ impl Value {
                 val: lhs - rhs,
                 span,
             }),
+            (Value::Date { val: lhs, .. }, Value::Duration { val: rhs, .. }) => {
+                match lhs.checked_sub_signed(chrono::Duration::nanoseconds(*rhs)) {
+                    Some(val) => Ok(Value::Date { val, span }),
+                    _ => Err(ShellError::OperatorOverflow(
+                        "subtraction operation overflowed".into(),
+                        span,
+                    )),
+                }
+            }
             (Value::Duration { val: lhs, .. }, Value::Duration { val: rhs, .. }) => {
-                Ok(Value::Duration {
-                    val: *lhs - *rhs,
-                    span,
-                })
+                if let Some(val) = lhs.checked_sub(*rhs) {
+                    Ok(Value::Duration { val, span })
+                } else {
+                    Err(ShellError::OperatorOverflow(
+                        "subtraction operation overflowed".into(),
+                        span,
+                    ))
+                }
             }
             (Value::Filesize { val: lhs, .. }, Value::Filesize { val: rhs, .. }) => {
-                Ok(Value::Filesize {
-                    val: *lhs - *rhs,
-                    span,
-                })
+                if let Some(val) = lhs.checked_sub(*rhs) {
+                    Ok(Value::Filesize { val, span })
+                } else {
+                    Err(ShellError::OperatorOverflow(
+                        "add operation overflowed".into(),
+                        span,
+                    ))
+                }
             }
 
             _ => Err(ShellError::OperatorMismatch {
@@ -603,10 +670,16 @@ impl Value {
         let span = span(&[self.span()?, rhs.span()?]);
 
         match (self, rhs) {
-            (Value::Int { val: lhs, .. }, Value::Int { val: rhs, .. }) => Ok(Value::Int {
-                val: lhs * rhs,
-                span,
-            }),
+            (Value::Int { val: lhs, .. }, Value::Int { val: rhs, .. }) => {
+                if let Some(val) = lhs.checked_mul(*rhs) {
+                    Ok(Value::Int { val, span })
+                } else {
+                    Err(ShellError::OperatorOverflow(
+                        "multiply operation overflowed".into(),
+                        span,
+                    ))
+                }
+            }
             (Value::Int { val: lhs, .. }, Value::Float { val: rhs, .. }) => Ok(Value::Float {
                 val: *lhs as f64 * *rhs,
                 span,
@@ -984,10 +1057,16 @@ impl Value {
         let span = span(&[self.span()?, rhs.span()?]);
 
         match (self, rhs) {
-            (Value::Int { val: lhs, .. }, Value::Int { val: rhs, .. }) => Ok(Value::Int {
-                val: lhs.pow(*rhs as u32),
-                span,
-            }),
+            (Value::Int { val: lhs, .. }, Value::Int { val: rhs, .. }) => {
+                if let Some(val) = lhs.checked_pow(*rhs as u32) {
+                    Ok(Value::Int { val, span })
+                } else {
+                    Err(ShellError::OperatorOverflow(
+                        "pow operation overflowed".into(),
+                        span,
+                    ))
+                }
+            }
             (Value::Int { val: lhs, .. }, Value::Float { val: rhs, .. }) => Ok(Value::Float {
                 val: (*lhs as f64).powf(*rhs),
                 span,

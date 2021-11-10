@@ -33,11 +33,13 @@
 - [x] block variable captures
 - [x] improved history and config paths
 - [x] ctrl-c support
-- [ ] Support for `$in`
-- [ ] operator overflow
+- [x] operator overflow
+- [x] Support for `$in`
+- [ ] config system
 - [ ] shells
 - [ ] plugins
 - [ ] dataframes
+- [ ] port over `which` logic
 
 ## Post-nushell merge:
 - [ ] Overlays (replacement for `autoenv`), adding modules to shells
