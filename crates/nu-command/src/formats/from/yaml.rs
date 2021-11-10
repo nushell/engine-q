@@ -203,7 +203,7 @@ pub fn from_yaml_string_to_value(s: String, span: Span) -> Result<Value, ShellEr
 }
 
 fn from_yaml(input: PipelineData, head: Span) -> Result<PipelineData, ShellError> {
-    let concat_string = input.collect_string();
+    let concat_string = input.collect_string("");
 
     match from_yaml_string_to_value(concat_string, head) {
         Ok(x) => Ok(x.into_pipeline_data()),
