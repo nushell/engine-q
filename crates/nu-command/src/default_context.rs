@@ -45,6 +45,8 @@ pub fn create_default_context() -> EngineState {
             Format,
             From,
             FromJson,
+            FromYaml,
+            FromYml,
             Get,
             Griddle,
             Help,
