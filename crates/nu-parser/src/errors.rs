@@ -81,6 +81,10 @@ pub enum ParseError {
     #[diagnostic(code(nu::parser::module_not_found), url(docsrs))]
     ModuleNotFound(#[label = "module not found"] Span),
 
+    #[error("Not found.")]
+    #[diagnostic(code(nu::parser::not_found), url(docsrs))]
+    NotFound(#[label = "did not find anything under this name"] Span),
+
     #[error("Duplicate command definition within a block.")]
     #[diagnostic(code(nu::parser::duplicate_command_def), url(docsrs))]
     DuplicateCommandDef(#[label = "defined more than once"] Span),

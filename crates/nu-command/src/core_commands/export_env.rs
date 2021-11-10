@@ -16,7 +16,11 @@ impl Command for ExportEnv {
 
     fn signature(&self) -> nu_protocol::Signature {
         Signature::build("export env")
-            .required("name", SyntaxShape::String, "name of the environment variable")
+            .required(
+                "name",
+                SyntaxShape::String,
+                "name of the environment variable",
+            )
             .required(
                 "block",
                 SyntaxShape::Block(Some(vec![])),

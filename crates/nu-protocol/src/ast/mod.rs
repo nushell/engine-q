@@ -5,6 +5,7 @@ mod expr;
 mod expression;
 mod import_pattern;
 mod operator;
+mod overlay;
 mod pipeline;
 mod statement;
 
@@ -15,5 +16,6 @@ pub use expr::*;
 pub use expression::*;
 pub use import_pattern::*;
 pub use operator::*;
+pub use overlay::*;
 pub use pipeline::*;
 pub use statement::*;
