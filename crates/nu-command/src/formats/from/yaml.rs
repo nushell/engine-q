@@ -259,8 +259,8 @@ mod test {
                 );
             } else {
                 assert_eq!(
-                    actual.unwrap().into_string(),
-                    tc.expected.unwrap().into_string()
+                    actual.unwrap().into_string(""),
+                    tc.expected.unwrap().into_string("")
                 );
             }
         }
