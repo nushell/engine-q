@@ -492,7 +492,7 @@ fn hides_def_in_scope_4() -> TestResult {
 fn hide_twice_not_allowed() -> TestResult {
     fail_test(
         r#"def foo [] { "foo" }; hide foo; hide foo"#,
-        "unknown command",
+        "did not find",
     )
 }
 

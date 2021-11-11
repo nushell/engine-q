@@ -4,7 +4,7 @@ use nu_protocol::{
         Statement,
     },
     engine::StateWorkingSet,
-    span, DeclId, Span, SyntaxShape, Type,
+    span, Span, SyntaxShape, Type,
 };
 use std::path::Path;
 
@@ -355,7 +355,7 @@ pub fn parse_module_block(
                     b"export" => {
                         let (stmt, err) = parse_export(working_set, &pipeline.commands[0].parts);
 
-                        if err.is_none() {
+                        let err = if err.is_none() {
                             let type_span = pipeline.commands[0].parts[1];
                             let name_span = pipeline.commands[0].parts[2];
 
@@ -368,18 +368,20 @@ pub fn parse_module_block(
                                         .find_decl(decl_name)
                                         .expect("internal error: failed to find added declaration");
                                     overlay.add_decl(decl_name, decl_id);
+
+                                    None
                                 }
                                 // b"env" => {
 
                                 // },
-                                _ => {
-                                    error = error.or(Some(ParseError::UnexpectedKeyword(
-                                        "expected def or env keyword".into(),
-                                        type_span,
-                                    )));
-                                }
+                                _ => Some(ParseError::UnexpectedKeyword(
+                                    "expected def or env keyword".into(),
+                                    type_span,
+                                )),
                             }
-                        }
+                        } else {
+                            err
+                        };
 
                         (stmt, err)
                     }
@@ -569,21 +571,10 @@ pub fn parse_use(
 
         let overlay = if import_pattern.members.is_empty() {
             overlay.with_head(&import_pattern.head)
-            // .into_iter()
-            // .map(|(name, id)| {
-            //     let mut new_name = import_pattern.head.to_vec();
-            //     new_name.push(b' ');
-            //     new_name.extend(&name);
-            //     (new_name, id)
-            // })
-            // .collect()
         } else {
             match &import_pattern.members[0] {
                 ImportPatternMember::Glob { .. } => overlay,
                 ImportPatternMember::Name { name, span } => {
-                    // let new_overlay: Vec<(Vec<u8>, usize)> =
-                    //     overlay.into_iter().filter(|x| &x.0 == name).collect();
-
                     let new_overlay = overlay.filtered(name);
 
                     if new_overlay.is_empty() {
@@ -593,15 +584,9 @@ pub fn parse_use(
                     new_overlay
                 }
                 ImportPatternMember::List { names } => {
-                    // let mut output = vec![];
                     let mut new_overlay = Overlay::new();
 
                     for (name, span) in names {
-                        // let mut new_overlay: Vec<(Vec<u8>, usize)> = overlay.decls
-                        //     .iter()
-                        //     .filter_map(|x| if &x.0 == name { Some(x.clone()) } else { None })
-                        //     .collect();
-
                         let filtered = overlay.filtered(name);
 
                         if filtered.is_empty() {
@@ -611,7 +596,6 @@ pub fn parse_use(
                         }
                     }
 
-                    // output
                     new_overlay
                 }
             }
@@ -666,42 +650,33 @@ pub fn parse_hide(
         let (import_pattern, err) = parse_import_pattern(working_set, &spans[1..]);
         error = error.or(err);
 
-        let (is_module, hide_overlay) =
+        let (is_module, overlay) =
             if let Some(block_id) = working_set.find_module(&import_pattern.head) {
-                (
-                    true,
-                    working_set
-                        .get_block(block_id)
-                        .overlay
-                        // .iter()
-                        // .map(|(name, _)| name.clone())
-                        // .collect(),
-                )
+                (true, working_set.get_block(block_id).overlay.clone())
             } else if import_pattern.members.is_empty() {
                 // The pattern head can be e.g. a function name, not just a module
                 if let Some(id) = working_set.find_decl(&import_pattern.head) {
                     (
                         false,
                         Overlay {
-                            decls: vec![(import_pattern.head, id)],
+                            decls: vec![(import_pattern.head.clone(), id)],
                             env_vars: vec![],
                         },
                     )
-                } else if let Some(id) = working_set.find_env_var(&import_pattern.head) {
-                    (
-                        false,
-                        Overlay {
-                            decls: vec![],
-                            env_vars: vec![(import_pattern.head, id)],
-                        },
-                    )
+                // } else if let Some(id) = working_set.find_env_var(&import_pattern.head) {
+                //     (
+                //         false,
+                //         Overlay {
+                //             decls: vec![],
+                //             env_vars: vec![(import_pattern.head, id)],
+                //         },
+                //     )
                 } else {
                     return (
                         garbage_statement(spans),
-                        Some(ParseError::NotFound(spans[1])),
+                        Some(ParseError::NotFound(span(&spans[1..]))),
                     );
                 }
-                // (false, vec![import_pattern.head.clone()])
             } else {
                 return (
                     garbage_statement(spans),
@@ -710,45 +685,17 @@ pub fn parse_hide(
             };
 
         // This kind of inverts the import pattern matching found in parse_use()
-        let names_to_hide = if import_pattern.members.is_empty() {
+        let to_hide = if import_pattern.members.is_empty() {
             if is_module {
-                // exported_names
-                //     .into_iter()
-                //     .map(|name| {
-                //         let mut new_name = import_pattern.head.to_vec();
-                //         new_name.push(b' ');
-                //         new_name.extend(&name);
-                //         new_name
-                //     })
-                //     .collect()
-                hide_overlay.with_head(&import_pattern.head)
+                overlay.with_head(&import_pattern.head)
             } else {
-                hide_overlay
+                overlay
             }
         } else {
             match &import_pattern.members[0] {
-                ImportPatternMember::Glob { .. } => hide_overlay.with_head(&import_pattern.head),
-                // exported_names
-                // .into_iter()
-                // .map(|name| {
-                //     let mut new_name = import_pattern.head.to_vec();
-                //     new_name.push(b' ');
-                //     new_name.extend(&name);
-                //     new_name
-                // })
-                // .collect(),
+                ImportPatternMember::Glob { .. } => overlay.with_head(&import_pattern.head),
                 ImportPatternMember::Name { name, span } => {
-                    let new_overlay = hide_overlay.filtered(name).with_head(&import_pattern.head);
-                    // exported_names
-                    // .into_iter()
-                    // .filter(|n| n == name)
-                    // .map(|n| {
-                    //     let mut new_name = import_pattern.head.to_vec();
-                    //     new_name.push(b' ');
-                    //     new_name.extend(&n);
-                    //     new_name
-                    // })
-                    // .collect();
+                    let new_overlay = overlay.filtered(name).with_head(&import_pattern.head);
 
                     if new_overlay.is_empty() {
                         error = error.or(Some(ParseError::ExportNotFound(*span)))
@@ -760,18 +707,7 @@ pub fn parse_hide(
                     let mut new_overlay = Overlay::new();
 
                     for (name, span) in names {
-                        let mut filtered =
-                            hide_overlay.filtered(name).with_head(&import_pattern.head);
-                        // exported_names
-                        // .iter()
-                        // .filter_map(|n| if n == name { Some(n.clone()) } else { None })
-                        // .map(|n| {
-                        //     let mut new_name = import_pattern.head.to_vec();
-                        //     new_name.push(b' ');
-                        //     new_name.extend(n);
-                        //     new_name
-                        // })
-                        // .collect();
+                        let filtered = overlay.filtered(name).with_head(&import_pattern.head);
 
                         if filtered.is_empty() {
                             error = error.or(Some(ParseError::ExportNotFound(*span)))
@@ -785,18 +721,9 @@ pub fn parse_hide(
             }
         };
 
-        // for name in names_to_hide {
-        //     // TODO: `use spam; use spam foo; hide foo` will hide both `foo` and `spam foo` since
-        //     // they point to the same DeclId. Do we want to keep it that way?
-        //     if working_set.hide_decl(&name).is_none() {
-        //         error = error.or_else(|| Some(ParseError::UnknownCommand(spans[1])));
-        //     }
-        // }
-
         // TODO: `use spam; use spam foo; hide foo` will hide both `foo` and `spam foo` since
         // they point to the same DeclId. Do we want to keep it that way?
-        let err = working_set.hide_overlay(&hide_overlay);
-        error = error.or(err);
+        working_set.hide_overlay(&to_hide);
 
         // Create the Hide command call
         let hide_decl_id = working_set

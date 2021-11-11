@@ -29,58 +29,70 @@ impl Overlay {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.decls.is_empty() || self.env_vars.is_empty()
+        self.decls.is_empty() && self.env_vars.is_empty()
     }
 
     pub fn filtered(&self, name: &[u8]) -> Self {
         let mut result = Overlay::new();
 
-        // for name in names {
-            let decls = self
-                .decls
-                .iter()
-                .filter_map(|decl| {
-                    if &decl.0 == name {
-                        Some((decl.0.clone(), decl.1))
-                    } else {
-                        None
-                    }
-                })
-                .collect();
+        let decls = self
+            .decls
+            .iter()
+            .filter_map(|decl| {
+                if decl.0 == name {
+                    Some((decl.0.clone(), decl.1))
+                } else {
+                    None
+                }
+            })
+            .collect();
 
-            let env_vars = self
-                .env_vars
-                .iter()
-                .filter_map(|env_var| {
-                    if &env_var.0 == name {
-                        Some((env_var.0.clone(), env_var.1))
-                    } else {
-                        None
-                    }
-                })
-                .collect();
+        let env_vars = self
+            .env_vars
+            .iter()
+            .filter_map(|env_var| {
+                if env_var.0 == name {
+                    Some((env_var.0.clone(), env_var.1))
+                } else {
+                    None
+                }
+            })
+            .collect();
 
-            result.extend(&Overlay { decls, env_vars });
-        // }
+        result.extend(&Overlay { decls, env_vars });
 
         result
     }
 
     pub fn with_head(&self, head: &[u8]) -> Self {
-        let decls = self.decls.iter().map(|(name, id)| {
-            let mut new_name = head.to_vec();
-            new_name.push(b' ');
-            new_name.extend(name);
-            (new_name, *id)
-        }).collect();
+        let decls = self
+            .decls
+            .iter()
+            .map(|(name, id)| {
+                let mut new_name = head.to_vec();
+                new_name.push(b' ');
+                new_name.extend(name);
+                (new_name, *id)
+            })
+            .collect();
 
-        let env_vars = self.env_vars.iter().map(|(name, id)| {
-            let mut new_name = head.to_vec();
-            new_name.push(b' ');
-            new_name.extend(name);
-            (new_name, *id)
-        }).collect();
+        let env_vars = self
+            .env_vars
+            .iter()
+            .map(|(name, id)| {
+                let mut new_name = head.to_vec();
+                new_name.push(b' ');
+                new_name.extend(name);
+                (new_name, *id)
+            })
+            .collect();
 
         Overlay { decls, env_vars }
+    }
+}
+
+impl Default for Overlay {
+    fn default() -> Self {
+        Self::new()
     }
 }

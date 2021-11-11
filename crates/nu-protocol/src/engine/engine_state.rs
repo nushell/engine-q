@@ -1,5 +1,5 @@
 use super::Command;
-use crate::{ast::Block, BlockId, DeclId, Example, Signature, Span, Type, VarId};
+use crate::{ast::Block, ast::Overlay, BlockId, DeclId, Example, Signature, Span, Type, VarId};
 use core::panic;
 use std::{
     collections::HashMap,
@@ -527,6 +527,12 @@ impl<'a> StateWorkingSet<'a> {
         None
     }
 
+    pub fn hide_overlay(&mut self, overlay: &Overlay) {
+        for decl in overlay.decls.iter() {
+            self.hide_decl(&decl.0); // let's assume no errors
+        }
+    }
+
     pub fn add_block(&mut self, block: Block) -> BlockId {
         self.delta.blocks.push(block);
 
@@ -550,14 +556,14 @@ impl<'a> StateWorkingSet<'a> {
         block_id
     }
 
-    pub fn activate_overlay(&mut self, overlay: Vec<(Vec<u8>, DeclId)>) {
+    pub fn activate_overlay(&mut self, overlay: Overlay) {
         let scope_frame = self
             .delta
             .scope
             .last_mut()
             .expect("internal error: missing required scope frame");
 
-        for (name, decl_id) in overlay {
+        for (name, decl_id) in overlay.decls {
             scope_frame.decls.insert(name, decl_id);
             scope_frame.visibility.use_id(&decl_id);
         }
