@@ -1,26 +1,28 @@
 use crate::{BlockId, DeclId};
 
+use std::collections::HashMap;
+
 /// Collection of definitions that can be exported from a module
 #[derive(Debug, Clone)]
 pub struct Overlay {
-    pub decls: Vec<(Vec<u8>, DeclId)>,
-    pub env_vars: Vec<(Vec<u8>, BlockId)>,
+    pub decls: HashMap<Vec<u8>, DeclId>,
+    pub env_vars: HashMap<Vec<u8>, BlockId>,
 }
 
 impl Overlay {
     pub fn new() -> Self {
         Overlay {
-            decls: vec![],
-            env_vars: vec![],
+            decls: HashMap::new(),
+            env_vars: HashMap::new(),
         }
     }
 
-    pub fn add_decl(&mut self, name: &[u8], decl_id: DeclId) {
-        self.decls.push((name.to_vec(), decl_id));
+    pub fn add_decl(&mut self, name: &[u8], decl_id: DeclId) -> Option<DeclId> {
+        self.decls.insert(name.to_vec(), decl_id)
     }
 
-    pub fn add_env_var(&mut self, name: &[u8], block_id: BlockId) {
-        self.env_vars.push((name.to_vec(), block_id));
+    pub fn add_env_var(&mut self, name: &[u8], block_id: BlockId) -> Option<BlockId> {
+        self.env_vars.insert(name.to_vec(), block_id)
     }
 
     pub fn extend(&mut self, other: &Overlay) {
@@ -32,41 +34,23 @@ impl Overlay {
         self.decls.is_empty() && self.env_vars.is_empty()
     }
 
-    pub fn filtered(&self, name: &[u8]) -> Self {
-        let mut result = Overlay::new();
-
-        let decls = self
-            .decls
-            .iter()
-            .filter_map(|decl| {
-                if decl.0 == name {
-                    Some((decl.0.clone(), decl.1))
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        let env_vars = self
-            .env_vars
-            .iter()
-            .filter_map(|env_var| {
-                if env_var.0 == name {
-                    Some((env_var.0.clone(), env_var.1))
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        result.extend(&Overlay { decls, env_vars });
-
-        result
+    pub fn get_decl_id(&self, name: &[u8]) -> Option<DeclId> {
+        self.decls.get(name).copied()
     }
 
-    pub fn with_head(&self, head: &[u8]) -> Self {
-        let decls = self
-            .decls
+    pub fn decl_with_head(&self, name: &[u8], head: &[u8]) -> Option<(Vec<u8>, DeclId)> {
+        if let Some(id) = self.get_decl_id(name) {
+            let mut new_name = head.to_vec();
+            new_name.push(b' ');
+            new_name.extend(name);
+            Some((new_name, id))
+        } else {
+            None
+        }
+    }
+
+    pub fn decls_with_head(&self, head: &[u8]) -> Vec<(Vec<u8>, DeclId)> {
+        self.decls
             .iter()
             .map(|(name, id)| {
                 let mut new_name = head.to_vec();
@@ -74,20 +58,14 @@ impl Overlay {
                 new_name.extend(name);
                 (new_name, *id)
             })
-            .collect();
+            .collect()
+    }
 
-        let env_vars = self
-            .env_vars
+    pub fn decls(&self) -> Vec<(Vec<u8>, DeclId)> {
+        self.decls
             .iter()
-            .map(|(name, id)| {
-                let mut new_name = head.to_vec();
-                new_name.push(b' ');
-                new_name.extend(name);
-                (new_name, *id)
-            })
-            .collect();
-
-        Overlay { decls, env_vars }
+            .map(|(name, id)| (name.clone(), *id))
+            .collect()
     }
 }
 

@@ -6,6 +6,7 @@ use nu_protocol::{
     engine::StateWorkingSet,
     span, Span, SyntaxShape, Type,
 };
+use std::collections::HashMap;
 use std::path::Path;
 
 #[cfg(feature = "plugin")]
@@ -569,40 +570,41 @@ pub fn parse_use(
                 }
             };
 
-        let overlay = if import_pattern.members.is_empty() {
-            overlay.with_head(&import_pattern.head)
+        let decls_to_use = if import_pattern.members.is_empty() {
+            overlay.decls_with_head(&import_pattern.head)
         } else {
             match &import_pattern.members[0] {
-                ImportPatternMember::Glob { .. } => overlay,
+                ImportPatternMember::Glob { .. } => overlay.decls(),
                 ImportPatternMember::Name { name, span } => {
-                    let new_overlay = overlay.filtered(name);
+                    let mut output = vec![];
 
-                    if new_overlay.is_empty() {
+                    if let Some(id) = overlay.get_decl_id(name) {
+                        output.push((name.clone(), id));
+                    } else {
                         error = error.or(Some(ParseError::ExportNotFound(*span)))
                     }
 
-                    new_overlay
+                    output
                 }
                 ImportPatternMember::List { names } => {
-                    let mut new_overlay = Overlay::new();
+                    let mut output = vec![];
 
                     for (name, span) in names {
-                        let filtered = overlay.filtered(name);
-
-                        if filtered.is_empty() {
-                            error = error.or(Some(ParseError::ExportNotFound(*span)))
+                        if let Some(id) = overlay.get_decl_id(name) {
+                            output.push((name.clone(), id));
                         } else {
-                            new_overlay.extend(&filtered)
+                            error = error.or(Some(ParseError::ExportNotFound(*span)));
+                            break;
                         }
                     }
 
-                    new_overlay
+                    output
                 }
             }
         };
 
         // Extend the current scope with the module's overlay
-        working_set.activate_overlay(overlay);
+        working_set.add_decls(decls_to_use);
 
         // Create the Use command call
         let use_decl_id = working_set
@@ -660,21 +662,16 @@ pub fn parse_hide(
             } else if import_pattern.members.is_empty() {
                 // The pattern head can be e.g. a function name, not just a module
                 if let Some(id) = working_set.find_decl(&import_pattern.head) {
+                    let mut decls = HashMap::new();
+                    decls.insert(import_pattern.head.clone(), id);
+
                     (
                         false,
                         Overlay {
-                            decls: vec![(import_pattern.head.clone(), id)],
-                            env_vars: vec![],
+                            decls,
+                            env_vars: HashMap::new(),
                         },
                     )
-                // } else if let Some(id) = working_set.find_env_var(&import_pattern.head) {
-                //     (
-                //         false,
-                //         Overlay {
-                //             decls: vec![],
-                //             env_vars: vec![(import_pattern.head, id)],
-                //         },
-                //     )
                 } else {
                     return (
                         garbage_statement(spans),
@@ -689,45 +686,45 @@ pub fn parse_hide(
             };
 
         // This kind of inverts the import pattern matching found in parse_use()
-        let to_hide = if import_pattern.members.is_empty() {
+        let decls_to_hide = if import_pattern.members.is_empty() {
             if is_module {
-                overlay.with_head(&import_pattern.head)
+                overlay.decls_with_head(&import_pattern.head)
             } else {
-                overlay
+                overlay.decls()
             }
         } else {
             match &import_pattern.members[0] {
-                ImportPatternMember::Glob { .. } => overlay.with_head(&import_pattern.head),
+                ImportPatternMember::Glob { .. } => overlay.decls_with_head(&import_pattern.head),
                 ImportPatternMember::Name { name, span } => {
-                    let new_overlay = overlay.filtered(name).with_head(&import_pattern.head);
+                    let mut output = vec![];
 
-                    if new_overlay.is_empty() {
-                        error = error.or(Some(ParseError::ExportNotFound(*span)))
+                    if let Some(item) = overlay.decl_with_head(name, &import_pattern.head) {
+                        output.push(item);
+                    } else {
+                        error = error.or(Some(ParseError::ExportNotFound(*span)));
                     }
 
-                    new_overlay
+                    output
                 }
                 ImportPatternMember::List { names } => {
-                    let mut new_overlay = Overlay::new();
+                    let mut output = vec![];
 
                     for (name, span) in names {
-                        let filtered = overlay.filtered(name).with_head(&import_pattern.head);
-
-                        if filtered.is_empty() {
-                            error = error.or(Some(ParseError::ExportNotFound(*span)))
+                        if let Some(item) = overlay.decl_with_head(name, &import_pattern.head) {
+                            output.push(item);
                         } else {
-                            new_overlay.extend(&filtered)
+                            error = error.or(Some(ParseError::ExportNotFound(*span)));
                         }
                     }
 
-                    new_overlay
+                    output
                 }
             }
         };
 
         // TODO: `use spam; use spam foo; hide foo` will hide both `foo` and `spam foo` since
         // they point to the same DeclId. Do we want to keep it that way?
-        working_set.hide_overlay(&to_hide);
+        working_set.hide_decls(&decls_to_hide);
 
         // Create the Hide command call
         let hide_decl_id = working_set
