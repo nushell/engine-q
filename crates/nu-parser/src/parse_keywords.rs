@@ -644,8 +644,12 @@ pub fn parse_hide(
     let bytes = working_set.get_span_contents(spans[0]);
 
     if bytes == b"hide" && spans.len() >= 2 {
-        let (name_expr, err) = parse_string(working_set, spans[1]);
-        error = error.or(err);
+        let mut import_pattern_exprs: Vec<Expression> = vec![];
+        for span in spans[1..].iter() {
+            let (expr, err) = parse_string(working_set, *span);
+            import_pattern_exprs.push(expr);
+            error = error.or(err);
+        }
 
         let (import_pattern, err) = parse_import_pattern(working_set, &spans[1..]);
         error = error.or(err);
@@ -733,7 +737,7 @@ pub fn parse_hide(
         let call = Box::new(Call {
             head: spans[0],
             decl_id: hide_decl_id,
-            positional: vec![name_expr],
+            positional: import_pattern_exprs,
             named: vec![],
         });
 
