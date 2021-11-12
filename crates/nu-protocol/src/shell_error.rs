@@ -190,6 +190,14 @@ pub enum ShellError {
     #[error("Name not found")]
     #[diagnostic(code(nu::shell::name_not_found), url(docsrs))]
     DidYouMean(String, #[label("did you mean '{0}'?")] Span),
+
+    #[error("Export not found.")]
+    #[diagnostic(code(nu::parser::export_not_found), url(docsrs))]
+    ExportNotFound(#[label = "could not find imports"] Span),
+
+    #[error("Non-UTF8 string.")]
+    #[diagnostic(code(nu::parser::non_utf8), url(docsrs))]
+    NonUtf8(#[label = "non-UTF8 string"] Span),
 }
 
 impl From<std::io::Error> for ShellError {

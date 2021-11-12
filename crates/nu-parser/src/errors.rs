@@ -179,7 +179,7 @@ pub enum ParseError {
     #[diagnostic(code(nu::parser::missing_import_pattern), url(docsrs))]
     WrongImportPattern(#[label = "invalid import pattern structure"] Span),
 
-    #[error("Module export not found.")]
+    #[error("Export not found.")]
     #[diagnostic(code(nu::parser::export_not_found), url(docsrs))]
     ExportNotFound(#[label = "could not find imports"] Span),
 

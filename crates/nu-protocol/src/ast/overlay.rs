@@ -38,6 +38,10 @@ impl Overlay {
         self.decls.get(name).copied()
     }
 
+    pub fn has_decl(&self, name: &[u8]) -> bool {
+        self.decls.contains_key(name)
+    }
+
     pub fn decl_with_head(&self, name: &[u8], head: &[u8]) -> Option<(Vec<u8>, DeclId)> {
         if let Some(id) = self.get_decl_id(name) {
             let mut new_name = head.to_vec();
@@ -63,6 +67,44 @@ impl Overlay {
 
     pub fn decls(&self) -> Vec<(Vec<u8>, DeclId)> {
         self.decls
+            .iter()
+            .map(|(name, id)| (name.clone(), *id))
+            .collect()
+    }
+
+    pub fn get_env_var_id(&self, name: &[u8]) -> Option<BlockId> {
+        self.env_vars.get(name).copied()
+    }
+
+    pub fn has_env_var(&self, name: &[u8]) -> bool {
+        self.env_vars.contains_key(name)
+    }
+
+    pub fn env_var_with_head(&self, name: &[u8], head: &[u8]) -> Option<(Vec<u8>, BlockId)> {
+        if let Some(id) = self.get_env_var_id(name) {
+            let mut new_name = head.to_vec();
+            new_name.push(b' ');
+            new_name.extend(name);
+            Some((new_name, id))
+        } else {
+            None
+        }
+    }
+
+    pub fn env_vars_with_head(&self, head: &[u8]) -> Vec<(Vec<u8>, BlockId)> {
+        self.env_vars
+            .iter()
+            .map(|(name, id)| {
+                let mut new_name = head.to_vec();
+                new_name.push(b' ');
+                new_name.extend(name);
+                (new_name, *id)
+            })
+            .collect()
+    }
+
+    pub fn env_vars(&self) -> Vec<(Vec<u8>, BlockId)> {
+        self.env_vars
             .iter()
             .map(|(name, id)| (name.clone(), *id))
             .collect()

@@ -1,7 +1,7 @@
 use nu_protocol::{
     ast::{
-        Block, Call, Expr, Expression, ImportPattern, ImportPatternMember, Overlay, Pipeline,
-        Statement,
+        Block, Call, Expr, Expression, ImportPattern, ImportPatternHead, ImportPatternMember,
+        Overlay, Pipeline, Statement,
     },
     engine::StateWorkingSet,
     span, Span, SyntaxShape, Type,
@@ -506,10 +506,10 @@ pub fn parse_use(
     let bytes = working_set.get_span_contents(spans[0]);
 
     if bytes == b"use" && spans.len() >= 2 {
-        let mut import_pattern_exprs: Vec<Expression> = vec![];
+        // let mut import_pattern_exprs: Vec<Expression> = vec![];
         for span in spans[1..].iter() {
-            let (expr, err) = parse_string(working_set, *span);
-            import_pattern_exprs.push(expr);
+            let (_, err) = parse_string(working_set, *span);
+            // import_pattern_exprs.push(expr);
             error = error.or(err);
         }
 
@@ -519,7 +519,7 @@ pub fn parse_use(
         error = error.or(err);
 
         let (import_pattern, overlay) =
-            if let Some(block_id) = working_set.find_module(&import_pattern.head) {
+            if let Some(block_id) = working_set.find_module(&import_pattern.head.name) {
                 (
                     import_pattern,
                     working_set.get_block(block_id).overlay.clone(),
@@ -527,7 +527,7 @@ pub fn parse_use(
             } else {
                 // TODO: Do not close over when loading module from file
                 // It could be a file
-                if let Ok(module_filename) = String::from_utf8(import_pattern.head) {
+                if let Ok(module_filename) = String::from_utf8(import_pattern.head.name) {
                     let module_path = Path::new(&module_filename);
                     let module_name = if let Some(stem) = module_path.file_stem() {
                         stem.to_string_lossy().to_string()
@@ -551,7 +551,10 @@ pub fn parse_use(
 
                         (
                             ImportPattern {
-                                head: module_name.into(),
+                                head: ImportPatternHead {
+                                    name: module_name.into(),
+                                    span: spans[1],
+                                },
                                 members: import_pattern.members,
                             },
                             working_set.get_block(block_id).overlay.clone(),
@@ -571,7 +574,7 @@ pub fn parse_use(
             };
 
         let decls_to_use = if import_pattern.members.is_empty() {
-            overlay.decls_with_head(&import_pattern.head)
+            overlay.decls_with_head(&import_pattern.head.name)
         } else {
             match &import_pattern.members[0] {
                 ImportPatternMember::Glob { .. } => overlay.decls(),
@@ -580,7 +583,7 @@ pub fn parse_use(
 
                     if let Some(id) = overlay.get_decl_id(name) {
                         output.push((name.clone(), id));
-                    } else {
+                    } else if !overlay.has_env_var(name) {
                         error = error.or(Some(ParseError::ExportNotFound(*span)))
                     }
 
@@ -592,7 +595,7 @@ pub fn parse_use(
                     for (name, span) in names {
                         if let Some(id) = overlay.get_decl_id(name) {
                             output.push((name.clone(), id));
-                        } else {
+                        } else if !overlay.has_env_var(name) {
                             error = error.or(Some(ParseError::ExportNotFound(*span)));
                             break;
                         }
@@ -611,10 +614,17 @@ pub fn parse_use(
             .find_decl(b"use")
             .expect("internal error: missing use command");
 
+        let import_pattern_expr = Expression {
+            expr: Expr::ImportPattern(import_pattern),
+            span: span(&spans[1..]),
+            ty: Type::List(Box::new(Type::String)),
+            custom_completion: None,
+        };
+
         let call = Box::new(Call {
             head: spans[0],
             decl_id: use_decl_id,
-            positional: import_pattern_exprs,
+            positional: vec![import_pattern_expr],
             named: vec![],
         });
 
@@ -657,13 +667,13 @@ pub fn parse_hide(
         error = error.or(err);
 
         let (is_module, overlay) =
-            if let Some(block_id) = working_set.find_module(&import_pattern.head) {
+            if let Some(block_id) = working_set.find_module(&import_pattern.head.name) {
                 (true, working_set.get_block(block_id).overlay.clone())
             } else if import_pattern.members.is_empty() {
                 // The pattern head can be e.g. a function name, not just a module
-                if let Some(id) = working_set.find_decl(&import_pattern.head) {
+                if let Some(id) = working_set.find_decl(&import_pattern.head.name) {
                     let mut decls = HashMap::new();
-                    decls.insert(import_pattern.head.clone(), id);
+                    decls.insert(import_pattern.head.name.clone(), id);
 
                     (
                         false,
@@ -688,19 +698,21 @@ pub fn parse_hide(
         // This kind of inverts the import pattern matching found in parse_use()
         let decls_to_hide = if import_pattern.members.is_empty() {
             if is_module {
-                overlay.decls_with_head(&import_pattern.head)
+                overlay.decls_with_head(&import_pattern.head.name)
             } else {
                 overlay.decls()
             }
         } else {
             match &import_pattern.members[0] {
-                ImportPatternMember::Glob { .. } => overlay.decls_with_head(&import_pattern.head),
+                ImportPatternMember::Glob { .. } => {
+                    overlay.decls_with_head(&import_pattern.head.name)
+                }
                 ImportPatternMember::Name { name, span } => {
                     let mut output = vec![];
 
-                    if let Some(item) = overlay.decl_with_head(name, &import_pattern.head) {
+                    if let Some(item) = overlay.decl_with_head(name, &import_pattern.head.name) {
                         output.push(item);
-                    } else {
+                    } else if !overlay.has_env_var(name) {
                         error = error.or(Some(ParseError::ExportNotFound(*span)));
                     }
 
@@ -710,10 +722,12 @@ pub fn parse_hide(
                     let mut output = vec![];
 
                     for (name, span) in names {
-                        if let Some(item) = overlay.decl_with_head(name, &import_pattern.head) {
+                        if let Some(item) = overlay.decl_with_head(name, &import_pattern.head.name)
+                        {
                             output.push(item);
-                        } else {
+                        } else if !overlay.has_env_var(name) {
                             error = error.or(Some(ParseError::ExportNotFound(*span)));
+                            break;
                         }
                     }
 

@@ -38,6 +38,7 @@ impl Stack {
             env_vars: HashMap::new(),
         }
     }
+
     pub fn get_var(&self, var_id: VarId) -> Result<Value, ShellError> {
         if let Some(v) = self.vars.get(&var_id) {
             return Ok(v.clone());

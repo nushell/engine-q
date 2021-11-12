@@ -8,7 +8,13 @@ pub enum ImportPatternMember {
 }
 
 #[derive(Debug, Clone)]
+pub struct ImportPatternHead {
+    pub name: Vec<u8>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
 pub struct ImportPattern {
-    pub head: Vec<u8>,
+    pub head: ImportPatternHead,
     pub members: Vec<ImportPatternMember>,
 }

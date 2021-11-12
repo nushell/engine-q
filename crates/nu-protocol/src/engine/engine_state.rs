@@ -240,6 +240,16 @@ impl EngineState {
         None
     }
 
+    pub fn find_module(&self, name: &[u8]) -> Option<BlockId> {
+        for scope in self.scope.iter().rev() {
+            if let Some(block_id) = scope.modules.get(name) {
+                return Some(*block_id);
+            }
+        }
+
+        None
+    }
+
     pub fn find_commands_by_prefix(&self, name: &[u8]) -> Vec<Vec<u8>> {
         let mut output = vec![];
 
