@@ -92,6 +92,10 @@ pub enum ShellError {
     #[diagnostic(code(nu::shell::variable_not_found), url(docsrs))]
     EnvVarNotAString(#[label = "does not evaluate to a string"] Span),
 
+    #[error("Not found.")]
+    #[diagnostic(code(nu::parser::not_found), url(docsrs))]
+    NotFound(#[label = "did not find anything under this name"] Span),
+
     #[error("Can't convert to {0}.")]
     #[diagnostic(code(nu::shell::cant_convert), url(docsrs))]
     CantConvert(String, String, #[label("can't convert {1} to {0}")] Span),

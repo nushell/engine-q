@@ -95,8 +95,10 @@ impl Command for Hide {
 
                 stack.remove_env_var(&name);
             }
-        } else if stack.remove_env_var(&head_name_str).is_none() {
-            return Err(ShellError::EnvVarNotFoundAtRuntime(call.positional[0].span));
+        } else if stack.remove_env_var(&head_name_str).is_none()
+            && !import_pattern.hidden.contains(&import_pattern.head.name)
+        {
+            return Err(ShellError::NotFound(call.positional[0].span));
         }
 
         Ok(PipelineData::new(call.head))
