@@ -4,6 +4,7 @@ use indexmap::map::IndexMap;
 use nu_engine::CallExt;
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
+use nu_protocol::Config;
 use nu_protocol::{
     Example, PipelineData, ShellError, Signature, Span, Spanned, SyntaxShape, Value,
 };
@@ -177,7 +178,8 @@ fn from_eml(
     preview_body: Option<Spanned<i64>>,
     head: Span,
 ) -> Result<PipelineData, ShellError> {
-    let value = input.collect_string("");
+    // FIXME? this default config is weird
+    let value = input.collect_string("", &Config::default());
 
     let body_preview = preview_body
         .map(|b| b.item as usize)
