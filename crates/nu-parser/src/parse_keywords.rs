@@ -67,6 +67,7 @@ pub fn parse_def(
     let name = working_set.get_span_contents(spans[0]);
 
     if name == b"def" {
+        // TODO: Convert all 'expect("internal error: ...")' to ParseError::InternalError
         let def_decl_id = working_set
             .find_decl(b"def")
             .expect("internal error: missing def command");
@@ -117,10 +118,8 @@ pub fn parse_def(
                             *declaration = signature.into_block_command(block_id);
                         } else {
                             error = error.or_else(|| {
-                                // FIXME: add a variant to ParseError that represents internal errors
-                                Some(ParseError::UnknownState(
-                                    "Internal error: Predeclaration failed to add declaration"
-                                        .into(),
+                                Some(ParseError::InternalError(
+                                    "Predeclaration failed to add declaration".into(),
                                     spans[1],
                                 ))
                             });
@@ -242,8 +241,8 @@ pub fn parse_alias(
 
     (
         garbage_statement(spans),
-        Some(ParseError::UnknownState(
-            "internal error: alias statement unparseable".into(),
+        Some(ParseError::InternalError(
+            "Alias statement unparseable".into(),
             span(spans),
         )),
     )
@@ -253,65 +252,127 @@ pub fn parse_export(
     working_set: &mut StateWorkingSet,
     spans: &[Span],
 ) -> (Statement, Option<ParseError>) {
-    let bytes = working_set.get_span_contents(spans[0]);
+    let mut error = None;
 
-    if bytes == b"export" && spans.len() >= 3 {
-        let export_name = working_set.get_span_contents(spans[1]);
-
-        match export_name {
-            b"def" => {
-                let (stmt, err) = parse_def(working_set, &spans[1..]);
-
-                let export_def_decl_id = working_set
-                    .find_decl(b"export def")
-                    .expect("internal error: missing 'export def' command");
-
-                // Trying to warp the 'def' call into the 'export def' in a very clumsy way
-                let stmt = if let Statement::Pipeline(ref pipe) = stmt {
-                    if !pipe.expressions.is_empty() {
-                        if let Expr::Call(ref call) = pipe.expressions[0].expr {
-                            let mut call = call.clone();
-
-                            call.head = span(&spans[0..=1]);
-                            call.decl_id = export_def_decl_id;
-
-                            Statement::Pipeline(Pipeline::from_vec(vec![Expression {
-                                expr: Expr::Call(call),
-                                span: span(spans),
-                                ty: Type::Unknown,
-                                custom_completion: None,
-                            }]))
-                        } else {
-                            stmt
-                        }
-                    } else {
-                        stmt
-                    }
-                } else {
-                    stmt
-                };
-
-                (stmt, err)
-            }
-            _ => (
+    let export_span = if let Some(sp) = spans.get(0) {
+        if working_set.get_span_contents(*sp) != b"export" {
+            return (
                 garbage_statement(spans),
-                Some(ParseError::Expected(
-                    // TODO: Fill in more as they come
-                    "def keyword".into(),
-                    spans[1],
+                Some(ParseError::UnknownState(
+                    "expected export statement".into(),
+                    span(spans),
                 )),
-            ),
+            );
         }
+
+        *sp
     } else {
-        (
+        return (
             garbage_statement(spans),
             Some(ParseError::UnknownState(
-                // TODO: fill in more export types as they come
-                "Expected structure: export def [] {}".into(),
+                "got empty input for parsing export statement".into(),
                 span(spans),
             )),
-        )
+        );
+    };
+
+    let export_decl_id = if let Some(id) = working_set.find_decl(b"export") {
+        id
+    } else {
+        return (
+            garbage_statement(spans),
+            Some(ParseError::InternalError(
+                "missing export command".into(),
+                export_span,
+            )),
+        );
+    };
+
+    let mut call = Box::new(Call {
+        head: spans[0],
+        decl_id: export_decl_id,
+        positional: vec![],
+        named: vec![],
+    });
+
+    if let Some(kw_span) = spans.get(1) {
+        let kw_name = working_set.get_span_contents(*kw_span);
+        match kw_name {
+            b"def" => {
+                let (stmt, err) = parse_def(working_set, &spans[1..]);
+                error = error.or(err);
+
+                let export_def_decl_id = if let Some(id) = working_set.find_decl(b"export def") {
+                    id
+                } else {
+                    return (
+                        garbage_statement(spans),
+                        Some(ParseError::InternalError(
+                            "missing 'export def' command".into(),
+                            export_span,
+                        )),
+                    );
+                };
+
+                // Trying to warp the 'def' call into the 'export def' in a very clumsy way
+                if let Statement::Pipeline(ref pipe) = stmt {
+                    if let Some(Expression {
+                        expr: Expr::Call(ref def_call),
+                        ..
+                    }) = pipe.expressions.get(0)
+                    {
+                        call = def_call.clone();
+
+                        call.head = span(&spans[0..=1]);
+                        call.decl_id = export_def_decl_id;
+                    } else {
+                        error = error.or_else(|| {
+                            Some(ParseError::InternalError(
+                                "unexpected output from parsing a definition".into(),
+                                span(&spans[1..]),
+                            ))
+                        });
+                    }
+                } else {
+                    error = error.or_else(|| {
+                        Some(ParseError::InternalError(
+                            "unexpected output from parsing a definition".into(),
+                            span(&spans[1..]),
+                        ))
+                    });
+                };
+            }
+            _ => {
+                error = error.or_else(|| {
+                    Some(ParseError::Expected(
+                        // TODO: Fill in more keywords as they come
+                        "def or env keyword".into(),
+                        spans[1],
+                    ))
+                });
+            }
+        }
+    } else {
+        error = error.or_else(|| {
+            Some(ParseError::MissingPositional(
+                "def or env keyword".into(), // TODO: keep filling more keywords as they come
+                Span {
+                    start: export_span.end,
+                    end: export_span.end,
+                },
+            ))
+        });
     }
+
+    (
+        Statement::Pipeline(Pipeline::from_vec(vec![Expression {
+            expr: Expr::Call(call),
+            span: span(spans),
+            ty: Type::Unknown,
+            custom_completion: None,
+        }])),
+        error,
+    )
 }
 
 pub fn parse_module_block(

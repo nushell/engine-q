@@ -145,6 +145,10 @@ pub enum ParseError {
     #[diagnostic(code(nu::parser::unknown_state), url(docsrs))]
     UnknownState(String, #[label("{0}")] Span),
 
+    #[error("Internal error.")]
+    #[diagnostic(code(nu::parser::unknown_state), url(docsrs))]
+    InternalError(String, #[label("{0}")] Span),
+
     #[error("Parser incomplete.")]
     #[diagnostic(code(nu::parser::parser_incomplete), url(docsrs))]
     IncompleteParser(#[label = "parser support missing for this expression"] Span),
