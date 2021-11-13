@@ -2,6 +2,9 @@ use crate::{BlockId, DeclId};
 
 use std::collections::HashMap;
 
+// TODO: Move the import pattern matching logic here from use/hide commands and
+// parse_use/parse_hide
+
 /// Collection of definitions that can be exported from a module
 #[derive(Debug, Clone)]
 pub struct Overlay {

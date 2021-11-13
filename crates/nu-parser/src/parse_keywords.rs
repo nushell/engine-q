@@ -873,10 +873,14 @@ pub fn parse_hide(
                         },
                     )
                 } else {
-                    return (
-                        garbage_statement(spans),
-                        Some(ParseError::NotFound(span(&spans[1..]))),
-                    );
+                    // Or it could be an env var
+                    (
+                        false,
+                        Overlay {
+                            decls: HashMap::new(),
+                            env_vars: HashMap::new(),
+                        },
+                    )
                 }
             } else {
                 return (
@@ -935,10 +939,17 @@ pub fn parse_hide(
             .find_decl(b"hide")
             .expect("internal error: missing hide command");
 
+        let import_pattern_expr = Expression {
+            expr: Expr::ImportPattern(import_pattern),
+            span: span(&spans[1..]),
+            ty: Type::List(Box::new(Type::String)),
+            custom_completion: None,
+        };
+
         let call = Box::new(Call {
             head: spans[0],
             decl_id: hide_decl_id,
-            positional: import_pattern_exprs,
+            positional: vec![import_pattern_expr],
             named: vec![],
         });
 

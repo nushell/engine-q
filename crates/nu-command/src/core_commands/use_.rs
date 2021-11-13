@@ -39,7 +39,6 @@ impl Command for Use {
         };
 
         if let Some(block_id) = engine_state.find_module(&import_pattern.head.name) {
-            // The first word is a module
             let overlay = &engine_state.get_block(block_id).overlay;
 
             let env_vars_to_use = if import_pattern.members.is_empty() {

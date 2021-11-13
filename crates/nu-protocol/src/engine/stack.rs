@@ -82,6 +82,10 @@ impl Stack {
         None
     }
 
+    pub fn remove_env_var(&mut self, name: &str) -> Option<String> {
+        self.env_vars.remove(name)
+    }
+
     pub fn print_stack(&self) {
         println!("vars:");
         for (var, val) in &self.vars {
