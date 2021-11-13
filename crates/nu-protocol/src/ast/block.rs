@@ -1,8 +1,8 @@
 use std::ops::{Index, IndexMut};
 
-use crate::{Signature, VarId};
+use crate::{Overlay, Signature, VarId};
 
-use super::{Overlay, Statement};
+use super::Statement;
 
 #[derive(Debug, Clone)]
 pub struct Block {

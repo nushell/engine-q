@@ -38,22 +38,7 @@ impl Command for Use {
             ));
         };
 
-        // let name = if let Some(name) = call.positional[0].as_string() {
-        //     name
-        // } else {
-        //     return Err(ShellError::InternalError(
-        //         "String argument not a string".into(),
-        //     ));
-        // };
-
-        let name = &import_pattern.head.name;
-        let name_str = if let Ok(s) = String::from_utf8(name.clone()) {
-            s
-        } else {
-            return Err(ShellError::NonUtf8(import_pattern.head.span));
-        };
-
-        if let Some(block_id) = engine_state.find_module(name) {
+        if let Some(block_id) = engine_state.find_module(&import_pattern.head.name) {
             // The first word is a module
             let overlay = &engine_state.get_block(block_id).overlay;
 
@@ -68,7 +53,7 @@ impl Command for Use {
                         if let Some(id) = overlay.get_env_var_id(name) {
                             output.push((name.clone(), id));
                         } else if !overlay.has_decl(name) {
-                            return Err(ShellError::ExportNotFound(*span));
+                            return Err(ShellError::EnvVarNotFoundAtRuntime(*span));
                         }
 
                         output
@@ -80,7 +65,7 @@ impl Command for Use {
                             if let Some(id) = overlay.get_env_var_id(name) {
                                 output.push((name.clone(), id));
                             } else if !overlay.has_decl(name) {
-                                return Err(ShellError::ExportNotFound(*span));
+                                return Err(ShellError::EnvVarNotFoundAtRuntime(*span));
                             }
                         }
 
@@ -98,18 +83,21 @@ impl Command for Use {
 
                 let block = engine_state.get_block(block_id);
 
-                // TODO: Do this better:
-                let val = eval_block(engine_state, stack, block, PipelineData::new(call.head))?
-                    .into_value(Span::unknown())
-                    .as_string()
-                    .unwrap();
+                // TODO: Later expand env to take all Values
+                let val = if let Ok(s) =
+                    eval_block(engine_state, stack, block, PipelineData::new(call.head))?
+                        .into_value(Span::unknown())
+                        .as_string()
+                {
+                    s
+                } else {
+                    return Err(ShellError::EnvVarNotAString(import_pattern.span()));
+                };
 
                 stack.add_env_var(name, val);
             }
-        } else if stack.get_env_var(&name_str).is_some() {
-            // The first word is an env var -- noop
         } else {
-            return Err(ShellError::ExportNotFound(call.positional[0].span));
+            return Err(ShellError::EnvVarNotFoundAtRuntime(call.positional[0].span));
         }
 
         Ok(PipelineData::new(call.head))

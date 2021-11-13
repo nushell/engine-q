@@ -1,10 +1,10 @@
 use nu_protocol::{
     ast::{
         Block, Call, Expr, Expression, ImportPattern, ImportPatternHead, ImportPatternMember,
-        Overlay, Pipeline, Statement,
+        Pipeline, Statement,
     },
     engine::StateWorkingSet,
-    span, Span, SyntaxShape, Type,
+    span, Exportable, Overlay, Span, SyntaxShape, Type,
 };
 use std::collections::HashMap;
 use std::path::Path;
@@ -251,13 +251,14 @@ pub fn parse_alias(
 pub fn parse_export(
     working_set: &mut StateWorkingSet,
     spans: &[Span],
-) -> (Statement, Option<ParseError>) {
+) -> (Statement, Option<Exportable>, Option<ParseError>) {
     let mut error = None;
 
     let export_span = if let Some(sp) = spans.get(0) {
         if working_set.get_span_contents(*sp) != b"export" {
             return (
                 garbage_statement(spans),
+                None,
                 Some(ParseError::UnknownState(
                     "expected export statement".into(),
                     span(spans),
@@ -269,6 +270,7 @@ pub fn parse_export(
     } else {
         return (
             garbage_statement(spans),
+            None,
             Some(ParseError::UnknownState(
                 "got empty input for parsing export statement".into(),
                 span(spans),
@@ -281,6 +283,7 @@ pub fn parse_export(
     } else {
         return (
             garbage_statement(spans),
+            None,
             Some(ParseError::InternalError(
                 "missing export command".into(),
                 export_span,
@@ -295,7 +298,7 @@ pub fn parse_export(
         named: vec![],
     });
 
-    if let Some(kw_span) = spans.get(1) {
+    let exportable = if let Some(kw_span) = spans.get(1) {
         let kw_name = working_set.get_span_contents(*kw_span);
         match kw_name {
             b"def" => {
@@ -307,6 +310,7 @@ pub fn parse_export(
                 } else {
                     return (
                         garbage_statement(spans),
+                        None,
                         Some(ParseError::InternalError(
                             "missing 'export def' command".into(),
                             export_span,
@@ -341,6 +345,138 @@ pub fn parse_export(
                         ))
                     });
                 };
+
+                if error.is_none() {
+                    let decl_name = working_set.get_span_contents(spans[2]);
+                    if let Some(decl_id) = working_set.find_decl(decl_name) {
+                        Some(Exportable::Decl(decl_id))
+                    } else {
+                        error = error.or_else(|| {
+                            Some(ParseError::InternalError(
+                                "failed to find added declaration".into(),
+                                span(&spans[1..]),
+                            ))
+                        });
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+            b"env" => {
+                if let Some(id) = working_set.find_decl(b"export env") {
+                    call.decl_id = id;
+                } else {
+                    return (
+                        garbage_statement(spans),
+                        None,
+                        Some(ParseError::InternalError(
+                            "missing 'export env' command".into(),
+                            export_span,
+                        )),
+                    );
+                }
+
+                call.head = span(&spans[0..=1]);
+
+                if let Some(name_span) = spans.get(2) {
+                    let (name_expr, err) = parse_string(working_set, *name_span);
+                    error = error.or(err);
+                    call.positional.push(name_expr);
+
+                    if let Some(block_span) = spans.get(3) {
+                        let (block_expr, err) = parse_block_expression(
+                            working_set,
+                            &SyntaxShape::Block(None),
+                            *block_span,
+                        );
+                        error = error.or(err);
+
+                        let exportable = if let Expression {
+                            expr: Expr::Block(block_id),
+                            ..
+                        } = block_expr
+                        {
+                            Some(Exportable::EnvVar(block_id))
+                        } else {
+                            error = error.or_else(|| {
+                                Some(ParseError::InternalError(
+                                    "block was not parsed as a block".into(),
+                                    *block_span,
+                                ))
+                            });
+                            None
+                        };
+
+                        call.positional.push(block_expr);
+
+                        exportable
+
+                        // let block_bytes = working_set.get_span_contents(*block_span);
+
+                        // let mut start = block_span.start;
+                        // let mut end = block_span.end;
+
+                        // if block_bytes.starts_with(b"{") {
+                        //     start += 1;
+                        // } else {
+                        //     return (
+                        //         garbage_statement(spans),
+                        //         None,
+                        //         Some(ParseError::Expected("block".into(), *block_span)),
+                        //     );
+                        // }
+
+                        // if block_bytes.ends_with(b"}") {
+                        //     end -= 1;
+                        // } else {
+                        //     error = error.or_else(|| {
+                        //         Some(ParseError::Unclosed("}".into(), Span { start: end, end }))
+                        //     });
+                        // }
+
+                        // let block_span = Span { start, end };
+                        // let block_bytes = working_set.get_span_contents(block_span);
+
+                        // let (tokens, err) = lex(block_bytes, block_span.start, &[], &[]);
+                        // error = error.or(err);
+
+                        // let (lite_block, err) = lite_parse(&tokens);
+                        // error = error.or(err);
+
+                        // let (block, err) = parse_block(working_set, &lite_block, true);
+                        // error = error.or(err);
+
+                        // let block_id = working_set.add_block(block);
+
+                        // Some(Exportable::EnvVar(block_id))
+                    } else {
+                        let err_span = Span {
+                            start: name_span.end,
+                            end: name_span.end,
+                        };
+
+                        error = error.or_else(|| {
+                            Some(ParseError::MissingPositional("block".into(), err_span))
+                        });
+
+                        None
+                    }
+                } else {
+                    let err_span = Span {
+                        start: kw_span.end,
+                        end: kw_span.end,
+                    };
+
+                    error = error.or_else(|| {
+                        Some(ParseError::MissingPositional(
+                            "environment variable name".into(),
+                            err_span,
+                        ))
+                    });
+
+                    None
+                }
             }
             _ => {
                 error = error.or_else(|| {
@@ -350,6 +486,8 @@ pub fn parse_export(
                         spans[1],
                     ))
                 });
+
+                None
             }
         }
     } else {
@@ -362,7 +500,9 @@ pub fn parse_export(
                 },
             ))
         });
-    }
+
+        None
+    };
 
     (
         Statement::Pipeline(Pipeline::from_vec(vec![Expression {
@@ -371,6 +511,7 @@ pub fn parse_export(
             ty: Type::Unknown,
             custom_completion: None,
         }])),
+        exportable,
         error,
     )
 }
@@ -415,35 +556,23 @@ pub fn parse_module_block(
                         (stmt, err)
                     }
                     b"export" => {
-                        let (stmt, err) = parse_export(working_set, &pipeline.commands[0].parts);
+                        let (stmt, exportable, err) =
+                            parse_export(working_set, &pipeline.commands[0].parts);
 
-                        let err = if err.is_none() {
-                            let type_span = pipeline.commands[0].parts[1];
+                        if err.is_none() {
                             let name_span = pipeline.commands[0].parts[2];
+                            let name = working_set.get_span_contents(name_span);
 
-                            match working_set.get_span_contents(type_span) {
-                                // TODO: Check for duplicate names between def and env
-                                // TODO: Check for duplicate env names -- maybe part of predecl
-                                b"def" => {
-                                    let decl_name = working_set.get_span_contents(name_span);
-                                    let decl_id = working_set
-                                        .find_decl(decl_name)
-                                        .expect("internal error: failed to find added declaration");
-                                    overlay.add_decl(decl_name, decl_id);
-
-                                    None
+                            match exportable {
+                                Some(Exportable::Decl(decl_id)) => {
+                                    overlay.add_decl(name, decl_id);
                                 }
-                                // b"env" => {
-
-                                // },
-                                _ => Some(ParseError::UnexpectedKeyword(
-                                    "expected def or env keyword".into(),
-                                    type_span,
-                                )),
+                                Some(Exportable::EnvVar(block_id)) => {
+                                    overlay.add_env_var(name, block_id);
+                                }
+                                None => {}
                             }
-                        } else {
-                            err
-                        };
+                        }
 
                         (stmt, err)
                     }

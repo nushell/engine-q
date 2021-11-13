@@ -35,6 +35,7 @@ impl Command for ExportEnv {
         call: &Call,
         _input: PipelineData,
     ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
+        //TODO: Add the env to stack
         Ok(PipelineData::new(call.head))
     }
 }

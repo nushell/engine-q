@@ -1,4 +1,4 @@
-use crate::Span;
+use crate::{span, Span};
 
 #[derive(Debug, Clone)]
 pub enum ImportPatternMember {
@@ -17,4 +17,24 @@ pub struct ImportPatternHead {
 pub struct ImportPattern {
     pub head: ImportPatternHead,
     pub members: Vec<ImportPatternMember>,
+}
+
+impl ImportPattern {
+    pub fn span(&self) -> Span {
+        let mut spans = vec![self.head.span];
+
+        for member in &self.members {
+            match member {
+                ImportPatternMember::Glob { span } => spans.push(*span),
+                ImportPatternMember::Name { name: _, span } => spans.push(*span),
+                ImportPatternMember::List { names } => {
+                    for (_, span) in names {
+                        spans.push(*span);
+                    }
+                }
+            }
+        }
+
+        span(&spans)
+    }
 }

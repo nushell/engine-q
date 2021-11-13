@@ -1,7 +1,9 @@
 pub mod ast;
 pub mod engine;
 mod example;
+mod exportable;
 mod id;
+mod overlay;
 mod pipeline_data;
 mod shell_error;
 mod signature;
@@ -13,7 +15,9 @@ pub use value::Value;
 
 pub use engine::{IN_VARIABLE_ID, NU_VARIABLE_ID, SCOPE_VARIABLE_ID};
 pub use example::*;
+pub use exportable::*;
 pub use id::*;
+pub use overlay::*;
 pub use pipeline_data::*;
 pub use shell_error::*;
 pub use signature::*;

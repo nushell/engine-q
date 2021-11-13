@@ -16,7 +16,7 @@ impl Command for ExportDef {
 
     fn signature(&self) -> nu_protocol::Signature {
         Signature::build("export def")
-            .required("target", SyntaxShape::String, "definition name")
+            .required("name", SyntaxShape::String, "definition name")
             .required("params", SyntaxShape::Signature, "parameters")
             .required(
                 "block",
