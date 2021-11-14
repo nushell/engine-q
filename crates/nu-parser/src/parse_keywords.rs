@@ -411,45 +411,6 @@ pub fn parse_export(
                         call.positional.push(block_expr);
 
                         exportable
-
-                        // let block_bytes = working_set.get_span_contents(*block_span);
-
-                        // let mut start = block_span.start;
-                        // let mut end = block_span.end;
-
-                        // if block_bytes.starts_with(b"{") {
-                        //     start += 1;
-                        // } else {
-                        //     return (
-                        //         garbage_statement(spans),
-                        //         None,
-                        //         Some(ParseError::Expected("block".into(), *block_span)),
-                        //     );
-                        // }
-
-                        // if block_bytes.ends_with(b"}") {
-                        //     end -= 1;
-                        // } else {
-                        //     error = error.or_else(|| {
-                        //         Some(ParseError::Unclosed("}".into(), Span { start: end, end }))
-                        //     });
-                        // }
-
-                        // let block_span = Span { start, end };
-                        // let block_bytes = working_set.get_span_contents(block_span);
-
-                        // let (tokens, err) = lex(block_bytes, block_span.start, &[], &[]);
-                        // error = error.or(err);
-
-                        // let (lite_block, err) = lite_parse(&tokens);
-                        // error = error.or(err);
-
-                        // let (block, err) = parse_block(working_set, &lite_block, true);
-                        // error = error.or(err);
-
-                        // let block_id = working_set.add_block(block);
-
-                        // Some(Exportable::EnvVar(block_id))
                     } else {
                         let err_span = Span {
                             start: name_span.end,
@@ -533,6 +494,7 @@ pub fn parse_module_block(
     error = error.or(err);
 
     for pipeline in &output.block {
+        // TODO: Should we add export env predecls as well?
         if pipeline.commands.len() == 1 {
             parse_def_predecl(working_set, &pipeline.commands[0].parts);
         }
@@ -555,6 +517,14 @@ pub fn parse_module_block(
 
                         (stmt, err)
                     }
+                    // TODO: Currently, it is not possible to define a private env var.
+                    // TODO: Exported env vars are usable iside the module only if correctly
+                    // exported by the user. For example:
+                    //
+                    //   > module foo { export env a { "2" }; export def b [] { $nu.env.a } }
+                    //
+                    // will work only if you call `use foo *; b` but not with `use foo; foo b`
+                    // since in the second case, the name of the env var would be $nu.env."foo a".
                     b"export" => {
                         let (stmt, exportable, err) =
                             parse_export(working_set, &pipeline.commands[0].parts);
@@ -570,7 +540,7 @@ pub fn parse_module_block(
                                 Some(Exportable::EnvVar(block_id)) => {
                                     overlay.add_env_var(name, block_id);
                                 }
-                                None => {}
+                                None => {} // None should always come with error from parse_export()
                             }
                         }
 

@@ -82,6 +82,7 @@ impl Command for Use {
 
                 let block = engine_state.get_block(block_id);
 
+                // TODO: Add string conversions (e.g. int to string)
                 // TODO: Later expand env to take all Values
                 let val = if let Ok(s) =
                     eval_block(engine_state, stack, block, PipelineData::new(call.head))?
