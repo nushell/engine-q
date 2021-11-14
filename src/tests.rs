@@ -899,3 +899,11 @@ fn record_1() -> TestResult {
 fn record_2() -> TestResult {
     run_test(r#"{'b': 'c'}.b"#, "c")
 }
+
+#[test]
+fn multi_word_imports() -> TestResult {
+    run_test(
+        r#"module spam { export def "foo bar" [] { 10 } }; use spam "foo bar"; foo bar"#,
+        "10",
+    )
+}
