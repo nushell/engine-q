@@ -907,3 +907,21 @@ fn multi_word_imports() -> TestResult {
         "10",
     )
 }
+
+#[test]
+fn config_var_1() -> TestResult {
+    // Note: this tests both the config variable and that it is properly captured into a block
+    run_test(
+        r#"let config = {"filesize_metric": $true }; do { 40kb | into string } "#,
+        "39.1 KiB",
+    )
+}
+
+#[test]
+fn config_var_2() -> TestResult {
+    // Note: this tests both the config variable and that it is properly captured into a block
+    run_test(
+        r#"let config = {"filesize_metric": $false }; do { 40kb | into string } "#,
+        "40.0 KB",
+    )
+}
