@@ -500,7 +500,7 @@ fn hides_def() -> TestResult {
 fn hides_env() -> TestResult {
     fail_test(
         r#"let-env foo = "foo"; hide foo; $nu.env.foo"#,
-        not_found_msg(),
+        "did you mean",
     )
 }
 
@@ -558,7 +558,7 @@ fn hides_def_in_scope_4() -> TestResult {
 fn hides_env_in_scope_1() -> TestResult {
     fail_test(
         r#"let-env foo = "foo"; do { hide foo; $nu.env.foo }"#,
-        not_found_msg(),
+        "did you mean",
     )
 }
 
@@ -575,7 +575,7 @@ fn hides_env_in_scope_2() -> TestResult {
 fn hides_env_in_scope_3() -> TestResult {
     fail_test(
         r#"let-env foo = "foo"; do { hide foo; let-env foo = "bar"; hide foo; $nu.env.foo }"#,
-        not_found_msg(),
+        "did you mean",
     )
 }
 
@@ -584,7 +584,7 @@ fn hides_env_in_scope_4() -> TestResult {
     // TODO: Revisit this -- 'hide foo' should restore the env, not hide it completely
     fail_test(
         r#"let-env foo = "foo"; do { let-env foo = "bar"; hide foo; hide foo; $nu.env.foo }"#,
-        not_found_msg(),
+        "did you mean",
     )
 }
 
