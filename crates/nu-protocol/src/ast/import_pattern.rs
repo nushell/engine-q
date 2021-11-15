@@ -1,5 +1,4 @@
 use crate::{span, Span};
-use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub enum ImportPatternMember {
@@ -18,9 +17,6 @@ pub struct ImportPatternHead {
 pub struct ImportPattern {
     pub head: ImportPatternHead,
     pub members: Vec<ImportPatternMember>,
-    // communicate to eval which decls/aliases were hidden during `parse_hide()` so it does not
-    // interpret these as env var names:
-    pub hidden: HashSet<Vec<u8>>,
 }
 
 impl ImportPattern {
@@ -40,13 +36,5 @@ impl ImportPattern {
         }
 
         span(&spans)
-    }
-
-    pub fn with_hidden(self, hidden: HashSet<Vec<u8>>) -> Self {
-        ImportPattern {
-            head: self.head,
-            members: self.members,
-            hidden,
-        }
     }
 }
