@@ -348,6 +348,7 @@ pub fn parse_export(
 
                 if error.is_none() {
                     let decl_name = working_set.get_span_contents(spans[2]);
+                    let decl_name = trim_quotes(decl_name);
                     if let Some(decl_id) = working_set.find_decl(decl_name) {
                         Some(Exportable::Decl(decl_id))
                     } else {
