@@ -889,6 +889,7 @@ version = "0.36.0"
 dependencies = [
  "nu-ansi-term",
  "regex",
+ "strip-ansi-escapes",
  "unicode-width",
 ]
 

@@ -2,7 +2,7 @@ use crate::table::TextStyle;
 use nu_ansi_term::Style;
 use std::collections::HashMap;
 use std::{fmt::Display, iter::Iterator};
-use unicode_width::UnicodeWidthStr;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Alignment {
@@ -52,6 +52,26 @@ impl<'a> Display for Line<'a> {
     }
 }
 
+fn strip_ansi(astring: &str) -> String {
+    if let Ok(bytes) = strip_ansi_escapes::strip(astring) {
+        String::from_utf8_lossy(&bytes).to_string()
+    } else {
+        astring.to_string()
+    }
+}
+
+fn unicode_width_strip_ansi(astring: &str) -> usize {
+    let stripped_string: String = {
+        if let Ok(bytes) = strip_ansi_escapes::strip(astring) {
+            String::from_utf8_lossy(&bytes).to_string()
+        } else {
+            astring.to_string()
+        }
+    };
+
+    UnicodeWidthStr::width(&stripped_string[..])
+}
+
 pub fn split_sublines(input: &str) -> Vec<Vec<Subline>> {
     input
         .split_terminator('\n')
@@ -64,9 +84,10 @@ pub fn split_sublines(input: &str) -> Vec<Vec<Subline>> {
                         // and x.chars().count() with all types of combinations. Currently, it appears that
                         // getting the max of char count and Unicode width seems to produce the best layout.
                         // However, it's not perfect.
-                        let c = x.chars().count();
-                        let u = UnicodeWidthStr::width(x);
-                        std::cmp::max(c, u)
+                        // let c = x.chars().count();
+                        // let u = UnicodeWidthStr::width(x);
+                        // std::cmp::min(c, u)
+                        unicode_width_strip_ansi(x)
                     },
                 })
                 .collect::<Vec<_>>()
@@ -101,14 +122,13 @@ pub fn column_width(input: &[Vec<Subline>]) -> usize {
 }
 
 fn split_word(cell_width: usize, word: &str) -> Vec<Subline> {
-    use unicode_width::UnicodeWidthChar;
-
     let mut output = vec![];
     let mut current_width = 0;
     let mut start_index = 0;
     let mut end_index;
 
-    for c in word.char_indices() {
+    let word_no_ansi = strip_ansi(word);
+    for c in word_no_ansi.char_indices() {
         if let Some(width) = c.1.width() {
             end_index = c.0;
             if current_width + width > cell_width {
