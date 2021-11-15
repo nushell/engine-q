@@ -4,7 +4,7 @@ use nu_protocol::{
         Pipeline, Statement,
     },
     engine::StateWorkingSet,
-    span, DeclId, Span, SyntaxShape, Type, CONFIG_VARIABLE_ID,
+    span, Exportable, Overlay, Span, SyntaxShape, Type, CONFIG_VARIABLE_ID,
 };
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -452,15 +452,29 @@ pub fn parse_export(
             }
         }
     } else {
-        (
-            garbage_statement(spans),
-            Some(ParseError::UnknownState(
-                // TODO: fill in more export types as they come
-                "Expected structure: export def [] {}".into(),
-                span(spans),
-            )),
-        )
-    }
+        error = error.or_else(|| {
+            Some(ParseError::MissingPositional(
+                "def or env keyword".into(), // TODO: keep filling more keywords as they come
+                Span {
+                    start: export_span.end,
+                    end: export_span.end,
+                },
+            ))
+        });
+
+        None
+    };
+
+    (
+        Statement::Pipeline(Pipeline::from_vec(vec![Expression {
+            expr: Expr::Call(call),
+            span: span(spans),
+            ty: Type::Unknown,
+            custom_completion: None,
+        }])),
+        exportable,
+        error,
+    )
 }
 
 pub fn parse_module_block(
@@ -653,7 +667,6 @@ pub fn parse_use(
     let bytes = working_set.get_span_contents(spans[0]);
 
     if bytes == b"use" && spans.len() >= 2 {
-        let mut import_pattern_exprs: Vec<Expression> = vec![];
         for span in spans[1..].iter() {
             let (_, err) = parse_string(working_set, *span);
             error = error.or(err);
@@ -803,10 +816,8 @@ pub fn parse_hide(
     let bytes = working_set.get_span_contents(spans[0]);
 
     if bytes == b"hide" && spans.len() >= 2 {
-        let mut import_pattern_exprs: Vec<Expression> = vec![];
         for span in spans[1..].iter() {
-            let (expr, err) = parse_string(working_set, *span);
-            import_pattern_exprs.push(expr);
+            let (_, err) = parse_string(working_set, *span);
             error = error.or(err);
         }
 
