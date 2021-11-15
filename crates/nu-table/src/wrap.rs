@@ -122,13 +122,13 @@ pub fn column_width(input: &[Vec<Subline>]) -> usize {
     max
 }
 
-fn split_word(cell_width: usize, word: &String) -> Vec<Subline> {
+fn split_word(cell_width: usize, word: &str) -> Vec<Subline> {
     let mut output = vec![];
     let mut current_width = 0;
     let mut start_index = 0;
     let mut end_index;
 
-    let word_no_ansi = strip_ansi(&word);
+    let word_no_ansi = strip_ansi(word);
     for c in word_no_ansi.char_indices() {
         if let Some(width) = c.1.width() {
             end_index = c.0;
@@ -156,7 +156,7 @@ fn split_word(cell_width: usize, word: &String) -> Vec<Subline> {
     output
 }
 
-pub fn wrap<'a>(
+pub fn wrap(
     cell_width: usize,
     mut input: impl Iterator<Item = Subline>,
     color_hm: &HashMap<String, Style>,
