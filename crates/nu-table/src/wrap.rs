@@ -1,4 +1,5 @@
 use crate::table::TextStyle;
+use ansi_cut::AnsiCut;
 use nu_ansi_term::Style;
 use std::collections::HashMap;
 use std::{fmt::Display, iter::Iterator};
@@ -12,14 +13,14 @@ pub enum Alignment {
 }
 
 #[derive(Debug)]
-pub struct Subline<'a> {
-    pub subline: &'a str,
+pub struct Subline {
+    pub subline: String,
     pub width: usize,
 }
 
 #[derive(Debug)]
-pub struct Line<'a> {
-    pub sublines: Vec<Subline<'a>>,
+pub struct Line {
+    pub sublines: Vec<Subline>,
     pub width: usize,
 }
 
@@ -37,7 +38,7 @@ pub struct WrappedCell {
     pub style: TextStyle,
 }
 
-impl<'a> Display for Line<'a> {
+impl Display for Line {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut first = true;
         for subline in &self.sublines {
@@ -78,7 +79,7 @@ pub fn split_sublines(input: &str) -> Vec<Vec<Subline>> {
         .map(|line| {
             line.split_terminator(' ')
                 .map(|x| Subline {
-                    subline: x,
+                    subline: x.to_string(),
                     width: {
                         // We've tried UnicodeWidthStr::width(x), UnicodeSegmentation::graphemes(x, true).count()
                         // and x.chars().count() with all types of combinations. Currently, it appears that
@@ -121,19 +122,19 @@ pub fn column_width(input: &[Vec<Subline>]) -> usize {
     max
 }
 
-fn split_word(cell_width: usize, word: &str) -> Vec<Subline> {
+fn split_word(cell_width: usize, word: &String) -> Vec<Subline> {
     let mut output = vec![];
     let mut current_width = 0;
     let mut start_index = 0;
     let mut end_index;
 
-    let word_no_ansi = strip_ansi(word);
+    let word_no_ansi = strip_ansi(&word);
     for c in word_no_ansi.char_indices() {
         if let Some(width) = c.1.width() {
             end_index = c.0;
             if current_width + width > cell_width {
                 output.push(Subline {
-                    subline: &word[start_index..end_index],
+                    subline: word.cut(start_index..end_index),
                     width: current_width,
                 });
 
@@ -147,7 +148,7 @@ fn split_word(cell_width: usize, word: &str) -> Vec<Subline> {
 
     if start_index != word.len() {
         output.push(Subline {
-            subline: &word[start_index..],
+            subline: word.cut(start_index..),
             width: current_width,
         });
     }
@@ -157,7 +158,7 @@ fn split_word(cell_width: usize, word: &str) -> Vec<Subline> {
 
 pub fn wrap<'a>(
     cell_width: usize,
-    mut input: impl Iterator<Item = Subline<'a>>,
+    mut input: impl Iterator<Item = Subline>,
     color_hm: &HashMap<String, Style>,
     re_leading: &regex::Regex,
     re_trailing: &regex::Regex,
@@ -185,7 +186,7 @@ pub fn wrap<'a>(
                     // If this is a really long single word, we need to split the word
                     if current_line.len() == 1 && current_width > cell_width {
                         max_width = cell_width;
-                        let sublines = split_word(cell_width, current_line[0].subline);
+                        let sublines = split_word(cell_width, &current_line[0].subline);
                         for subline in sublines {
                             let width = subline.width;
                             lines.push(Line {
@@ -220,7 +221,7 @@ pub fn wrap<'a>(
             None => {
                 if current_width > cell_width {
                     // We need to break up the last word
-                    let sublines = split_word(cell_width, current_line[0].subline);
+                    let sublines = split_word(cell_width, &current_line[0].subline);
                     for subline in sublines {
                         let width = subline.width;
                         lines.push(Line {
@@ -255,7 +256,7 @@ pub fn wrap<'a>(
                 first = false;
                 current_line_width = subline.width;
             }
-            current_line.push_str(subline.subline);
+            current_line.push_str(&subline.subline);
         }
 
         if current_line_width > current_max {
