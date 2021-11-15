@@ -4,7 +4,7 @@ use nu_protocol::{
         Pipeline, Statement,
     },
     engine::StateWorkingSet,
-    span, Exportable, Overlay, Span, SyntaxShape, Type,
+    span, DeclId, Span, SyntaxShape, Type, CONFIG_VARIABLE_ID,
 };
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -16,7 +16,7 @@ use crate::{
     lex, lite_parse,
     parser::{
         check_name, garbage, garbage_statement, parse, parse_block_expression,
-        parse_import_pattern, parse_internal_call, parse_signature, parse_string,
+        parse_import_pattern, parse_internal_call, parse_signature, parse_string, trim_quotes,
     },
     ParseError,
 };
@@ -452,29 +452,15 @@ pub fn parse_export(
             }
         }
     } else {
-        error = error.or_else(|| {
-            Some(ParseError::MissingPositional(
-                "def or env keyword".into(), // TODO: keep filling more keywords as they come
-                Span {
-                    start: export_span.end,
-                    end: export_span.end,
-                },
-            ))
-        });
-
-        None
-    };
-
-    (
-        Statement::Pipeline(Pipeline::from_vec(vec![Expression {
-            expr: Expr::Call(call),
-            span: span(spans),
-            ty: Type::Unknown,
-            custom_completion: None,
-        }])),
-        exportable,
-        error,
-    )
+        (
+            garbage_statement(spans),
+            Some(ParseError::UnknownState(
+                // TODO: fill in more export types as they come
+                "Expected structure: export def [] {}".into(),
+                span(spans),
+            )),
+        )
+    }
 }
 
 pub fn parse_module_block(
@@ -532,6 +518,7 @@ pub fn parse_module_block(
                         if err.is_none() {
                             let name_span = pipeline.commands[0].parts[2];
                             let name = working_set.get_span_contents(name_span);
+                            let name = trim_quotes(name);
 
                             match exportable {
                                 Some(Exportable::Decl(decl_id)) => {
@@ -666,6 +653,7 @@ pub fn parse_use(
     let bytes = working_set.get_span_contents(spans[0]);
 
     if bytes == b"use" && spans.len() >= 2 {
+        let mut import_pattern_exprs: Vec<Expression> = vec![];
         for span in spans[1..].iter() {
             let (_, err) = parse_string(working_set, *span);
             error = error.or(err);
@@ -969,7 +957,9 @@ pub fn parse_let(
                     .expect("internal error: expected variable");
                 let rhs_type = call.positional[1].ty.clone();
 
-                working_set.set_variable_type(var_id, rhs_type);
+                if var_id != CONFIG_VARIABLE_ID {
+                    working_set.set_variable_type(var_id, rhs_type);
+                }
             }
 
             return (

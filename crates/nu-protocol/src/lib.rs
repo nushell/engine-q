@@ -1,4 +1,5 @@
 pub mod ast;
+mod config;
 pub mod engine;
 mod example;
 mod exportable;
@@ -13,7 +14,8 @@ mod ty;
 mod value;
 pub use value::Value;
 
-pub use engine::{IN_VARIABLE_ID, NU_VARIABLE_ID, SCOPE_VARIABLE_ID};
+pub use config::*;
+pub use engine::{CONFIG_VARIABLE_ID, IN_VARIABLE_ID, NU_VARIABLE_ID, SCOPE_VARIABLE_ID};
 pub use example::*;
 pub use exportable::*;
 pub use id::*;

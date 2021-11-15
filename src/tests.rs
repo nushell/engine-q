@@ -1087,3 +1087,39 @@ fn in_variable_5() -> TestResult {
 fn in_variable_6() -> TestResult {
     run_test(r#"3 | if $in > 6 { $in - 10 } else { $in * 10 }"#, "30")
 }
+
+#[test]
+fn record_1() -> TestResult {
+    run_test(r#"{'a': 'b'} | get a"#, "b")
+}
+
+#[test]
+fn record_2() -> TestResult {
+    run_test(r#"{'b': 'c'}.b"#, "c")
+}
+
+#[test]
+fn multi_word_imports() -> TestResult {
+    run_test(
+        r#"module spam { export def "foo bar" [] { 10 } }; use spam "foo bar"; foo bar"#,
+        "10",
+    )
+}
+
+#[test]
+fn config_var_1() -> TestResult {
+    // Note: this tests both the config variable and that it is properly captured into a block
+    run_test(
+        r#"let config = {"filesize_metric": $true }; do { 40kb | into string } "#,
+        "39.1 KiB",
+    )
+}
+
+#[test]
+fn config_var_2() -> TestResult {
+    // Note: this tests both the config variable and that it is properly captured into a block
+    run_test(
+        r#"let config = {"filesize_metric": $false }; do { 40kb | into string } "#,
+        "40.0 KB",
+    )
+}

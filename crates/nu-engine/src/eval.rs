@@ -300,6 +300,20 @@ pub fn eval_expression(
                 span: expr.span,
             })
         }
+        Expr::Record(fields) => {
+            let mut cols = vec![];
+            let mut vals = vec![];
+            for (col, val) in fields {
+                cols.push(eval_expression(engine_state, stack, col)?.as_string()?);
+                vals.push(eval_expression(engine_state, stack, val)?);
+            }
+
+            Ok(Value::Record {
+                cols,
+                vals,
+                span: expr.span,
+            })
+        }
         Expr::Table(headers, vals) => {
             let mut output_headers = vec![];
             for expr in headers {
@@ -418,7 +432,9 @@ pub fn eval_subexpression(
                             // to be used later
                             // FIXME: the trimming of the end probably needs to live in a better place
 
-                            let mut s = input.collect_string("");
+                            let config = stack.get_config()?;
+
+                            let mut s = input.collect_string("", &config);
                             if s.ends_with('\n') {
                                 s.pop();
                             }

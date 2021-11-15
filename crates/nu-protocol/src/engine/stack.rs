@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{ShellError, Value, VarId};
+use crate::{Config, ShellError, Value, VarId, CONFIG_VARIABLE_ID};
 
 /// A runtime value stack used during evaluation
 ///
@@ -43,6 +43,7 @@ impl Stack {
         if let Some(v) = self.vars.get(&var_id) {
             return Ok(v.clone());
         }
+
         Err(ShellError::InternalError("variable not found".into()))
     }
 
@@ -68,6 +69,11 @@ impl Stack {
         // FIXME: this is probably slow
         output.env_vars = self.env_vars.clone();
 
+        let config = self
+            .get_var(CONFIG_VARIABLE_ID)
+            .expect("internal error: config is missing");
+        output.vars.insert(CONFIG_VARIABLE_ID, config);
+
         output
     }
 
@@ -84,6 +90,18 @@ impl Stack {
 
     pub fn remove_env_var(&mut self, name: &str) -> Option<String> {
         self.env_vars.remove(name)
+    }
+
+    pub fn get_config(&self) -> Result<Config, ShellError> {
+        let config = self.get_var(CONFIG_VARIABLE_ID);
+
+        match config {
+            Ok(config) => config.into_config(),
+            Err(e) => {
+                println!("Can't find {} in {:?}", CONFIG_VARIABLE_ID, self);
+                Err(e)
+            }
+        }
     }
 
     pub fn print_stack(&self) {
