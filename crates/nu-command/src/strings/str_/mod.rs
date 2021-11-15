@@ -9,6 +9,7 @@ mod index_of;
 mod length;
 mod lpad;
 mod rpad;
+mod starts_with;
 
 pub use capitalize::SubCommand as StrCapitalize;
 pub use case::*;
@@ -21,3 +22,4 @@ pub use index_of::SubCommand as StrIndexOf;
 pub use length::SubCommand as StrLength;
 pub use lpad::SubCommand as StrLpad;
 pub use rpad::SubCommand as StrRpad;
+pub use starts_with::SubCommand as StrStartsWith;
