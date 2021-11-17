@@ -52,6 +52,7 @@ pub fn create_default_context() -> EngineState {
             FromYaml,
             FromYml,
             FromTsv,
+            FromToml,
             FromUrl,
             FromEml,
             Get,
