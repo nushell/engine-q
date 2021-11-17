@@ -1,12 +1,10 @@
 mod range;
-mod row;
 mod stream;
 mod unit;
 
 use chrono::{DateTime, FixedOffset};
 use chrono_humanize::HumanTime;
 pub use range::*;
-pub use row::*;
 use serde::{Deserialize, Serialize};
 pub use stream::*;
 pub use unit::*;
@@ -15,7 +13,7 @@ use std::collections::HashMap;
 use std::{cmp::Ordering, fmt::Debug};
 
 use crate::ast::{CellPath, PathMember};
-use crate::{did_you_mean, span, BlockId, Span, Spanned, Type};
+use crate::{did_you_mean, span, BlockId, Config, Span, Spanned, Type};
 
 use crate::ShellError;
 
@@ -95,6 +93,39 @@ impl Value {
         }
     }
 
+    pub fn as_block(&self) -> Result<BlockId, ShellError> {
+        match self {
+            Value::Block { val, .. } => Ok(*val),
+            x => Err(ShellError::CantConvert(
+                "block".into(),
+                x.get_type().to_string(),
+                self.span()?,
+            )),
+        }
+    }
+
+    pub fn as_record(&self) -> Result<(&[String], &[Value]), ShellError> {
+        match self {
+            Value::Record { cols, vals, .. } => Ok((cols, vals)),
+            x => Err(ShellError::CantConvert(
+                "record".into(),
+                x.get_type().to_string(),
+                self.span()?,
+            )),
+        }
+    }
+
+    pub fn as_bool(&self) -> Result<bool, ShellError> {
+        match self {
+            Value::Bool { val, .. } => Ok(*val),
+            x => Err(ShellError::CantConvert(
+                "boolean".into(),
+                x.get_type().to_string(),
+                self.span()?,
+            )),
+        }
+    }
+
     /// Get the span for the current value
     pub fn span(&self) -> Result<Span, ShellError> {
         match self {
@@ -163,26 +194,26 @@ impl Value {
     }
 
     /// Convert Value into string. Note that Streams will be consumed.
-    pub fn into_string(self, separator: &str) -> String {
+    pub fn into_string(self, separator: &str, config: &Config) -> String {
         match self {
             Value::Bool { val, .. } => val.to_string(),
             Value::Int { val, .. } => val.to_string(),
             Value::Float { val, .. } => val.to_string(),
-            Value::Filesize { val, .. } => format_filesize(val),
+            Value::Filesize { val, .. } => format_filesize(val, config),
             Value::Duration { val, .. } => format_duration(val),
             Value::Date { val, .. } => HumanTime::from(val).to_string(),
             Value::Range { val, .. } => {
                 format!(
                     "{}..{}",
-                    val.from.into_string(", "),
-                    val.to.into_string(", ")
+                    val.from.into_string(", ", config),
+                    val.to.into_string(", ", config)
                 )
             }
             Value::String { val, .. } => val,
             Value::List { vals: val, .. } => format!(
                 "[{}]",
                 val.into_iter()
-                    .map(|x| x.into_string(", "))
+                    .map(|x| x.into_string(", ", config))
                     .collect::<Vec<_>>()
                     .join(separator)
             ),
@@ -190,7 +221,7 @@ impl Value {
                 "{{{}}}",
                 cols.iter()
                     .zip(vals.iter())
-                    .map(|(x, y)| format!("{}: {}", x, y.clone().into_string(", ")))
+                    .map(|(x, y)| format!("{}: {}", x, y.clone().into_string(", ", config)))
                     .collect::<Vec<_>>()
                     .join(separator)
             ),
@@ -203,26 +234,26 @@ impl Value {
     }
 
     /// Convert Value into string. Note that Streams will be consumed.
-    pub fn debug_string(self, separator: &str) -> String {
+    pub fn debug_string(self, separator: &str, config: &Config) -> String {
         match self {
             Value::Bool { val, .. } => val.to_string(),
             Value::Int { val, .. } => val.to_string(),
             Value::Float { val, .. } => val.to_string(),
-            Value::Filesize { val, .. } => format_filesize(val),
+            Value::Filesize { val, .. } => format_filesize(val, config),
             Value::Duration { val, .. } => format_duration(val),
             Value::Date { val, .. } => format!("{:?}", val),
             Value::Range { val, .. } => {
                 format!(
                     "{}..{}",
-                    val.from.into_string(", "),
-                    val.to.into_string(", ")
+                    val.from.into_string(", ", config),
+                    val.to.into_string(", ", config)
                 )
             }
             Value::String { val, .. } => val,
             Value::List { vals: val, .. } => format!(
                 "[{}]",
                 val.into_iter()
-                    .map(|x| x.into_string(", "))
+                    .map(|x| x.into_string(", ", config))
                     .collect::<Vec<_>>()
                     .join(separator)
             ),
@@ -230,7 +261,7 @@ impl Value {
                 "{{{}}}",
                 cols.iter()
                     .zip(vals.iter())
-                    .map(|(x, y)| format!("{}: {}", x, y.clone().into_string(", ")))
+                    .map(|(x, y)| format!("{}: {}", x, y.clone().into_string(", ", config)))
                     .collect::<Vec<_>>()
                     .join(separator)
             ),
@@ -520,6 +551,7 @@ impl PartialOrd for Value {
             (Value::Binary { val: lhs, .. }, Value::Binary { val: rhs, .. }) => {
                 lhs.partial_cmp(rhs)
             }
+            (Value::Nothing { .. }, Value::Nothing { .. }) => Some(Ordering::Equal),
             (_, _) => None,
         }
     }
@@ -1159,14 +1191,14 @@ pub fn format_duration(duration: i64) -> String {
     )
 }
 
-fn format_filesize(num_bytes: i64) -> String {
+fn format_filesize(num_bytes: i64, config: &Config) -> String {
     let byte = byte_unit::Byte::from_bytes(num_bytes as u128);
 
     if byte.get_bytes() == 0u128 {
         return "—".to_string();
     }
 
-    let byte = byte.get_appropriate_unit(false);
+    let byte = byte.get_appropriate_unit(config.filesize_metric);
 
     match byte.get_unit() {
         byte_unit::ByteUnit::B => format!("{} B ", byte.get_value()),

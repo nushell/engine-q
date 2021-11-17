@@ -225,6 +225,9 @@ pub fn eval_expression(
 
             value.follow_cell_path(&cell_path.tail)
         }
+        Expr::ImportPattern(_) => Ok(Value::Nothing {
+            span: Span::unknown(),
+        }),
         Expr::RowCondition(_, expr) => eval_expression(engine_state, stack, expr),
         Expr::Call(call) => {
             // FIXME: protect this collect with ctrl-c
@@ -294,6 +297,20 @@ pub fn eval_expression(
             }
             Ok(Value::List {
                 vals: output,
+                span: expr.span,
+            })
+        }
+        Expr::Record(fields) => {
+            let mut cols = vec![];
+            let mut vals = vec![];
+            for (col, val) in fields {
+                cols.push(eval_expression(engine_state, stack, col)?.as_string()?);
+                vals.push(eval_expression(engine_state, stack, val)?);
+            }
+
+            Ok(Value::Record {
+                cols,
+                vals,
                 span: expr.span,
             })
         }
@@ -415,7 +432,9 @@ pub fn eval_subexpression(
                             // to be used later
                             // FIXME: the trimming of the end probably needs to live in a better place
 
-                            let mut s = input.collect_string("");
+                            let config = stack.get_config()?;
+
+                            let mut s = input.collect_string("", &config);
                             if s.ends_with('\n') {
                                 s.pop();
                             }
@@ -506,7 +525,7 @@ pub fn eval_variable(
         let mut var_types = vec![];
         let mut commands = vec![];
         let mut aliases = vec![];
-        let mut modules = vec![];
+        let mut overlays = vec![];
 
         for frame in &engine_state.scope {
             for var in &frame.vars {
@@ -517,10 +536,72 @@ pub fn eval_variable(
             }
 
             for command in &frame.decls {
-                commands.push(Value::String {
+                let mut cols = vec![];
+                let mut vals = vec![];
+
+                cols.push("command".into());
+                vals.push(Value::String {
                     val: String::from_utf8_lossy(command.0).to_string(),
                     span,
                 });
+
+                let decl = engine_state.get_decl(*command.1);
+                let signature = decl.signature();
+                cols.push("category".to_string());
+                vals.push(Value::String {
+                    val: signature.category.to_string(),
+                    span,
+                });
+
+                cols.push("usage".to_string());
+                vals.push(Value::String {
+                    val: decl.usage().into(),
+                    span,
+                });
+
+                cols.push("is_binary".to_string());
+                vals.push(Value::Bool {
+                    val: decl.is_binary(),
+                    span,
+                });
+
+                cols.push("is_private".to_string());
+                vals.push(Value::Bool {
+                    val: decl.is_private(),
+                    span,
+                });
+
+                cols.push("is_builtin".to_string());
+                vals.push(Value::Bool {
+                    val: decl.is_builtin(),
+                    span,
+                });
+
+                cols.push("is_sub".to_string());
+                vals.push(Value::Bool {
+                    val: decl.is_sub(),
+                    span,
+                });
+
+                cols.push("is_plugin".to_string());
+                vals.push(Value::Bool {
+                    val: decl.is_plugin(),
+                    span,
+                });
+
+                cols.push("creates_scope".to_string());
+                vals.push(Value::Bool {
+                    val: signature.creates_scope,
+                    span,
+                });
+
+                cols.push("extra_usage".to_string());
+                vals.push(Value::String {
+                    val: decl.extra_usage().into(),
+                    span,
+                });
+
+                commands.push(Value::Record { cols, vals, span })
             }
 
             for alias in &frame.aliases {
@@ -530,9 +611,9 @@ pub fn eval_variable(
                 });
             }
 
-            for module in &frame.modules {
-                modules.push(Value::String {
-                    val: String::from_utf8_lossy(module.0).to_string(),
+            for overlay in &frame.overlays {
+                overlays.push(Value::String {
+                    val: String::from_utf8_lossy(overlay.0).to_string(),
                     span,
                 });
             }
@@ -557,9 +638,9 @@ pub fn eval_variable(
             span,
         });
 
-        output_cols.push("modules".to_string());
+        output_cols.push("overlays".to_string());
         output_vals.push(Value::List {
-            vals: modules,
+            vals: overlays,
             span,
         });
 

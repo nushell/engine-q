@@ -2,7 +2,8 @@ use itertools::Itertools;
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
-    Example, IntoPipelineData, PipelineData, ShellError, Signature, Span, Spanned, Value,
+    Category, Config, Example, IntoPipelineData, PipelineData, ShellError, Signature, Span,
+    Spanned, Value,
 };
 use serde::de::Deserialize;
 use std::collections::HashMap;
@@ -16,7 +17,7 @@ impl Command for FromYaml {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("from yaml")
+        Signature::build("from yaml").category(Category::Formats)
     }
 
     fn usage(&self) -> &str {
@@ -65,12 +66,13 @@ impl Command for FromYaml {
     fn run(
         &self,
         _engine_state: &EngineState,
-        _stack: &mut Stack,
+        stack: &mut Stack,
         call: &Call,
         input: PipelineData,
     ) -> Result<nu_protocol::PipelineData, ShellError> {
         let head = call.head;
-        from_yaml(input, head)
+        let config = stack.get_config()?;
+        from_yaml(input, head, &config)
     }
 }
 
@@ -83,7 +85,7 @@ impl Command for FromYml {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("from yml")
+        Signature::build("from yml").category(Category::Formats)
     }
 
     fn usage(&self) -> &str {
@@ -93,12 +95,13 @@ impl Command for FromYml {
     fn run(
         &self,
         _engine_state: &EngineState,
-        _stack: &mut Stack,
+        stack: &mut Stack,
         call: &Call,
         input: PipelineData,
     ) -> Result<nu_protocol::PipelineData, ShellError> {
         let head = call.head;
-        from_yaml(input, head)
+        let config = stack.get_config()?;
+        from_yaml(input, head, &config)
     }
 }
 
@@ -202,8 +205,8 @@ pub fn from_yaml_string_to_value(s: String, span: Span) -> Result<Value, ShellEr
     }
 }
 
-fn from_yaml(input: PipelineData, head: Span) -> Result<PipelineData, ShellError> {
-    let concat_string = input.collect_string("");
+fn from_yaml(input: PipelineData, head: Span, config: &Config) -> Result<PipelineData, ShellError> {
+    let concat_string = input.collect_string("", config);
 
     match from_yaml_string_to_value(concat_string, head) {
         Ok(x) => Ok(x.into_pipeline_data()),
@@ -248,6 +251,7 @@ mod test {
                 }),
             },
         ];
+        let config = Config::default();
         for tc in tt {
             let actual = from_yaml_string_to_value(tc.input.to_owned(), Span::unknown());
             if actual.is_err() {
@@ -259,8 +263,8 @@ mod test {
                 );
             } else {
                 assert_eq!(
-                    actual.unwrap().into_string(""),
-                    tc.expected.unwrap().into_string("")
+                    actual.unwrap().into_string("", &config),
+                    tc.expected.unwrap().into_string("", &config)
                 );
             }
         }

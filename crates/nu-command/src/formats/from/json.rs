@@ -1,8 +1,8 @@
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
-    Example, IntoInterruptiblePipelineData, IntoPipelineData, PipelineData, ShellError, Signature,
-    Span, Value,
+    Category, Example, IntoInterruptiblePipelineData, IntoPipelineData, PipelineData, ShellError,
+    Signature, Span, Value,
 };
 
 #[derive(Clone)]
@@ -18,11 +18,9 @@ impl Command for FromJson {
     }
 
     fn signature(&self) -> nu_protocol::Signature {
-        Signature::build("from json").switch(
-            "objects",
-            "treat each line as a separate value",
-            Some('o'),
-        )
+        Signature::build("from json")
+            .switch("objects", "treat each line as a separate value", Some('o'))
+            .category(Category::Formats)
     }
 
     fn examples(&self) -> Vec<Example> {
@@ -72,12 +70,13 @@ impl Command for FromJson {
     fn run(
         &self,
         engine_state: &EngineState,
-        _stack: &mut Stack,
+        stack: &mut Stack,
         call: &Call,
         input: PipelineData,
     ) -> Result<nu_protocol::PipelineData, ShellError> {
         let span = call.head;
-        let mut string_input = input.collect_string("");
+        let config = stack.get_config()?;
+        let mut string_input = input.collect_string("", &config);
         string_input.push('\n');
 
         // TODO: turn this into a structured underline of the nu_json error

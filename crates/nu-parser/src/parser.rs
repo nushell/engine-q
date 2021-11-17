@@ -7,11 +7,13 @@ use crate::{
 
 use nu_protocol::{
     ast::{
-        Block, Call, CellPath, Expr, Expression, FullCellPath, ImportPattern, ImportPatternMember,
-        Operator, PathMember, Pipeline, RangeInclusion, RangeOperator, Statement,
+        Block, Call, CellPath, Expr, Expression, FullCellPath, ImportPattern, ImportPatternHead,
+        ImportPatternMember, Operator, PathMember, Pipeline, RangeInclusion, RangeOperator,
+        Statement,
     },
     engine::StateWorkingSet,
     span, Flag, PositionalArg, Signature, Span, Spanned, SyntaxShape, Type, Unit, VarId,
+    CONFIG_VARIABLE_ID,
 };
 
 use crate::parse_keywords::{
@@ -23,12 +25,6 @@ use crate::parse_keywords::parse_plugin;
 
 #[derive(Debug, Clone)]
 pub enum Import {}
-
-#[derive(Debug, Clone)]
-pub struct VarDecl {
-    var_id: VarId,
-    expression: Expression,
-}
 
 pub fn garbage(span: Span) -> Expression {
     Expression::garbage(span)
@@ -71,6 +67,16 @@ fn is_variable(bytes: &[u8]) -> bool {
         is_identifier(&bytes[1..])
     } else {
         is_identifier(bytes)
+    }
+}
+
+pub fn trim_quotes(bytes: &[u8]) -> &[u8] {
+    if (bytes.starts_with(b"\"") && bytes.ends_with(b"\"") && bytes.len() > 1)
+        || (bytes.starts_with(b"\'") && bytes.ends_with(b"\'") && bytes.len() > 1)
+    {
+        &bytes[1..(bytes.len() - 1)]
+    } else {
+        bytes
     }
 }
 
@@ -271,7 +277,7 @@ fn parse_short_flags(
                         error = error.or_else(|| {
                             Some(ParseError::UnknownFlag(
                                 sig.name.clone(),
-                                format!("-{}", String::from_utf8_lossy(contents).to_string()),
+                                format!("-{}", String::from_utf8_lossy(contents)),
                                 *first,
                             ))
                         });
@@ -281,7 +287,7 @@ fn parse_short_flags(
                     error = error.or_else(|| {
                         Some(ParseError::UnknownFlag(
                             sig.name.clone(),
-                            format!("-{}", String::from_utf8_lossy(contents).to_string()),
+                            format!("-{}", String::from_utf8_lossy(contents)),
                             *first,
                         ))
                     });
@@ -291,7 +297,7 @@ fn parse_short_flags(
                 error = error.or_else(|| {
                     Some(ParseError::UnknownFlag(
                         sig.name.clone(),
-                        format!("-{}", String::from_utf8_lossy(contents).to_string()),
+                        format!("-{}", String::from_utf8_lossy(contents)),
                         *first,
                     ))
                 });
@@ -302,7 +308,7 @@ fn parse_short_flags(
                 error = error.or_else(|| {
                     Some(ParseError::UnknownFlag(
                         sig.name.clone(),
-                        format!("-{}", String::from_utf8_lossy(contents).to_string()),
+                        format!("-{}", String::from_utf8_lossy(contents)),
                         *first,
                     ))
                 });
@@ -1207,6 +1213,16 @@ pub fn parse_variable_expr(
             },
             None,
         );
+    } else if contents == b"$config" {
+        return (
+            Expression {
+                expr: Expr::Var(nu_protocol::CONFIG_VARIABLE_ID),
+                span,
+                ty: Type::Unknown,
+                custom_completion: None,
+            },
+            None,
+        );
     }
 
     let (id, err) = parse_variable(working_set, span);
@@ -1295,7 +1311,7 @@ pub fn parse_full_cell_path(
     let source = working_set.get_span_contents(span);
     let mut error = None;
 
-    let (tokens, err) = lex(source, span.start, &[b'\n'], &[b'.']);
+    let (tokens, err) = lex(source, span.start, &[b'\n', b'\r'], &[b'.']);
     error = error.or(err);
 
     let mut tokens = tokens.into_iter().peekable();
@@ -1320,7 +1336,7 @@ pub fn parse_full_cell_path(
 
             let source = working_set.get_span_contents(span);
 
-            let (output, err) = lex(source, span.start, &[b'\n'], &[]);
+            let (output, err) = lex(source, span.start, &[b'\n', b'\r'], &[]);
             error = error.or(err);
 
             let (output, err) = lite_parse(&output);
@@ -1343,6 +1359,13 @@ pub fn parse_full_cell_path(
             )
         } else if bytes.starts_with(b"[") {
             let (output, err) = parse_table_expression(working_set, head.span);
+            error = error.or(err);
+
+            tokens.next();
+
+            (output, true)
+        } else if bytes.starts_with(b"{") {
+            let (output, err) = parse_record(working_set, head.span);
             error = error.or(err);
 
             tokens.next();
@@ -1411,13 +1434,7 @@ pub fn parse_filepath(
     span: Span,
 ) -> (Expression, Option<ParseError>) {
     let bytes = working_set.get_span_contents(span);
-    let bytes = if (bytes.starts_with(b"\"") && bytes.ends_with(b"\"") && bytes.len() > 1)
-        || (bytes.starts_with(b"\'") && bytes.ends_with(b"\'") && bytes.len() > 1)
-    {
-        &bytes[1..(bytes.len() - 1)]
-    } else {
-        bytes
-    };
+    let bytes = trim_quotes(bytes);
 
     if let Ok(token) = String::from_utf8(bytes.into()) {
         (
@@ -1629,13 +1646,7 @@ pub fn parse_glob_pattern(
     span: Span,
 ) -> (Expression, Option<ParseError>) {
     let bytes = working_set.get_span_contents(span);
-    let bytes = if (bytes.starts_with(b"\"") && bytes.ends_with(b"\"") && bytes.len() > 1)
-        || (bytes.starts_with(b"\'") && bytes.ends_with(b"\'") && bytes.len() > 1)
-    {
-        &bytes[1..(bytes.len() - 1)]
-    } else {
-        bytes
-    };
+    let bytes = trim_quotes(bytes);
 
     if let Ok(token) = String::from_utf8(bytes.into()) {
         (
@@ -1660,13 +1671,7 @@ pub fn parse_string(
     span: Span,
 ) -> (Expression, Option<ParseError>) {
     let bytes = working_set.get_span_contents(span);
-    let bytes = if (bytes.starts_with(b"\"") && bytes.ends_with(b"\"") && bytes.len() > 1)
-        || (bytes.starts_with(b"\'") && bytes.ends_with(b"\'") && bytes.len() > 1)
-    {
-        &bytes[1..(bytes.len() - 1)]
-    } else {
-        bytes
-    };
+    let bytes = trim_quotes(bytes);
 
     if let Ok(token) = String::from_utf8(bytes.into()) {
         (
@@ -1784,12 +1789,18 @@ pub fn parse_import_pattern(
 ) -> (ImportPattern, Option<ParseError>) {
     let mut error = None;
 
-    let head = if let Some(head_span) = spans.get(0) {
-        working_set.get_span_contents(*head_span).to_vec()
+    let (head, head_span) = if let Some(head_span) = spans.get(0) {
+        (
+            working_set.get_span_contents(*head_span).to_vec(),
+            head_span,
+        )
     } else {
         return (
             ImportPattern {
-                head: vec![],
+                head: ImportPatternHead {
+                    name: vec![],
+                    span: Span::unknown(),
+                },
                 members: vec![],
             },
             Some(ParseError::WrongImportPattern(span(spans))),
@@ -1802,7 +1813,10 @@ pub fn parse_import_pattern(
         if tail == b"*" {
             (
                 ImportPattern {
-                    head,
+                    head: ImportPatternHead {
+                        name: head,
+                        span: *head_span,
+                    },
                     members: vec![ImportPatternMember::Glob { span: *tail_span }],
                 },
                 error,
@@ -1826,7 +1840,10 @@ pub fn parse_import_pattern(
 
                     (
                         ImportPattern {
-                            head,
+                            head: ImportPatternHead {
+                                name: head,
+                                span: *head_span,
+                            },
                             members: vec![ImportPatternMember::List { names: output }],
                         },
                         error,
@@ -1834,16 +1851,23 @@ pub fn parse_import_pattern(
                 }
                 _ => (
                     ImportPattern {
-                        head,
+                        head: ImportPatternHead {
+                            name: head,
+                            span: *head_span,
+                        },
                         members: vec![],
                     },
                     Some(ParseError::ExportNotFound(result.span)),
                 ),
             }
         } else {
+            let tail = trim_quotes(tail);
             (
                 ImportPattern {
-                    head,
+                    head: ImportPatternHead {
+                        name: head,
+                        span: *head_span,
+                    },
                     members: vec![ImportPatternMember::Name {
                         name: tail.to_vec(),
                         span: *tail_span,
@@ -1855,7 +1879,10 @@ pub fn parse_import_pattern(
     } else {
         (
             ImportPattern {
-                head,
+                head: ImportPatternHead {
+                    name: head,
+                    span: *head_span,
+                },
                 members: vec![],
             },
             None,
@@ -1908,6 +1935,16 @@ pub fn parse_var_with_opt_type(
                 Some(ParseError::MissingType(spans[*spans_idx])),
             )
         }
+    } else if bytes == b"$config" || bytes == b"config" {
+        (
+            Expression {
+                expr: Expr::Var(CONFIG_VARIABLE_ID),
+                span: spans[*spans_idx],
+                ty: Type::Unknown,
+                custom_completion: None,
+            },
+            None,
+        )
     } else {
         let id = working_set.add_variable(bytes, Type::Unknown);
 
@@ -2020,7 +2057,7 @@ pub fn parse_signature_helper(
     let mut error = None;
     let source = working_set.get_span_contents(span);
 
-    let (output, err) = lex(source, span.start, &[b'\n', b','], &[b':']);
+    let (output, err) = lex(source, span.start, &[b'\n', b'\r', b','], &[b':']);
     error = error.or(err);
 
     let mut args: Vec<Arg> = vec![];
@@ -2349,7 +2386,7 @@ pub fn parse_list_expression(
     let span = Span { start, end };
     let source = working_set.get_span_contents(span);
 
-    let (output, err) = lex(source, span.start, &[b'\n', b','], &[]);
+    let (output, err) = lex(source, span.start, &[b'\n', b'\r', b','], &[]);
     error = error.or(err);
 
     let (output, err) = lite_parse(&output);
@@ -2421,7 +2458,7 @@ pub fn parse_table_expression(
 
     let source = working_set.get_span_contents(span);
 
-    let (output, err) = lex(source, start, &[b'\n', b','], &[]);
+    let (output, err) = lex(source, start, &[b'\n', b'\r', b','], &[]);
     error = error.or(err);
 
     let (output, err) = lite_parse(&output);
@@ -2669,6 +2706,11 @@ pub fn parse_value(
             return parse_full_cell_path(working_set, None, span);
         }
     } else if bytes.starts_with(b"{") {
+        if !matches!(shape, SyntaxShape::Block(..)) {
+            if let (expr, None) = parse_full_cell_path(working_set, None, span) {
+                return (expr, None);
+            }
+        }
         if matches!(shape, SyntaxShape::Block(_)) || matches!(shape, SyntaxShape::Any) {
             return parse_block_expression(working_set, shape, span);
         } else {
@@ -2750,7 +2792,7 @@ pub fn parse_value(
             let source = working_set.get_span_contents(span);
             let mut error = None;
 
-            let (tokens, err) = lex(source, span.start, &[b'\n'], &[b'.']);
+            let (tokens, err) = lex(source, span.start, &[b'\n', b'\r'], &[b'.']);
             error = error.or(err);
 
             let tokens = tokens.into_iter().peekable();
@@ -3152,6 +3194,83 @@ pub fn parse_statement(
     }
 }
 
+pub fn parse_record(
+    working_set: &mut StateWorkingSet,
+    span: Span,
+) -> (Expression, Option<ParseError>) {
+    let bytes = working_set.get_span_contents(span);
+
+    let mut error = None;
+    let mut start = span.start;
+    let mut end = span.end;
+
+    if bytes.starts_with(b"{") {
+        start += 1;
+    } else {
+        error = error.or_else(|| {
+            Some(ParseError::Expected(
+                "{".into(),
+                Span {
+                    start,
+                    end: start + 1,
+                },
+            ))
+        });
+    }
+
+    if bytes.ends_with(b"}") {
+        end -= 1;
+    } else {
+        error = error.or_else(|| Some(ParseError::Unclosed("}".into(), Span { start: end, end })));
+    }
+
+    let span = Span { start, end };
+    let source = working_set.get_span_contents(span);
+
+    let (tokens, err) = lex(source, start, &[b'\n', b'\r', b','], &[b':']);
+    error = error.or(err);
+
+    let mut output = vec![];
+    let mut idx = 0;
+
+    while idx < tokens.len() {
+        let (field, err) = parse_value(working_set, tokens[idx].span, &SyntaxShape::Any);
+        error = error.or(err);
+
+        idx += 1;
+        if idx == tokens.len() {
+            return (
+                garbage(span),
+                Some(ParseError::Expected("record".into(), span)),
+            );
+        }
+        let colon = working_set.get_span_contents(tokens[idx].span);
+        idx += 1;
+        if idx == tokens.len() || colon != b":" {
+            //FIXME: need better error
+            return (
+                garbage(span),
+                Some(ParseError::Expected("record".into(), span)),
+            );
+        }
+        let (value, err) = parse_value(working_set, tokens[idx].span, &SyntaxShape::Any);
+        error = error.or(err);
+        idx += 1;
+
+        output.push((field, value));
+    }
+
+    (
+        Expression {
+            expr: Expr::Record(output),
+            span,
+            ty: Type::Unknown, //FIXME: but we don't know the contents of the fields, do we?
+            custom_completion: None,
+        },
+        error,
+    )
+}
+
 pub fn parse_block(
     working_set: &mut StateWorkingSet,
     lite_block: &LiteBlock,
@@ -3322,6 +3441,7 @@ pub fn find_captures_in_expr(
             let result = find_captures_in_expr(working_set, &cell_path.head, seen);
             output.extend(&result);
         }
+        Expr::ImportPattern(_) => {}
         Expr::Garbage => {}
         Expr::GlobPattern(_) => {}
         Expr::Int(_) => {}
@@ -3348,6 +3468,12 @@ pub fn find_captures_in_expr(
             if let Some(expr) = expr3 {
                 let result = find_captures_in_expr(working_set, expr, seen);
                 output.extend(&result);
+            }
+        }
+        Expr::Record(fields) => {
+            for (field_name, field_value) in fields {
+                output.extend(&find_captures_in_expr(working_set, field_name, seen));
+                output.extend(&find_captures_in_expr(working_set, field_value, seen));
             }
         }
         Expr::RowCondition(var_id, expr) => {

@@ -1,5 +1,5 @@
 use super::{Call, CellPath, Expression, FullCellPath, Operator, RangeOperator};
-use crate::{BlockId, Signature, Span, Spanned, Unit, VarId};
+use crate::{ast::ImportPattern, BlockId, Signature, Span, Spanned, Unit, VarId};
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -23,6 +23,7 @@ pub enum Expr {
     Block(BlockId),
     List(Vec<Expression>),
     Table(Vec<Expression>, Vec<Vec<Expression>>),
+    Record(Vec<(Expression, Expression)>),
     Keyword(Vec<u8>, Span, Box<Expression>),
     ValueWithUnit(Box<Expression>, Spanned<Unit>),
     Filepath(String),
@@ -30,6 +31,7 @@ pub enum Expr {
     String(String),
     CellPath(CellPath),
     FullCellPath(Box<FullCellPath>),
+    ImportPattern(ImportPattern),
     Signature(Box<Signature>),
     Garbage,
 }

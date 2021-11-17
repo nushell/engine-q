@@ -1,6 +1,6 @@
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
-use nu_protocol::{PipelineData, Signature, SyntaxShape};
+use nu_protocol::{Category, PipelineData, Signature, SyntaxShape};
 
 #[derive(Clone)]
 pub struct ExportDef;
@@ -16,13 +16,14 @@ impl Command for ExportDef {
 
     fn signature(&self) -> nu_protocol::Signature {
         Signature::build("export def")
-            .required("target", SyntaxShape::String, "definition name")
+            .required("name", SyntaxShape::String, "definition name")
             .required("params", SyntaxShape::Signature, "parameters")
             .required(
                 "block",
                 SyntaxShape::Block(Some(vec![])),
                 "body of the definition",
             )
+            .category(Category::Core)
     }
 
     fn run(

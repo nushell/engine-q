@@ -1,7 +1,7 @@
 use nu_engine::{eval_block, CallExt};
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
-use nu_protocol::{PipelineData, Signature, SyntaxShape, Value};
+use nu_protocol::{Category, PipelineData, Signature, SyntaxShape, Value};
 
 #[derive(Clone)]
 pub struct Do;
@@ -24,6 +24,7 @@ impl Command for Do {
                 "the block to run",
             )
             .rest("rest", SyntaxShape::Any, "the parameter(s) for the block")
+            .category(Category::Core)
     }
 
     fn run(
@@ -33,9 +34,9 @@ impl Command for Do {
         call: &Call,
         input: PipelineData,
     ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
-        let block_id = call.positional[0]
-            .as_block()
-            .expect("internal error: expected block");
+        let block: Value = call.req(engine_state, stack, 0)?;
+        let block_id = block.as_block()?;
+
         let rest: Vec<Value> = call.rest(engine_state, stack, 1)?;
 
         let block = engine_state.get_block(block_id);

@@ -35,8 +35,9 @@
 - [x] ctrl-c support
 - [x] operator overflow
 - [x] Support for `$in`
-- [ ] config system
+- [x] config system
 - [ ] shells
+- [ ] autoenv
 - [ ] plugins
 - [ ] dataframes
 - [ ] port over `which` logic

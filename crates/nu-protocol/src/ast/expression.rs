@@ -131,6 +131,7 @@ impl Expression {
                 }
                 false
             }
+            Expr::ImportPattern(_) => false,
             Expr::Filepath(_) => false,
             Expr::Float(_) => false,
             Expr::FullCellPath(full_cell_path) => {
@@ -165,6 +166,17 @@ impl Expression {
                 }
                 if let Some(right) = &right {
                     if right.has_in_variable(working_set) {
+                        return true;
+                    }
+                }
+                false
+            }
+            Expr::Record(fields) => {
+                for (field_name, field_value) in fields {
+                    if field_name.has_in_variable(working_set) {
+                        return true;
+                    }
+                    if field_value.has_in_variable(working_set) {
                         return true;
                     }
                 }
@@ -271,6 +283,7 @@ impl Expression {
                     .head
                     .replace_in_variable(working_set, new_var_id);
             }
+            Expr::ImportPattern(_) => {}
             Expr::Garbage => {}
             Expr::GlobPattern(_) => {}
             Expr::Int(_) => {}
@@ -290,6 +303,12 @@ impl Expression {
                 }
                 if let Some(right) = right {
                     right.replace_in_variable(working_set, new_var_id)
+                }
+            }
+            Expr::Record(fields) => {
+                for (field_name, field_value) in fields {
+                    field_name.replace_in_variable(working_set, new_var_id);
+                    field_value.replace_in_variable(working_set, new_var_id);
                 }
             }
             Expr::RowCondition(_, expr) => expr.replace_in_variable(working_set, new_var_id),
