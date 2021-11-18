@@ -7,7 +7,6 @@ use nu_protocol::{
     span, Exportable, Overlay, Span, SyntaxShape, Type, CONFIG_VARIABLE_ID,
 };
 use std::collections::HashMap;
-use std::io::Write;
 use std::path::Path;
 
 #[cfg(feature = "plugin")]
@@ -1086,6 +1085,8 @@ pub fn parse_plugin(
     working_set: &mut StateWorkingSet,
     spans: &[Span],
 ) -> (Statement, Option<ParseError>) {
+    use nu_protocol::Signature;
+
     let name = working_set.get_span_contents(spans[0]);
 
     if name != b"register" {
@@ -1124,10 +1125,10 @@ pub fn parse_plugin(
                                         let plugin_decl =
                                             PluginDeclaration::new(filename.clone(), signature);
 
-                                        working_set.add_decl(Box::new(plugin_decl));
+                                        working_set.add_plugin_decl(Box::new(plugin_decl));
                                     }
 
-                                    update_plugin_file(working_set).err()
+                                    None
                                 }
                             }
                         } else {
@@ -1137,8 +1138,27 @@ pub fn parse_plugin(
                         Some(ParseError::NonUtf8(spans[1]))
                     }
                 }
+                3 => {
+                    let filename = working_set.get_span_contents(spans[1]);
+                    let signature = working_set.get_span_contents(spans[2]);
+
+                    if let Ok(filename) = String::from_utf8(filename.to_vec()) {
+                        if let Ok(signature) = serde_json::from_slice::<Signature>(signature) {
+                            let plugin_decl = PluginDeclaration::new(filename, signature);
+                            working_set.add_plugin_decl(Box::new(plugin_decl));
+
+                            None
+                        } else {
+                            Some(ParseError::PluginError(
+                                "unable to deserialize signature".into(),
+                            ))
+                        }
+                    } else {
+                        Some(ParseError::NonUtf8(spans[1]))
+                    }
+                }
                 _ => {
-                    let span = spans[2..].iter().fold(spans[2], |acc, next| Span {
+                    let span = spans[3..].iter().fold(spans[3], |acc, next| Span {
                         start: acc.start,
                         end: next.end,
                     });
@@ -1167,38 +1187,5 @@ pub fn parse_plugin(
                 span(spans),
             )),
         )
-    }
-}
-
-#[cfg(feature = "plugin")]
-fn update_plugin_file(working_set: &mut StateWorkingSet) -> Result<(), ParseError> {
-    // Updating the signatures plugin file with the added signatures
-    if let Some(plugin_path) = &working_set.permanent_state.plugin_signatures {
-        // Always creating the file which will erase previous signatures
-        let mut plugin_file = std::fs::File::create(plugin_path.as_path())
-            .map_err(|err| ParseError::PluginError(err.to_string()))?;
-
-        // Plugin definitions with parsed signature
-        for decl in working_set.permanent_state.plugin_decls() {
-            // A successful plugin registration already includes the plugin filename
-            // No need to check the None option
-            let file_name = decl
-                .is_plugin()
-                .expect("plugin must have filename declared");
-
-            let line = serde_json::to_string_pretty(&decl.signature())
-                .map(|signature| format!("register {} {}\n", file_name, signature))
-                .map_err(|err| ParseError::PluginError(err.to_string()))?;
-
-            plugin_file
-                .write_all(line.as_bytes())
-                .map_err(|err| ParseError::PluginError(err.to_string()))?;
-        }
-
-        Ok(())
-    } else {
-        Err(ParseError::PluginError(
-            "Signature file not found. Plugin signature not stored".into(),
-        ))
     }
 }
