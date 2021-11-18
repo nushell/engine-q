@@ -206,6 +206,16 @@ fn main() -> Result<()> {
             None
         };
 
+        // Path to store plugins signatures
+        engine_state.plugin_signatures = if let Some(mut plugin_path) = nu_path::config_dir() {
+            plugin_path.push("nushell");
+            plugin_path.push("plugin.nu");
+
+            Some(plugin_path)
+        } else {
+            None
+        };
+
         loop {
             //Reset the ctrl-c handler
             ctrlc.store(false, Ordering::SeqCst);

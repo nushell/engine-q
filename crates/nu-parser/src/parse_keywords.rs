@@ -7,6 +7,7 @@ use nu_protocol::{
     span, Exportable, Overlay, Span, SyntaxShape, Type, CONFIG_VARIABLE_ID,
 };
 use std::collections::HashMap;
+use std::io::Write;
 use std::path::Path;
 
 #[cfg(feature = "plugin")]
@@ -1122,10 +1123,11 @@ pub fn parse_plugin(
                                         // store declaration in working set
                                         let plugin_decl =
                                             PluginDeclaration::new(filename.clone(), signature);
+
                                         working_set.add_decl(Box::new(plugin_decl));
                                     }
 
-                                    None
+                                    update_plugin_file(working_set).err()
                                 }
                             }
                         } else {
@@ -1165,5 +1167,38 @@ pub fn parse_plugin(
                 span(spans),
             )),
         )
+    }
+}
+
+#[cfg(feature = "plugin")]
+fn update_plugin_file(working_set: &mut StateWorkingSet) -> Result<(), ParseError> {
+    // Updating the signatures plugin file with the added signatures
+    if let Some(plugin_path) = &working_set.permanent_state.plugin_signatures {
+        // Always creating the file which will erase previous signatures
+        let mut plugin_file = std::fs::File::create(plugin_path.as_path())
+            .map_err(|err| ParseError::PluginError(err.to_string()))?;
+
+        // Plugin definitions with parsed signature
+        for decl in working_set.permanent_state.plugin_decls() {
+            // A successful plugin registration already includes the plugin filename
+            // No need to check the None option
+            let file_name = decl
+                .is_plugin()
+                .expect("plugin must have filename declared");
+
+            let line = serde_json::to_string_pretty(&decl.signature())
+                .map(|signature| format!("register {} {}\n", file_name, signature))
+                .map_err(|err| ParseError::PluginError(err.to_string()))?;
+
+            plugin_file
+                .write_all(line.as_bytes())
+                .map_err(|err| ParseError::PluginError(err.to_string()))?;
+        }
+
+        Ok(())
+    } else {
+        Err(ParseError::PluginError(
+            "Signature file not found. Plugin signature not stored".into(),
+        ))
     }
 }

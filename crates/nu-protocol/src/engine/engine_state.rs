@@ -5,6 +5,7 @@ use crate::{
 use core::panic;
 use std::{
     collections::HashMap,
+    path::PathBuf,
     sync::{atomic::AtomicBool, Arc},
 };
 
@@ -136,6 +137,7 @@ pub struct EngineState {
     overlays: im::Vector<Overlay>,
     pub scope: im::Vector<ScopeFrame>,
     pub ctrlc: Option<Arc<AtomicBool>>,
+    pub plugin_signatures: Option<PathBuf>,
 }
 
 pub const NU_VARIABLE_ID: usize = 0;
@@ -154,6 +156,7 @@ impl EngineState {
             overlays: im::vector![],
             scope: im::vector![ScopeFrame::new()],
             ctrlc: None,
+            plugin_signatures: None,
         }
     }
 
@@ -250,6 +253,10 @@ impl EngineState {
         }
 
         None
+    }
+
+    pub fn plugin_decls(&self) -> impl Iterator<Item = &Box<dyn Command + 'static>> {
+        self.decls.iter().filter(|decl| decl.is_plugin().is_some())
     }
 
     pub fn find_overlay(&self, name: &[u8]) -> Option<OverlayId> {
