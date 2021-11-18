@@ -372,7 +372,7 @@ impl EngineState {
         output
     }
 
-    pub fn get_signatures_with_examples(&self) -> Vec<(Signature, Vec<Example>)> {
+    pub fn get_signatures_with_examples(&self) -> Vec<(Signature, Vec<Example>, bool)> {
         let mut output = vec![];
         for decl in self.decls.iter() {
             if decl.get_block_id().is_none() {
@@ -380,7 +380,7 @@ impl EngineState {
                 signature.usage = decl.usage().to_string();
                 signature.extra_usage = decl.extra_usage().to_string();
 
-                output.push((signature, decl.examples()));
+                output.push((signature, decl.examples(), decl.is_plugin().is_some()));
             }
         }
 
