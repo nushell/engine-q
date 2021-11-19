@@ -41,7 +41,7 @@ impl Command for Debug {
         vec![Example {
             description: "Describe the type of a string",
             example: "'hello' | debug",
-            result: Some(Value::test_string("foo")),
+            result: Some(Value::test_string("hello")),
         }]
     }
 }
