@@ -168,7 +168,7 @@ fn convert_to_table(
             data.push(row);
         }
 
-        let color_hm = get_color_config(&config);
+        let color_hm = get_color_config(config);
         Ok(Some(nu_table::Table {
             headers: headers
                 .into_iter()
