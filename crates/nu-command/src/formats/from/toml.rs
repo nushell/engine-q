@@ -1,8 +1,7 @@
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
-    Category, Example, IntoPipelineData, PipelineData, ShellError,
-    Signature, Span, Value,
+    Category, Example, IntoPipelineData, PipelineData, ShellError, Signature, Span, Value,
 };
 
 #[derive(Clone)]
@@ -109,14 +108,14 @@ fn convert_toml_to_value(value: &toml::Value, span: Span) -> Value {
             val: s.clone(),
             span,
         },
-        toml::Value::Datetime(d) => Value::String { val: d.to_string(), span },
+        toml::Value::Datetime(d) => Value::String {
+            val: d.to_string(),
+            span,
+        },
     }
 }
 
-pub fn convert_string_to_value(
-    string_input: String,
-    span: Span,
-) -> Result<Value, ShellError> {
+pub fn convert_string_to_value(string_input: String, span: Span) -> Result<Value, ShellError> {
     let result: Result<toml::Value, toml::de::Error> = toml::from_str(&string_input);
     match result {
         Ok(value) => Ok(convert_toml_to_value(&value, span)),

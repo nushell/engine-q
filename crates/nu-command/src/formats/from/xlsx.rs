@@ -9,15 +9,15 @@ use nu_protocol::{
 use std::io::Cursor;
 
 #[derive(Clone)]
-pub struct FromOds;
+pub struct FromXlsx;
 
-impl Command for FromOds {
+impl Command for FromXlsx {
     fn name(&self) -> &str {
-        "from ods"
+        "from xlsx"
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("from ods")
+        Signature::build("from xlsx")
             .named(
                 "sheets",
                 SyntaxShape::List(Box::new(SyntaxShape::String)),
@@ -28,7 +28,7 @@ impl Command for FromOds {
     }
 
     fn usage(&self) -> &str {
-        "Parse OpenDocument Spreadsheet(.ods) data and create table."
+        "Parse binary Excel(.xlsx) data and create table."
     }
 
     fn run(
@@ -48,19 +48,19 @@ impl Command for FromOds {
             vec![]
         };
 
-        from_ods(input, head, sel_sheets)
+        from_xlsx(input, head, sel_sheets)
     }
 
     fn examples(&self) -> Vec<Example> {
         vec![
             Example {
-                description: "Convert binary .ods data to a table",
-                example: "open test.txt | from ods",
+                description: "Convert binary .xlsx data to a table",
+                example: "open test.txt | from xlsx",
                 result: None,
             },
             Example {
-                description: "Convert binary .ods data to a table, specifying the tables",
-                example: "open test.txt | from ods -s [Spreadsheet1]",
+                description: "Convert binary .xlsx data to a table, specifying the tables",
+                example: "open test.txt | from xlsx -s [Spreadsheet1]",
                 result: None,
             },
         ]
@@ -104,19 +104,19 @@ fn collect_binary(input: PipelineData) -> Result<Vec<u8>, ShellError> {
     Ok(bytes)
 }
 
-fn from_ods(
+fn from_xlsx(
     input: PipelineData,
     head: Span,
     sel_sheets: Vec<String>,
 ) -> Result<PipelineData, ShellError> {
     let bytes = collect_binary(input)?;
     let buf: Cursor<Vec<u8>> = Cursor::new(bytes);
-    let mut ods = Ods::<_>::new(buf)
-        .map_err(|_| ShellError::UnsupportedInput("Could not load ods file".to_string(), head))?;
+    let mut xlsx = Xlsx::<_>::new(buf)
+        .map_err(|_| ShellError::UnsupportedInput("Could not load xlsx file".to_string(), head))?;
 
     let mut dict = IndexMap::new();
 
-    let mut sheet_names = ods.sheet_names().to_owned();
+    let mut sheet_names = xlsx.sheet_names().to_owned();
     if !sel_sheets.is_empty() {
         sheet_names.retain(|e| sel_sheets.contains(e));
     }
@@ -124,7 +124,7 @@ fn from_ods(
     for sheet_name in &sheet_names {
         let mut sheet_output = vec![];
 
-        if let Some(Ok(current_sheet)) = ods.worksheet_range(sheet_name) {
+        if let Some(Ok(current_sheet)) = xlsx.worksheet_range(sheet_name) {
             for row in current_sheet.rows() {
                 let mut row_output = IndexMap::new();
                 for (i, cell) in row.iter().enumerate() {
@@ -205,6 +205,6 @@ mod tests {
     fn test_examples() {
         use crate::test_examples;
 
-        test_examples(FromOds {})
+        test_examples(FromXlsx {})
     }
 }
