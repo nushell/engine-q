@@ -7,6 +7,7 @@ mod toml;
 mod tsv;
 mod url;
 mod yaml;
+mod ods;
 
 pub use self::csv::FromCsv;
 pub use command::From;
@@ -16,4 +17,5 @@ pub use tsv::FromTsv;
 pub use url::FromUrl;
 pub use yaml::FromYaml;
 pub use yaml::FromYml;
+pub use ods::FromOds;
 pub use self::toml::FromToml;
