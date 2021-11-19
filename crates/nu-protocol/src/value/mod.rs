@@ -82,7 +82,7 @@ pub enum Value {
         span: Span,
     },
     CustomValue {
-        val: Box<dyn CustomValue + 'static>,
+        val: Box<dyn CustomValue>,
         span: Span,
     },
 }
@@ -631,6 +631,7 @@ impl PartialOrd for Value {
                 lhs.partial_cmp(rhs)
             }
             (Value::Nothing { .. }, Value::Nothing { .. }) => Some(Ordering::Equal),
+            (Value::CustomValue { val: lhs, .. }, rhs) => lhs.partial_cmp(rhs),
             (_, _) => None,
         }
     }
@@ -703,6 +704,8 @@ impl Value {
                 }
             }
 
+            (Value::CustomValue { val: lhs, span }, rhs) => lhs.add(span, rhs),
+
             _ => Err(ShellError::OperatorMismatch {
                 op_span: op,
                 lhs_ty: self.get_type(),
@@ -768,6 +771,8 @@ impl Value {
                 }
             }
 
+            (Value::CustomValue { val: lhs, span }, rhs) => lhs.sub(span, rhs),
+
             _ => Err(ShellError::OperatorMismatch {
                 op_span: op,
                 lhs_ty: self.get_type(),
@@ -803,6 +808,7 @@ impl Value {
                 val: lhs * rhs,
                 span,
             }),
+            (Value::CustomValue { val: lhs, span }, rhs) => lhs.mul(span, rhs),
 
             _ => Err(ShellError::OperatorMismatch {
                 op_span: op,
@@ -864,6 +870,7 @@ impl Value {
                     Err(ShellError::DivisionByZero(op))
                 }
             }
+            (Value::CustomValue { val: lhs, span }, rhs) => lhs.div(span, rhs),
 
             _ => Err(ShellError::OperatorMismatch {
                 op_span: op,
