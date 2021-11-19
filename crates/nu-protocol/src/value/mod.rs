@@ -1,3 +1,4 @@
+mod custom_value;
 mod range;
 mod stream;
 mod unit;
@@ -14,11 +15,12 @@ use std::{cmp::Ordering, fmt::Debug};
 
 use crate::ast::{CellPath, PathMember};
 use crate::{did_you_mean, span, BlockId, Config, Span, Spanned, Type};
+use custom_value::CustomValue;
 
 use crate::ShellError;
 
 /// Core structured values that pass through the pipeline in engine-q
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Value {
     Bool {
         val: bool,
@@ -79,6 +81,75 @@ pub enum Value {
         val: CellPath,
         span: Span,
     },
+    CustomValue {
+        val: Box<dyn CustomValue + 'static>,
+        span: Span,
+    },
+}
+
+impl Clone for Value {
+    fn clone(&self) -> Self {
+        match self {
+            Value::Bool { val, span } => Value::Bool {
+                val: *val,
+                span: *span,
+            },
+            Value::Int { val, span } => Value::Int {
+                val: *val,
+                span: *span,
+            },
+            Value::Filesize { val, span } => Value::Filesize {
+                val: *val,
+                span: *span,
+            },
+            Value::Duration { val, span } => Value::Duration {
+                val: *val,
+                span: *span,
+            },
+            Value::Date { val, span } => Value::Date {
+                val: *val,
+                span: *span,
+            },
+            Value::Range { val, span } => Value::Range {
+                val: val.clone(),
+                span: *span,
+            },
+            Value::Float { val, span } => Value::Float {
+                val: *val,
+                span: *span,
+            },
+            Value::String { val, span } => Value::String {
+                val: val.clone(),
+                span: *span,
+            },
+            Value::Record { cols, vals, span } => Value::Record {
+                cols: cols.clone(),
+                vals: vals.clone(),
+                span: *span,
+            },
+            Value::List { vals, span } => Value::List {
+                vals: vals.clone(),
+                span: *span,
+            },
+            Value::Block { val, span } => Value::Block {
+                val: *val,
+                span: *span,
+            },
+            Value::Nothing { span } => Value::Nothing { span: *span },
+            Value::Error { error } => Value::Error {
+                error: error.clone(),
+            },
+            Value::Binary { val, span } => Value::Binary {
+                val: val.clone(),
+                span: *span,
+            },
+            Value::CellPath { val, span } => Value::CellPath {
+                val: val.clone(),
+                span: *span,
+            },
+            Value::CustomValue { val, span } => val.clone_value(*span),
+        }
+    }
 }
 
 impl Value {
@@ -144,6 +215,7 @@ impl Value {
             Value::Nothing { span, .. } => Ok(*span),
             Value::Binary { span, .. } => Ok(*span),
             Value::CellPath { span, .. } => Ok(*span),
+            Value::CustomValue { span, .. } => Ok(*span),
         }
     }
 
@@ -165,6 +237,7 @@ impl Value {
             Value::Error { .. } => {}
             Value::Binary { span, .. } => *span = new_span,
             Value::CellPath { span, .. } => *span = new_span,
+            Value::CustomValue { span, .. } => *span = new_span,
         }
 
         self
@@ -193,6 +266,7 @@ impl Value {
             Value::Error { .. } => Type::Error,
             Value::Binary { .. } => Type::Binary,
             Value::CellPath { .. } => Type::CellPath,
+            Value::CustomValue { .. } => Type::Custom,
         }
     }
 
@@ -233,6 +307,7 @@ impl Value {
             Value::Error { error } => format!("{:?}", error),
             Value::Binary { val, .. } => format!("{:?}", val),
             Value::CellPath { val, .. } => val.into_string(),
+            Value::CustomValue { val, .. } => val.value_string(),
         }
     }
 
@@ -273,6 +348,7 @@ impl Value {
             Value::Error { error } => format!("{:?}", error),
             Value::Binary { val, .. } => format!("{:?}", val),
             Value::CellPath { val, .. } => val.into_string(),
+            Value::CustomValue { val, .. } => val.value_string(),
         }
     }
 
