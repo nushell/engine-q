@@ -19,6 +19,7 @@ typetag = "0.1.8"
 
 [features]
 plugin = ["serde_json"]
+custom = []
 
 [dev-dependencies]
 serde_json = "1.0"

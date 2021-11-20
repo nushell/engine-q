@@ -15,6 +15,8 @@ use std::{cmp::Ordering, fmt::Debug};
 
 use crate::ast::{CellPath, PathMember};
 use crate::{did_you_mean, span, BlockId, Config, Span, Spanned, Type};
+
+#[cfg(feature = "custom")]
 use custom_value::CustomValue;
 
 use crate::ShellError;
@@ -81,6 +83,7 @@ pub enum Value {
         val: CellPath,
         span: Span,
     },
+    #[cfg(feature = "custom")]
     CustomValue {
         val: Box<dyn CustomValue>,
         span: Span,
@@ -147,6 +150,7 @@ impl Clone for Value {
                 val: val.clone(),
                 span: *span,
             },
+            #[cfg(feature = "custom")]
             Value::CustomValue { val, span } => val.clone_value(*span),
         }
     }
@@ -215,6 +219,7 @@ impl Value {
             Value::Nothing { span, .. } => Ok(*span),
             Value::Binary { span, .. } => Ok(*span),
             Value::CellPath { span, .. } => Ok(*span),
+            #[cfg(feature = "custom")]
             Value::CustomValue { span, .. } => Ok(*span),
         }
     }
@@ -237,6 +242,7 @@ impl Value {
             Value::Error { .. } => {}
             Value::Binary { span, .. } => *span = new_span,
             Value::CellPath { span, .. } => *span = new_span,
+            #[cfg(feature = "custom")]
             Value::CustomValue { span, .. } => *span = new_span,
         }
 
@@ -266,6 +272,7 @@ impl Value {
             Value::Error { .. } => Type::Error,
             Value::Binary { .. } => Type::Binary,
             Value::CellPath { .. } => Type::CellPath,
+            #[cfg(feature = "custom")]
             Value::CustomValue { .. } => Type::Custom,
         }
     }
@@ -307,6 +314,7 @@ impl Value {
             Value::Error { error } => format!("{:?}", error),
             Value::Binary { val, .. } => format!("{:?}", val),
             Value::CellPath { val, .. } => val.into_string(),
+            #[cfg(feature = "custom")]
             Value::CustomValue { val, .. } => val.value_string(),
         }
     }
@@ -348,6 +356,7 @@ impl Value {
             Value::Error { error } => format!("{:?}", error),
             Value::Binary { val, .. } => format!("{:?}", val),
             Value::CellPath { val, .. } => val.into_string(),
+            #[cfg(feature = "custom")]
             Value::CustomValue { val, .. } => val.value_string(),
         }
     }
@@ -631,6 +640,7 @@ impl PartialOrd for Value {
                 lhs.partial_cmp(rhs)
             }
             (Value::Nothing { .. }, Value::Nothing { .. }) => Some(Ordering::Equal),
+            #[cfg(feature = "custom")]
             (Value::CustomValue { val: lhs, .. }, rhs) => lhs.partial_cmp(rhs),
             (_, _) => None,
         }
@@ -704,6 +714,7 @@ impl Value {
                 }
             }
 
+            #[cfg(feature = "custom")]
             (Value::CustomValue { val: lhs, span }, rhs) => lhs.add(span, rhs),
 
             _ => Err(ShellError::OperatorMismatch {
@@ -771,6 +782,7 @@ impl Value {
                 }
             }
 
+            #[cfg(feature = "custom")]
             (Value::CustomValue { val: lhs, span }, rhs) => lhs.sub(span, rhs),
 
             _ => Err(ShellError::OperatorMismatch {
@@ -808,6 +820,7 @@ impl Value {
                 val: lhs * rhs,
                 span,
             }),
+            #[cfg(feature = "custom")]
             (Value::CustomValue { val: lhs, span }, rhs) => lhs.mul(span, rhs),
 
             _ => Err(ShellError::OperatorMismatch {
@@ -870,6 +883,7 @@ impl Value {
                     Err(ShellError::DivisionByZero(op))
                 }
             }
+            #[cfg(feature = "custom")]
             (Value::CustomValue { val: lhs, span }, rhs) => lhs.div(span, rhs),
 
             _ => Err(ShellError::OperatorMismatch {

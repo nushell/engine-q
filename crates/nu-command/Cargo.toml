@@ -45,3 +45,4 @@ rand = "0.8"
 [features]
 trash-support = ["trash"]
 plugin = ["nu-parser/plugin"]
+custom = ["nu-protocol/custom"]
