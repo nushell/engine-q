@@ -104,7 +104,7 @@ fn command(
         )),
     }?;
 
-    Ok(PipelineData::Value(NuDataFrame::dataframe_to_value(
+    Ok(PipelineData::Value(NuDataFrame::dataframe_into_value(
         df, span,
     )))
 }

@@ -1443,6 +1443,8 @@ dependencies = [
 name = "nu-dataframe"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "indexmap",
  "nu-json",
  "nu-protocol",
  "polars",
@@ -1851,6 +1853,7 @@ dependencies = [
  "rayon",
  "regex",
  "serde",
+ "serde_json",
  "thiserror",
  "unsafe_unwrap",
 ]

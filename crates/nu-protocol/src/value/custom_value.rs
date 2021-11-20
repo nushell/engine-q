@@ -10,6 +10,11 @@ pub trait CustomValue: fmt::Debug + Send + Sync {
     // Define string representation of the custom value
     fn value_string(&self) -> String;
 
+    // Converts the custom value to a base nushell value
+    // This is used to represent the custom value using the table representations
+    // That already exist in nushell
+    fn to_base_value(&self, span: Span) -> Result<Value, ShellError>;
+
     // Json representation of custom value
     fn to_json(&self) -> nu_json::Value {
         nu_json::Value::Null
