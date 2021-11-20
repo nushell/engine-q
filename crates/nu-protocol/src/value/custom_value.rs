@@ -24,8 +24,8 @@ pub trait CustomValue: fmt::Debug + Send + Sync {
     }
 
     // Operation definitions for the custom value
-    fn add(&self, span: &Span, rhs: &Value) -> Result<Value, ShellError>;
-    fn sub(&self, span: &Span, rhs: &Value) -> Result<Value, ShellError>;
-    fn mul(&self, span: &Span, rhs: &Value) -> Result<Value, ShellError>;
-    fn div(&self, span: &Span, rhs: &Value) -> Result<Value, ShellError>;
+    fn add(&self, span: &Span, op: Span, rhs: &Value) -> Result<Value, ShellError>;
+    fn sub(&self, span: &Span, op: Span, rhs: &Value) -> Result<Value, ShellError>;
+    fn mul(&self, span: &Span, op: Span, rhs: &Value) -> Result<Value, ShellError>;
+    fn div(&self, span: &Span, op: Span, rhs: &Value) -> Result<Value, ShellError>;
 }

@@ -17,7 +17,7 @@ use crate::ast::{CellPath, PathMember};
 use crate::{did_you_mean, span, BlockId, Config, Span, Spanned, Type};
 
 #[cfg(feature = "custom")]
-use custom_value::CustomValue;
+pub use custom_value::CustomValue;
 
 use crate::ShellError;
 
@@ -715,7 +715,7 @@ impl Value {
             }
 
             #[cfg(feature = "custom")]
-            (Value::CustomValue { val: lhs, span }, rhs) => lhs.add(span, rhs),
+            (Value::CustomValue { val: lhs, span }, rhs) => lhs.add(span, op, rhs),
 
             _ => Err(ShellError::OperatorMismatch {
                 op_span: op,
@@ -783,7 +783,7 @@ impl Value {
             }
 
             #[cfg(feature = "custom")]
-            (Value::CustomValue { val: lhs, span }, rhs) => lhs.sub(span, rhs),
+            (Value::CustomValue { val: lhs, span }, rhs) => lhs.sub(span, op, rhs),
 
             _ => Err(ShellError::OperatorMismatch {
                 op_span: op,
@@ -821,7 +821,7 @@ impl Value {
                 span,
             }),
             #[cfg(feature = "custom")]
-            (Value::CustomValue { val: lhs, span }, rhs) => lhs.mul(span, rhs),
+            (Value::CustomValue { val: lhs, span }, rhs) => lhs.mul(span, op, rhs),
 
             _ => Err(ShellError::OperatorMismatch {
                 op_span: op,
@@ -884,7 +884,7 @@ impl Value {
                 }
             }
             #[cfg(feature = "custom")]
-            (Value::CustomValue { val: lhs, span }, rhs) => lhs.div(span, rhs),
+            (Value::CustomValue { val: lhs, span }, rhs) => lhs.div(span, op, rhs),
 
             _ => Err(ShellError::OperatorMismatch {
                 op_span: op,
