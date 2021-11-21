@@ -23,6 +23,10 @@ pub trait CustomValue: fmt::Debug + Send + Sync {
     // Any representation used to downcast object to its original type
     fn as_any(&self) -> &dyn std::any::Any;
 
+    // Follow cell path functions
+    fn follow_path_int(&self, count: usize, span: Span) -> Result<Value, ShellError>;
+    fn follow_path_string(&self, column_name: String, span: Span) -> Result<Value, ShellError>;
+
     // Partial comparison between custom object and a value
     fn partial_cmp(&self, _rhs: &Value) -> Option<Ordering> {
         None

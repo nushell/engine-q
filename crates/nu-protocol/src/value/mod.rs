@@ -404,6 +404,9 @@ impl Value {
                                 return Err(ShellError::AccessBeyondEndOfStream(*origin_span));
                             }
                         }
+                        Value::CustomValue { val, .. } => {
+                            current = val.follow_path_int(*count, *origin_span)?;
+                        }
                         x => {
                             return Err(ShellError::IncompatiblePathAccess(
                                 format!("{}", x.get_type()),
@@ -450,6 +453,9 @@ impl Value {
                             vals: output,
                             span: *span,
                         };
+                    }
+                    Value::CustomValue { val, .. } => {
+                        current = val.follow_path_string(column_name.clone(), *origin_span)?;
                     }
                     x => {
                         return Err(ShellError::IncompatiblePathAccess(

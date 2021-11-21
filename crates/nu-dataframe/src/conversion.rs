@@ -1,14 +1,15 @@
+use super::NuDataFrame;
+use crate::DataFrameValue;
 use chrono::{DateTime, FixedOffset, NaiveDateTime};
 use indexmap::map::{Entry, IndexMap};
 use nu_protocol::{ShellError, Span, Value};
+use polars::chunked_array::object::builder::ObjectChunkedBuilder;
 use polars::chunked_array::ChunkedArray;
 use polars::prelude::{
     DataFrame, DataType, DatetimeChunked, Int64Type, IntoSeries, NamedFrom, NewChunkedArray,
-    PolarsNumericType, Series,
+    ObjectType, PolarsNumericType, Series,
 };
 use std::ops::{Deref, DerefMut};
-
-use super::NuDataFrame;
 
 const SECS_PER_DAY: i64 = 86_400;
 
@@ -224,32 +225,33 @@ pub fn create_column(
 
             Ok(Column::new(casted.name().into(), values))
         }
-        //DataType::Object(_) => {
-        //    let casted = series
-        //        .as_any()
-        //        .downcast_ref::<ChunkedArray<ObjectType<Value>>>();
+        DataType::Object(x) => {
+            let casted = series
+                .as_any()
+                .downcast_ref::<ChunkedArray<ObjectType<DataFrameValue>>>();
 
-        //    match casted {
-        //        None => Err(ShellError::InternalError(
-        //            "Value not supported for conversion".into(),
-        //        )),
-        //        Some(ca) => {
-        //            let values = ca
-        //                .into_iter()
-        //                .skip(from_row)
-        //                .take(size)
-        //                .map(|v| match v {
-        //                    Some(a) => a.clone(),
-        //                    None => Value::Nothing {
-        //                        span: Span::unknown(),
-        //                    },
-        //                })
-        //                .collect::<Vec<Value>>();
+            match casted {
+                None => Err(ShellError::InternalError(format!(
+                    "Object not supported for conversion: {}",
+                    x
+                ))),
+                Some(ca) => {
+                    let values = ca
+                        .into_iter()
+                        .skip(from_row)
+                        .take(size)
+                        .map(|v| match v {
+                            Some(a) => a.get_value(),
+                            None => Value::Nothing {
+                                span: Span::unknown(),
+                            },
+                        })
+                        .collect::<Vec<Value>>();
 
-        //            Ok(Column::new(ca.name().into(), values))
-        //        }
-        //    }
-        //}
+                    Ok(Column::new(ca.name().into(), values))
+                }
+            }
+        }
         DataType::Date => {
             let casted = series
                 .date()
@@ -337,7 +339,7 @@ pub fn create_column(
             Ok(Column::new(casted.name().into(), values))
         }
         e => Err(ShellError::InternalError(format!(
-            "Value not supported for conversion: {}",
+            "Value not supported in nushell: {}",
             e
         ))),
     }
@@ -393,18 +395,7 @@ pub fn insert_record(
     values: &[Value],
 ) -> Result<(), ShellError> {
     for (col, value) in cols.iter().zip(values.iter()) {
-        match value {
-            Value::Int { .. }
-            | Value::Float { .. }
-            | Value::String { .. }
-            | Value::Bool { .. }
-            | Value::Date { .. } => insert_value(value.clone(), col.to_string(), column_values)?,
-            _ => {
-                return Err(ShellError::InternalError(
-                    "Value not supported for conversion".to_string(),
-                ));
-            }
-        }
+        insert_value(value.clone(), col.clone(), column_values)?;
     }
 
     Ok(())
@@ -498,16 +489,15 @@ pub fn from_parsed_columns(column_values: ColumnMap) -> Result<NuDataFrame, Shel
                     df_series.push(series)
                 }
                 InputType::Object => {
-                    unimplemented!()
-                    //let mut builder =
-                    //    ObjectChunkedBuilder::<Value>::new(&name, column.values.len());
+                    let mut builder =
+                        ObjectChunkedBuilder::<DataFrameValue>::new(&name, column.values.len());
 
-                    //for v in &column.values {
-                    //    builder.append_value(v.clone());
-                    //}
+                    for v in &column.values {
+                        builder.append_value(DataFrameValue::new(v.clone()));
+                    }
 
-                    //let res = builder.finish();
-                    //df_series.push(res.into_series())
+                    let res = builder.finish();
+                    df_series.push(res.into_series())
                 }
                 InputType::Date => {
                     let it = column.values.iter().map(|v| {
@@ -540,9 +530,7 @@ pub fn from_parsed_columns(column_values: ColumnMap) -> Result<NuDataFrame, Shel
         }
     }
 
-    let df = DataFrame::new(df_series);
-
-    match df {
+    match DataFrame::new(df_series) {
         Ok(df) => Ok(NuDataFrame::new(df)),
         Err(e) => Err(ShellError::InternalError(e.to_string())),
     }
