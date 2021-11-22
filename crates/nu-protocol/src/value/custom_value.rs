@@ -1,6 +1,6 @@
-use std::{cmp::Ordering, fmt};
+use std::fmt;
 
-use crate::{ShellError, Span, Value};
+use crate::{ast::Operator, ShellError, Span, Value};
 
 // Trait definition for a custom value
 #[typetag::serde(tag = "type")]
@@ -27,14 +27,16 @@ pub trait CustomValue: fmt::Debug + Send + Sync {
     fn follow_path_int(&self, count: usize, span: Span) -> Result<Value, ShellError>;
     fn follow_path_string(&self, column_name: String, span: Span) -> Result<Value, ShellError>;
 
-    // Partial comparison between custom object and a value
-    fn partial_cmp(&self, _rhs: &Value) -> Option<Ordering> {
-        None
+    // Definition of an operation between the object that implements the trait
+    // and another Value.
+    // The Operator enum is used to indicate the expected operation
+    fn operation(
+        &self,
+        _lhs_span: Span,
+        operator: Operator,
+        op: Span,
+        _right: &Value,
+    ) -> Result<Value, ShellError> {
+        Err(ShellError::UnsupportedOperator(operator, op))
     }
-
-    // Operation definitions for the custom value
-    fn add(&self, span: &Span, op: Span, rhs: &Value) -> Result<Value, ShellError>;
-    fn sub(&self, span: &Span, op: Span, rhs: &Value) -> Result<Value, ShellError>;
-    fn mul(&self, span: &Span, op: Span, rhs: &Value) -> Result<Value, ShellError>;
-    fn div(&self, span: &Span, op: Span, rhs: &Value) -> Result<Value, ShellError>;
 }

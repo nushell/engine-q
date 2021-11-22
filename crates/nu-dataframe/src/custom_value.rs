@@ -1,7 +1,5 @@
-use std::cmp::Ordering;
-
 use crate::NuDataFrame;
-use nu_protocol::{CustomValue, ShellError, Span, Type, Value};
+use nu_protocol::{ast::Operator, CustomValue, ShellError, Span, Value};
 
 // CustomValue implementation for NuDataFrame
 impl CustomValue for NuDataFrame {
@@ -40,10 +38,6 @@ impl CustomValue for NuDataFrame {
         self
     }
 
-    fn partial_cmp(&self, _rhs: &Value) -> Option<Ordering> {
-        None
-    }
-
     fn follow_path_int(&self, count: usize, span: Span) -> Result<Value, ShellError> {
         self.get_value(count, span)
     }
@@ -53,43 +47,13 @@ impl CustomValue for NuDataFrame {
         Ok(column.to_value(span))
     }
 
-    fn add(&self, span: &Span, _op: Span, rhs: &Value) -> Result<Value, ShellError> {
-        match rhs {
-            Value::CustomValue {
-                val: rhs_val,
-                span: rhs_span,
-            } => {
-                let _rhs_df = rhs_val
-                    .as_any()
-                    .downcast_ref::<NuDataFrame>()
-                    .ok_or_else(|| {
-                        ShellError::DowncastNotPossible(
-                            "Unable to downcast as Nu-dataframe".into(),
-                            *rhs_span,
-                        )
-                    })?;
-
-                todo!()
-            }
-            _ => Err(ShellError::OperatorMismatch {
-                op_span: Span::unknown(),
-                lhs_ty: Type::Custom,
-                lhs_span: *span,
-                rhs_ty: rhs.get_type(),
-                rhs_span: rhs.span()?,
-            }),
-        }
-    }
-
-    fn sub(&self, _span: &Span, _op: Span, _rhs: &Value) -> Result<Value, ShellError> {
-        todo!()
-    }
-
-    fn mul(&self, _span: &Span, _op: Span, _rhs: &Value) -> Result<Value, ShellError> {
-        todo!()
-    }
-
-    fn div(&self, _span: &Span, _op: Span, _rhs: &Value) -> Result<Value, ShellError> {
-        todo!()
+    fn operation(
+        &self,
+        lhs_span: Span,
+        operator: Operator,
+        op: Span,
+        right: &Value,
+    ) -> Result<Value, ShellError> {
+        self.compute_with_value(lhs_span, operator, op, right)
     }
 }

@@ -1,5 +1,7 @@
+mod between_values;
 mod conversion;
 mod custom_value;
+mod operations;
 
 use std::{cmp::Ordering, fmt::Display, hash::Hasher};
 
@@ -72,6 +74,11 @@ impl NuDataFrame {
         Self(dataframe)
     }
 
+    fn default_value(span: Span) -> Value {
+        let dataframe = DataFrame::default();
+        NuDataFrame::dataframe_into_value(dataframe, span)
+    }
+
     pub fn dataframe_into_value(dataframe: DataFrame, span: Span) -> Value {
         Value::CustomValue {
             val: Box::new(Self::new(dataframe)),
@@ -83,6 +90,13 @@ impl NuDataFrame {
         Value::CustomValue {
             val: Box::new(self),
             span,
+        }
+    }
+
+    pub fn series_to_value(series: Series, span: Span) -> Result<Value, ShellError> {
+        match DataFrame::new(vec![series]) {
+            Ok(dataframe) => Ok(NuDataFrame::dataframe_into_value(dataframe, span)),
+            Err(e) => Err(ShellError::InternalError(e.to_string())),
         }
     }
 
