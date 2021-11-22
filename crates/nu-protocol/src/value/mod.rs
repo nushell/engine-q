@@ -14,8 +14,11 @@ pub use unit::*;
 use std::collections::HashMap;
 use std::{cmp::Ordering, fmt::Debug};
 
-use crate::ast::{CellPath, Operator, PathMember};
+use crate::ast::{CellPath, PathMember};
 use crate::{did_you_mean, span, BlockId, Config, Span, Spanned, Type};
+
+#[cfg(feature = "custom")]
+use crate::ast::Operator;
 
 #[cfg(feature = "custom")]
 pub use custom_value::CustomValue;
@@ -404,6 +407,7 @@ impl Value {
                                 return Err(ShellError::AccessBeyondEndOfStream(*origin_span));
                             }
                         }
+                        #[cfg(feature = "custom")]
                         Value::CustomValue { val, .. } => {
                             current = val.follow_path_int(*count, *origin_span)?;
                         }
@@ -454,6 +458,7 @@ impl Value {
                             span: *span,
                         };
                     }
+                    #[cfg(feature = "custom")]
                     Value::CustomValue { val, .. } => {
                         current = val.follow_path_string(column_name.clone(), *origin_span)?;
                     }

@@ -39,7 +39,7 @@ ctrlc = "3.2.1"
 plugin = ["nu-plugin", "nu-parser/plugin", "nu-command/plugin", "nu-protocol/plugin"]
 custom = ["nu-command/custom", "nu-protocol/custom"]
 dataframe = ["custom", "nu-command/dataframe"]
-default = ["plugin", "dataframe"]
+default = ["plugin"]
 
 [dev-dependencies]
 tempfile = "3.2.0"
