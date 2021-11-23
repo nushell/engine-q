@@ -21,8 +21,10 @@ use crate::{Config, ShellError, Value, VarId, CONFIG_VARIABLE_ID};
 /// use the Stack as a way of representing the local and closure-captured state.
 #[derive(Debug, Clone)]
 pub struct Stack {
+    /// Variables
     pub vars: HashMap<VarId, Value>,
-    pub env_vars: HashMap<String, String>,
+    /// Environment variables arranged as a stack to be able to recover values from parent scopes
+    pub env_vars: Vec<HashMap<String, String>>,
 }
 
 impl Default for Stack {
@@ -35,7 +37,7 @@ impl Stack {
     pub fn new() -> Stack {
         Stack {
             vars: HashMap::new(),
-            env_vars: HashMap::new(),
+            env_vars: vec![],
         }
     }
 
@@ -52,7 +54,11 @@ impl Stack {
     }
 
     pub fn add_env_var(&mut self, var: String, value: String) {
-        self.env_vars.insert(var, value);
+        if let Some(scope) = self.env_vars.last_mut() {
+            scope.insert(var, value);
+        } else {
+            self.env_vars.push(HashMap::from([(var, value)]));
+        }
     }
 
     pub fn collect_captures(&self, captures: &[VarId]) -> Stack {
@@ -68,6 +74,11 @@ impl Stack {
 
         // FIXME: this is probably slow
         output.env_vars = self.env_vars.clone();
+        if let Some(scope) = output.env_vars.last_mut().cloned() {
+            output.env_vars.push(scope);
+        } else {
+            output.env_vars.push(HashMap::new());
+        }
 
         let config = self
             .get_var(CONFIG_VARIABLE_ID)
@@ -78,18 +89,29 @@ impl Stack {
     }
 
     pub fn get_env_vars(&self) -> HashMap<String, String> {
-        self.env_vars.clone()
+        self.env_vars
+            .last()
+            .map_or_else(HashMap::new, |scope| scope.clone())
     }
 
     pub fn get_env_var(&self, name: &str) -> Option<String> {
-        if let Some(v) = self.env_vars.get(name) {
-            return Some(v.to_string());
+        for scope in self.env_vars.iter().rev() {
+            if let Some(v) = scope.get(name) {
+                return Some(v.to_string());
+            }
         }
+
         None
     }
 
     pub fn remove_env_var(&mut self, name: &str) -> Option<String> {
-        self.env_vars.remove(name)
+        for scope in self.env_vars.iter_mut().rev() {
+            if let Some(v) = scope.remove(name) {
+                return Some(v);
+            }
+        }
+
+        None
     }
 
     pub fn get_config(&self) -> Result<Config, ShellError> {
@@ -109,9 +131,11 @@ impl Stack {
         for (var, val) in &self.vars {
             println!("  {}: {:?}", var, val);
         }
-        println!("env vars:");
-        for (var, val) in &self.env_vars {
-            println!("  {}: {:?}", var, val);
+        for (i, scope) in self.env_vars.iter().rev().enumerate() {
+            println!("env vars, scope {} (from the last);", i);
+            for (var, val) in scope {
+                println!("  {}: {:?}", var, val);
+            }
         }
     }
 }
