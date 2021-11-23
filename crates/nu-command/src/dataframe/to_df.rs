@@ -14,7 +14,7 @@ impl Command for ToDataFrame {
     }
 
     fn usage(&self) -> &str {
-        "Converts a List, Table or Dictionary into a polars dataframe"
+        "Converts a List, Table or Dictionary into a dataframe"
     }
 
     fn signature(&self) -> Signature {
@@ -25,22 +25,22 @@ impl Command for ToDataFrame {
         vec![
             Example {
                 description: "Takes a dictionary and creates a dataframe",
-                example: "[[a b];[1 2] [3 4]] | dataframe to-df",
+                example: "[[a b];[1 2] [3 4]] | to-df",
                 result: None,
             },
             Example {
                 description: "Takes a list of tables and creates a dataframe",
-                example: "[[1 2 a] [3 4 b] [5 6 c]] | dataframe to-df",
+                example: "[[1 2 a] [3 4 b] [5 6 c]] | to-df",
                 result: None,
             },
             Example {
                 description: "Takes a list and creates a dataframe",
-                example: "[a b c] | dataframe to-df",
+                example: "[a b c] | to-df",
                 result: None,
             },
             Example {
                 description: "Takes a list of booleans and creates a dataframe",
-                example: "[$true $true $false] | dataframe to-df",
+                example: "[$true $true $false] | to-df",
                 result: None,
             },
         ]

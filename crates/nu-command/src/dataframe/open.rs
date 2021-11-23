@@ -36,18 +36,18 @@ impl Command for OpenDataFrame {
                 Some('d'),
             )
             .switch(
-                "no_header",
+                "no-header",
                 "Indicates if file doesn't have header. CSV file",
                 None,
             )
             .named(
-                "infer_schema",
+                "infer-schema",
                 SyntaxShape::Number,
-                "Set number of rows to infer the schema of the file. CSV file",
+                "Number of rows to infer the schema of the file. CSV file",
                 None,
             )
             .named(
-                "skip_rows",
+                "skip-rows",
                 SyntaxShape::Number,
                 "Number of rows to skip from file. CSV file",
                 None,
