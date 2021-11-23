@@ -1,3 +1,4 @@
+pub mod call_trait;
 pub mod plugin;
 pub mod plugin_call;
 pub mod plugin_capnp;
