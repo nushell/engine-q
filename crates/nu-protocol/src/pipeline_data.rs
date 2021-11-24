@@ -166,6 +166,32 @@ impl PipelineData {
             }
         }
     }
+
+    pub fn all<F>(
+        self,
+        mut f: F,
+        ctrlc: Option<Arc<AtomicBool>>,
+    ) -> Result<PipelineData, ShellError>
+    where
+        Self: Sized,
+        F: FnMut(Value) -> bool + 'static + Send,
+    {
+        let all_matches = match self {
+            PipelineData::Value(Value::List { vals, .. }) => Ok(vals
+                .into_iter()
+                .into_pipeline_data(ctrlc)
+                .into_iter()
+                .all(f)),
+            PipelineData::Stream(stream) => Ok(stream.into_pipeline_data(ctrlc).into_iter().all(f)),
+            PipelineData::Value(Value::Range { val, .. }) => match val.into_range_iter() {
+                Ok(iter) => Ok(iter.into_pipeline_data(ctrlc).into_iter().all(f)),
+                Err(error) => Err(error),
+            },
+            PipelineData::Value(v) => Ok(f(v)),
+        }?;
+
+        Ok(Value::from(all_matches).into_pipeline_data())
+    }
 }
 
 // impl Default for PipelineData {
