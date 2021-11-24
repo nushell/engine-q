@@ -673,6 +673,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ical"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a9f7215ad0d77e69644570dee000c7678a47ba7441062c1b5f918adde0d73cf"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "im"
 version = "15.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -946,6 +955,7 @@ dependencies = [
  "dialoguer",
  "eml-parser",
  "glob",
+ "ical",
  "indexmap",
  "itertools",
  "lscolors",
@@ -1031,6 +1041,7 @@ dependencies = [
  "chrono",
  "chrono-humanize",
  "im",
+ "indexmap",
  "miette",
  "serde",
  "thiserror",

@@ -56,6 +56,7 @@ pub fn create_default_context() -> EngineState {
             FromUrl,
             FromEml,
             FromOds,
+            FromIcs,
             FromXlsx,
             Get,
             Griddle,

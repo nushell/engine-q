@@ -9,6 +9,7 @@ mod tsv;
 mod url;
 mod xlsx;
 mod yaml;
+mod ics;
 
 pub use self::csv::FromCsv;
 pub use self::toml::FromToml;
@@ -17,6 +18,7 @@ pub use eml::FromEml;
 pub use json::FromJson;
 pub use ods::FromOds;
 pub use tsv::FromTsv;
+pub use ics::FromIcs;
 pub use url::FromUrl;
 pub use xlsx::FromXlsx;
 pub use yaml::FromYaml;
