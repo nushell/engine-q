@@ -91,10 +91,7 @@ fn from_ini(input: PipelineData, head: Span, config: &Config) -> Result<Pipeline
     let concat_string = input.collect_string("", config);
 
     match from_ini_string_to_value(concat_string, head) {
-        Ok(x) => {
-            eprintln!("{:?}", x);
-            Ok(x.into_pipeline_data())
-        }
+        Ok(x) => Ok(x.into_pipeline_data()),
         Err(other) => Err(other),
     }
 }
