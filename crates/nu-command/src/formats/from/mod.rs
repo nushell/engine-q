@@ -9,6 +9,7 @@ mod ods;
 mod toml;
 mod tsv;
 mod url;
+mod vcf;
 mod xlsx;
 mod yaml;
 
@@ -22,6 +23,7 @@ pub use json::FromJson;
 pub use ods::FromOds;
 pub use tsv::FromTsv;
 pub use url::FromUrl;
+pub use vcf::FromVcf;
 pub use xlsx::FromXlsx;
 pub use yaml::FromYaml;
 pub use yaml::FromYml;
