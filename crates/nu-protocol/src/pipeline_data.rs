@@ -177,11 +177,9 @@ impl PipelineData {
         F: FnMut(Value) -> bool + 'static + Send,
     {
         let all_matches = match self {
-            PipelineData::Value(Value::List { vals, .. }) => Ok(vals
-                .into_iter()
-                .into_pipeline_data(ctrlc)
-                .into_iter()
-                .all(f)),
+            PipelineData::Value(Value::List { vals, .. }) => {
+                Ok(vals.into_pipeline_data(ctrlc).into_iter().all(f))
+            }
             PipelineData::Stream(stream) => Ok(stream.into_pipeline_data(ctrlc).into_iter().all(f)),
             PipelineData::Value(Value::Range { val, .. }) => match val.into_range_iter() {
                 Ok(iter) => Ok(iter.into_pipeline_data(ctrlc).into_iter().all(f)),
@@ -190,7 +188,7 @@ impl PipelineData {
             PipelineData::Value(v) => Ok(f(v)),
         }?;
 
-        Ok(Value::from(all_matches).into_pipeline_data())
+        Ok(all_matches.into_pipeline_data())
     }
 }
 
@@ -249,9 +247,12 @@ pub trait IntoPipelineData {
     fn into_pipeline_data(self) -> PipelineData;
 }
 
-impl IntoPipelineData for Value {
+impl<V> IntoPipelineData for V
+where
+    V: Into<Value>,
+{
     fn into_pipeline_data(self) -> PipelineData {
-        PipelineData::Value(self)
+        PipelineData::Value(self.into())
     }
 }
 
@@ -259,13 +260,15 @@ pub trait IntoInterruptiblePipelineData {
     fn into_pipeline_data(self, ctrlc: Option<Arc<AtomicBool>>) -> PipelineData;
 }
 
-impl<T> IntoInterruptiblePipelineData for T
+impl<I> IntoInterruptiblePipelineData for I
 where
-    T: Iterator<Item = Value> + Send + 'static,
+    I: IntoIterator + Send + 'static,
+    I::IntoIter: Send + 'static,
+    <I::IntoIter as Iterator>::Item: Into<Value>,
 {
     fn into_pipeline_data(self, ctrlc: Option<Arc<AtomicBool>>) -> PipelineData {
         PipelineData::Stream(ValueStream {
-            stream: Box::new(self),
+            stream: Box::new(self.into_iter().map(Into::into)),
             ctrlc,
         })
     }
