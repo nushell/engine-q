@@ -17,12 +17,13 @@ pub enum Type {
     List(Box<Type>),
     Number,
     Nothing,
-    Record(Vec<String>, Vec<Type>),
+    Record(Vec<(String, Type)>),
     Table,
     ValueStream,
     Unknown,
     Error,
     Binary,
+    Custom,
 }
 
 impl Display for Type {
@@ -37,7 +38,15 @@ impl Display for Type {
             Type::Float => write!(f, "float"),
             Type::Int => write!(f, "int"),
             Type::Range => write!(f, "range"),
-            Type::Record(cols, vals) => write!(f, "record<{}, {:?}>", cols.join(", "), vals),
+            Type::Record(fields) => write!(
+                f,
+                "record<{}>",
+                fields
+                    .iter()
+                    .map(|(x, y)| format!("{}: {}", x, y.to_string()))
+                    .collect::<Vec<String>>()
+                    .join(", "),
+            ),
             Type::Table => write!(f, "table"),
             Type::List(l) => write!(f, "list<{}>", l),
             Type::Nothing => write!(f, "nothing"),
@@ -47,6 +56,7 @@ impl Display for Type {
             Type::Unknown => write!(f, "unknown"),
             Type::Error => write!(f, "error"),
             Type::Binary => write!(f, "binary"),
+            Type::Custom => write!(f, "custom"),
         }
     }
 }
