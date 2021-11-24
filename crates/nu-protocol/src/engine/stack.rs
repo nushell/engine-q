@@ -88,10 +88,15 @@ impl Stack {
         output
     }
 
+    /// Flatten the env var scope frames into one frame
     pub fn get_env_vars(&self) -> HashMap<String, String> {
-        self.env_vars
-            .last()
-            .map_or_else(HashMap::new, |scope| scope.clone())
+        let mut result = HashMap::new();
+
+        for scope in &self.env_vars {
+            result.extend(scope.clone());
+        }
+
+        result
     }
 
     pub fn get_env_var(&self, name: &str) -> Option<String> {

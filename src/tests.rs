@@ -496,7 +496,7 @@ fn hides_def() -> TestResult {
     fail_test(r#"def foo [] { "foo" }; hide foo; foo"#, not_found_msg())
 }
 
-#[ignore]
+#[test]
 fn hides_env() -> TestResult {
     fail_test(
         r#"let-env foo = "foo"; hide foo; $nu.env.foo"#,
@@ -514,7 +514,7 @@ fn hides_def_then_redefines() -> TestResult {
     )
 }
 
-#[ignore]
+#[test]
 fn hides_env_then_redefines() -> TestResult {
     run_test(
         r#"let-env foo = "foo"; hide foo; let-env foo = "bar"; $nu.env.foo"#,
@@ -554,7 +554,7 @@ fn hides_def_in_scope_4() -> TestResult {
     )
 }
 
-#[ignore]
+#[test]
 fn hides_env_in_scope_1() -> TestResult {
     fail_test(
         r#"let-env foo = "foo"; do { hide foo; $nu.env.foo }"#,
@@ -562,7 +562,7 @@ fn hides_env_in_scope_1() -> TestResult {
     )
 }
 
-#[ignore]
+#[test]
 fn hides_env_in_scope_2() -> TestResult {
     // TODO: Revisit this -- 'hide foo' should restore the env, not hide it completely
     run_test(
@@ -571,7 +571,7 @@ fn hides_env_in_scope_2() -> TestResult {
     )
 }
 
-#[ignore]
+#[test]
 fn hides_env_in_scope_3() -> TestResult {
     fail_test(
         r#"let-env foo = "foo"; do { hide foo; let-env foo = "bar"; hide foo; $nu.env.foo }"#,
@@ -579,7 +579,7 @@ fn hides_env_in_scope_3() -> TestResult {
     )
 }
 
-#[ignore]
+#[test]
 fn hides_env_in_scope_4() -> TestResult {
     // TODO: Revisit this -- 'hide foo' should restore the env, not hide it completely
     fail_test(
@@ -590,15 +590,15 @@ fn hides_env_in_scope_4() -> TestResult {
 
 #[test]
 fn hide_def_twice_not_allowed() -> TestResult {
-    fail_test(r#"def foo [] { "foo" }; hide foo; hide foo"#, "not found")
+    fail_test(r#"def foo [] { "foo" }; hide foo; hide foo"#, "did not find")
 }
 
-#[ignore]
+#[test]
 fn hide_env_twice_not_allowed() -> TestResult {
     fail_test(r#"let-env foo = "foo"; hide foo; hide foo"#, "did not find")
 }
 
-#[ignore]
+#[test]
 fn hides_def_runs_env() -> TestResult {
     // TODO: We need some precedence system to handle this. Currently, 'hide foo' hides both the
     // def and env var.
@@ -608,7 +608,7 @@ fn hides_def_runs_env() -> TestResult {
     )
 }
 
-#[ignore]
+#[test]
 fn hides_def_and_env() -> TestResult {
     // TODO: We need some precedence system to handle this. Currently, 'hide foo' hides both the
     // def and env var.
@@ -666,7 +666,7 @@ fn hides_def_import_6() -> TestResult {
     )
 }
 
-#[ignore]
+#[test]
 fn hides_env_import_1() -> TestResult {
     fail_test(
         r#"module spam { export env foo { "foo" } }; use spam; hide spam foo; $nu.env.'spam foo'"#,
@@ -674,7 +674,7 @@ fn hides_env_import_1() -> TestResult {
     )
 }
 
-#[ignore]
+#[test]
 fn hides_env_import_2() -> TestResult {
     fail_test(
         r#"module spam { export env foo { "foo" } }; use spam; hide spam *; $nu.env.'spam foo'"#,
@@ -682,7 +682,7 @@ fn hides_env_import_2() -> TestResult {
     )
 }
 
-#[ignore]
+#[test]
 fn hides_env_import_3() -> TestResult {
     fail_test(
         r#"module spam { export env foo { "foo" }; } use spam; hide spam [foo]; $nu.env.'spam foo'"#,
@@ -690,7 +690,7 @@ fn hides_env_import_3() -> TestResult {
     )
 }
 
-#[ignore]
+#[test]
 fn hides_env_import_4() -> TestResult {
     fail_test(
         r#"module spam { export env foo { "foo" } }; use spam foo; hide foo; $nu.env.foo"#,
@@ -698,7 +698,7 @@ fn hides_env_import_4() -> TestResult {
     )
 }
 
-#[ignore]
+#[test]
 fn hides_env_import_5() -> TestResult {
     fail_test(
         r#"module spam { export env foo { "foo" } }; use spam *; hide foo; $nu.env.foo"#,
@@ -706,7 +706,7 @@ fn hides_env_import_5() -> TestResult {
     )
 }
 
-#[ignore]
+#[test]
 fn hides_env_import_6() -> TestResult {
     fail_test(
         r#"module spam { export env foo { "foo" } }; use spam; hide spam; $nu.env.'spam foo'"#,
@@ -730,7 +730,7 @@ fn use_def_import_after_hide() -> TestResult {
     )
 }
 
-#[ignore]
+#[test]
 fn use_env_import_after_hide() -> TestResult {
     run_test(
         r#"module spam { export env foo { "foo" } }; use spam foo; hide foo; use spam foo; $nu.env.foo"#,
@@ -746,7 +746,7 @@ fn hide_shadowed_decl() -> TestResult {
     )
 }
 
-#[ignore]
+#[test]
 fn hide_shadowed_env() -> TestResult {
     // TODO: waiting for a fix
     run_test(
@@ -763,7 +763,7 @@ fn hides_all_decls_within_scope() -> TestResult {
     )
 }
 
-#[ignore]
+#[test]
 fn hides_all_envs_within_scope() -> TestResult {
     fail_test(
         r#"module spam { export env foo { "bar" } }; let-env foo = "foo"; use spam foo; hide foo; $nu.env.foo"#,

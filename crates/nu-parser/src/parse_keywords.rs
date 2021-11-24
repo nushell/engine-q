@@ -836,11 +836,14 @@ pub fn parse_hide(
                         },
                     )
                 } else {
-                    // TODO: Or it could be an env var
-                    return (
-                        garbage_statement(spans),
-                        Some(ParseError::ModuleNotFound(spans[1])),
-                    );
+                    // Or it could be an env var
+                    (
+                        false,
+                        Overlay {
+                            decls: HashMap::new(),
+                            env_vars: HashMap::new(),
+                        },
+                    )
                 }
             } else {
                 return (
