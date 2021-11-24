@@ -5,8 +5,8 @@ mod stream;
 mod unit;
 
 use chrono::{DateTime, FixedOffset};
-use indexmap::map::IndexMap;
 use chrono_humanize::HumanTime;
+use indexmap::map::IndexMap;
 pub use range::*;
 use serde::{Deserialize, Serialize};
 pub use stream::*;

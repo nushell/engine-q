@@ -230,7 +230,10 @@ fn from_eml(
         );
     }
 
-    Ok(PipelineData::Value(Value::from(Spanned { item: collected, span: head })))
+    Ok(PipelineData::Value(Value::from(Spanned {
+        item: collected,
+        span: head,
+    })))
 }
 
 #[cfg(test)]

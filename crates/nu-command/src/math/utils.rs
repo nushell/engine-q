@@ -1,6 +1,6 @@
-use nu_protocol::ast::Call;
-use nu_protocol::{IntoPipelineData, PipelineData, ShellError, Span, Value, Spanned};
 use indexmap::map::IndexMap;
+use nu_protocol::ast::Call;
+use nu_protocol::{IntoPipelineData, PipelineData, ShellError, Span, Spanned, Value};
 
 pub fn run_with_function(
     call: &Call,
