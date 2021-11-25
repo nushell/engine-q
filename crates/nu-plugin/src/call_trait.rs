@@ -21,13 +21,14 @@ impl CallExtPlugin for Call {
     }
 
     fn rest<T: FromValue>(&self, starting_pos: usize) -> Result<Vec<T>, ShellError> {
-        let mut output = Vec::new();
-        for expression in self.positional.iter().skip(starting_pos) {
-            let value = expression_to_value(expression.clone())?;
-            output.push(FromValue::from_value(&value)?);
-        }
-
-        Ok(output)
+        self.positional
+            .iter()
+            .skip(starting_pos)
+            .map(|expression| {
+                expression_to_value(expression.clone())
+                    .and_then(|value| FromValue::from_value(&value))
+            })
+            .collect()
     }
 
     fn opt<T: FromValue>(&self, pos: usize) -> Result<Option<T>, ShellError> {

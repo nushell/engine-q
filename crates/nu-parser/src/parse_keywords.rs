@@ -1085,6 +1085,7 @@ pub fn parse_plugin(
     working_set: &mut StateWorkingSet,
     spans: &[Span],
 ) -> (Statement, Option<ParseError>) {
+    use nu_path::canonicalize;
     use nu_protocol::Signature;
 
     let name = working_set.get_span_contents(spans[0]);
@@ -1110,52 +1111,57 @@ pub fn parse_plugin(
                     spans[0],
                 )),
                 2 => {
+                    let mut filename = String::new();
+
                     let name_expr = working_set.get_span_contents(spans[1]);
-                    if let Ok(filename) = String::from_utf8(name_expr.to_vec()) {
-                        let source_file = Path::new(&filename);
+                    String::from_utf8(name_expr.to_vec())
+                        .map_err(|_| ParseError::NonUtf8(spans[1]))
+                        .and_then(|name| {
+                            canonicalize(&name).map_err(|e| ParseError::FileNotFound(e.to_string()))
+                        })
+                        .and_then(|source_file| {
+                            if source_file.exists() & source_file.is_file() {
+                                filename = source_file
+                                    .to_str()
+                                    .expect("It has being checked that is a file and exists")
+                                    .to_string();
 
-                        if source_file.exists() & source_file.is_file() {
-                            // get signature from plugin
-                            match get_signature(source_file) {
-                                Err(err) => Some(ParseError::PluginError(format!("{}", err))),
-                                Ok(signatures) => {
-                                    for signature in signatures {
-                                        // create plugin command declaration (need struct impl Command)
-                                        // store declaration in working set
-                                        let plugin_decl =
-                                            PluginDeclaration::new(filename.clone(), signature);
-
-                                        working_set.add_plugin_decl(Box::new(plugin_decl));
-                                    }
-
-                                    None
-                                }
+                                get_signature(source_file.as_path())
+                                    .map_err(|err| ParseError::PluginError(format!("{}", err)))
+                            } else {
+                                Err(ParseError::FileNotFound(format!("{:?}", source_file)))
                             }
-                        } else {
-                            Some(ParseError::FileNotFound(filename))
-                        }
-                    } else {
-                        Some(ParseError::NonUtf8(spans[1]))
-                    }
+                        })
+                        .map(|signatures| {
+                            for signature in signatures {
+                                // create plugin command declaration (need struct impl Command)
+                                // store declaration in working set
+                                let plugin_decl =
+                                    PluginDeclaration::new(filename.clone(), signature);
+
+                                working_set.add_plugin_decl(Box::new(plugin_decl));
+                            }
+                        })
+                        .err()
                 }
                 3 => {
-                    let filename = working_set.get_span_contents(spans[1]);
+                    let filename_slice = working_set.get_span_contents(spans[1]);
                     let signature = working_set.get_span_contents(spans[2]);
+                    let mut filename = String::new();
 
-                    if let Ok(filename) = String::from_utf8(filename.to_vec()) {
-                        if let Ok(signature) = serde_json::from_slice::<Signature>(signature) {
+                    String::from_utf8(filename_slice.to_vec())
+                        .map_err(|_| ParseError::NonUtf8(spans[1]))
+                        .and_then(|name| {
+                            filename = name;
+                            serde_json::from_slice::<Signature>(signature).map_err(|_| {
+                                ParseError::PluginError("unable to deserialize signature".into())
+                            })
+                        })
+                        .map(|signature| {
                             let plugin_decl = PluginDeclaration::new(filename, signature);
                             working_set.add_plugin_decl(Box::new(plugin_decl));
-
-                            None
-                        } else {
-                            Some(ParseError::PluginError(
-                                "unable to deserialize signature".into(),
-                            ))
-                        }
-                    } else {
-                        Some(ParseError::NonUtf8(spans[1]))
-                    }
+                        })
+                        .err()
                 }
                 _ => {
                     let span = spans[3..].iter().fold(spans[3], |acc, next| Span {

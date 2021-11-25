@@ -24,6 +24,22 @@ pub(crate) fn serialize_value(value: &Value, mut builder: value::Builder) {
             builder.set_string(val);
             *span
         }
+        Value::Record { cols, vals, span } => {
+            let mut record_builder = builder.reborrow().init_record();
+
+            let mut cols_builder = record_builder.reborrow().init_cols(cols.len() as u32);
+            cols.iter()
+                .enumerate()
+                .for_each(|(index, col)| cols_builder.set(index as u32, col.as_str()));
+
+            let mut values_builder = record_builder.reborrow().init_vals(vals.len() as u32);
+            vals.iter().enumerate().for_each(|(index, value)| {
+                let inner_builder = values_builder.reborrow().get(index as u32);
+                serialize_value(value, inner_builder);
+            });
+
+            *span
+        }
         Value::List { vals, span } => {
             let mut list_builder = builder.reborrow().init_list(vals.len() as u32);
             for (index, value) in vals.iter().enumerate() {
@@ -65,6 +81,28 @@ pub(crate) fn deserialize_value(reader: value::Reader) -> Result<Value, PluginEr
                 .map_err(|e| PluginError::DecodingError(e.to_string()))?
                 .to_string();
             Ok(Value::String { val: string, span })
+        }
+        Ok(value::Record(record)) => {
+            let record = record.map_err(|e| PluginError::DecodingError(e.to_string()))?;
+
+            let cols = record
+                .get_cols()
+                .map_err(|e| PluginError::DecodingError(e.to_string()))?
+                .iter()
+                .map(|col| {
+                    col.map_err(|e| PluginError::DecodingError(e.to_string()))
+                        .map(|col| col.to_string())
+                })
+                .collect::<Result<Vec<String>, PluginError>>()?;
+
+            let vals = record
+                .get_vals()
+                .map_err(|e| PluginError::DecodingError(e.to_string()))?
+                .iter()
+                .map(deserialize_value)
+                .collect::<Result<Vec<Value>, PluginError>>()?;
+
+            Ok(Value::Record { cols, vals, span })
         }
         Ok(value::List(vals)) => {
             let values = vals.map_err(|e| PluginError::DecodingError(e.to_string()))?;
@@ -261,5 +299,71 @@ mod tests {
             value.span().expect("span"),
             returned_value.span().expect("span")
         )
+    }
+
+    #[test]
+    fn record_round_trip() {
+        let inner_values = vec![
+            Value::Bool {
+                val: false,
+                span: Span { start: 1, end: 20 },
+            },
+            Value::Int {
+                val: 10,
+                span: Span { start: 2, end: 30 },
+            },
+            Value::Float {
+                val: 10.0,
+                span: Span { start: 3, end: 40 },
+            },
+            Value::String {
+                val: "inner string".into(),
+                span: Span { start: 4, end: 50 },
+            },
+        ];
+
+        let vals = vec![
+            Value::Bool {
+                val: true,
+                span: Span { start: 1, end: 20 },
+            },
+            Value::Int {
+                val: 66,
+                span: Span { start: 2, end: 30 },
+            },
+            Value::Float {
+                val: 66.6,
+                span: Span { start: 3, end: 40 },
+            },
+            Value::String {
+                val: "a string".into(),
+                span: Span { start: 4, end: 50 },
+            },
+            Value::List {
+                vals: inner_values,
+                span: Span { start: 5, end: 60 },
+            },
+        ];
+
+        let cols = vec![
+            "bool".to_string(),
+            "int".to_string(),
+            "float".to_string(),
+            "string".to_string(),
+            "list".to_string(),
+        ];
+
+        let record = Value::Record {
+            cols,
+            vals,
+            span: Span { start: 1, end: 20 },
+        };
+
+        let mut buffer: Vec<u8> = Vec::new();
+        write_buffer(&record, &mut buffer).expect("unable to serialize message");
+        let returned_record =
+            read_buffer(&mut buffer.as_slice()).expect("unable to deserialize message");
+
+        assert_eq!(record, returned_record)
     }
 }

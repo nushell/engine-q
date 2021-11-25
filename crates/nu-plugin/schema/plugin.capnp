@@ -41,7 +41,13 @@ struct Value {
 		float @4 :Float64;
 		string @5 :Text;
 		list @6 :List(Value);
+		record @7: Record;
 	}
+}
+
+struct Record {
+	cols @0 :List(Text);
+	vals @1 :List(Value);
 }
 
 # Structs required to define the plugin signature
@@ -107,7 +113,7 @@ struct Expression {
 		float @3 :Float64;
 		string @4 :Text;
 		list @5 :List(Expression);
-		# The expression list can be exteded based on the user need
+		# The expression list can be exteded based on the user needs
 		# If a plugin requires something from the expression object, it
 		# will need to be added to this list
 	}
