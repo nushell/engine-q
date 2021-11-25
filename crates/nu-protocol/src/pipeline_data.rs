@@ -51,6 +51,16 @@ impl PipelineData {
         }
     }
 
+    pub fn into_interruptible_iter(self, ctrlc: Option<Arc<AtomicBool>>) -> PipelineIterator {
+        let mut iter = self.into_iter();
+
+        if let PipelineIterator(PipelineData::Stream(s)) = &mut iter {
+            s.ctrlc = ctrlc;
+        }
+
+        iter
+    }
+
     pub fn collect_string(self, separator: &str, config: &Config) -> String {
         match self {
             PipelineData::Value(v) => v.into_string(separator, config),
