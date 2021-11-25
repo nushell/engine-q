@@ -23,6 +23,7 @@ pub fn create_default_context() -> EngineState {
         // TODO: sort default context items categorically
         bind_command!(
             Alias,
+            Append,
             Benchmark,
             BuildString,
             Cd,
@@ -35,8 +36,11 @@ pub fn create_default_context() -> EngineState {
             DateNow,
             DateToTable,
             DateToTimezone,
+            Debug,
             Def,
+            Describe,
             Do,
+            Drop,
             Each,
             Echo,
             ExportCommand,
@@ -52,8 +56,11 @@ pub fn create_default_context() -> EngineState {
             FromYaml,
             FromYml,
             FromTsv,
+            FromToml,
             FromUrl,
             FromEml,
+            FromOds,
+            FromXlsx,
             Get,
             Griddle,
             Help,
@@ -136,6 +143,9 @@ pub fn create_default_context() -> EngineState {
         #[cfg(feature = "plugin")]
         bind_command!(Register);
 
+        #[cfg(feature = "dataframe")]
+        bind_command!(OpenDataFrame, ToDataFrame);
+
         // This is a WIP proof of concept
         bind_command!(ListGitBranches, Git, GitCheckout, Source);
 
@@ -145,7 +155,7 @@ pub fn create_default_context() -> EngineState {
         working_set.render()
     };
 
-    engine_state.merge_delta(delta);
+    let _ = engine_state.merge_delta(delta);
 
     engine_state
 }

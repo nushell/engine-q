@@ -1,4 +1,6 @@
+mod append;
 mod collect;
+mod drop;
 mod each;
 mod first;
 mod get;
@@ -15,7 +17,9 @@ mod where_;
 mod wrap;
 mod zip;
 
+pub use append::Append;
 pub use collect::Collect;
+pub use drop::*;
 pub use each::Each;
 pub use first::First;
 pub use get::Get;
