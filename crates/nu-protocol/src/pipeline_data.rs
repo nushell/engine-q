@@ -214,12 +214,12 @@ impl IntoIterator for PipelineData {
                 }))
             }
             PipelineData::Value(Value::Range { val, .. }) => match val.into_range_iter() {
-                Ok(val) => PipelineIterator(PipelineData::Stream(ValueStream {
-                    stream: Box::new(val),
+                Ok(iter) => PipelineIterator(PipelineData::Stream(ValueStream {
+                    stream: Box::new(iter),
                     ctrlc: None,
                 })),
-                Err(e) => PipelineIterator(PipelineData::Stream(ValueStream {
-                    stream: Box::new(vec![Value::Error { error: e }].into_iter()),
+                Err(error) => PipelineIterator(PipelineData::Stream(ValueStream {
+                    stream: Box::new(std::iter::once(Value::Error { error })),
                     ctrlc: None,
                 })),
             },
@@ -234,10 +234,7 @@ impl Iterator for PipelineIterator {
     fn next(&mut self) -> Option<Self::Item> {
         match &mut self.0 {
             PipelineData::Value(Value::Nothing { .. }) => None,
-            PipelineData::Value(v) => {
-                let prev = std::mem::take(v);
-                Some(prev)
-            }
+            PipelineData::Value(v) => Some(std::mem::take(v)),
             PipelineData::Stream(stream) => stream.next(),
         }
     }
