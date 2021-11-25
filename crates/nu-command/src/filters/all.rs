@@ -1,8 +1,9 @@
 use nu_engine::eval_expression;
-use nu_protocol::ast::{Call, Expr, Expression};
-use nu_protocol::engine::{Command, EngineState, Stack};
-use nu_protocol::IntoPipelineData;
-use nu_protocol::{Category, Example, PipelineData, ShellError, Signature, SyntaxShape};
+use nu_protocol::{
+    ast::{Call, Expr, Expression},
+    engine::{Command, EngineState, Stack},
+    Category, Example, IntoPipelineData, PipelineData, ShellError, Signature, SyntaxShape,
+};
 
 #[derive(Clone)]
 pub struct All;
