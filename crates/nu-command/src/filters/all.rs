@@ -1,6 +1,7 @@
 use nu_engine::eval_expression;
 use nu_protocol::ast::{Call, Expr, Expression};
 use nu_protocol::engine::{Command, EngineState, Stack};
+use nu_protocol::IntoPipelineData;
 use nu_protocol::{Category, Example, PipelineData, ShellError, Signature, SyntaxShape};
 
 #[derive(Clone)]
@@ -65,13 +66,13 @@ impl Command for All {
         // FIXME: Expensive clone. I would need a way to collect the captures of the `RowCondition`.
         let mut stack = stack.clone();
 
-        input.all(
-            move |value| {
+        Ok(input
+            .into_interruptible_iter(ctrlc)
+            .all(move |value| {
                 stack.add_var(var_id, value);
                 eval_expression(&engine_state, &mut stack, &expr).map_or(false, |v| v.is_true())
-            },
-            ctrlc,
-        )
+            })
+            .into_pipeline_data())
     }
 }
 
