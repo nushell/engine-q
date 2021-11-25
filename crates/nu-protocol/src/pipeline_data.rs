@@ -114,13 +114,10 @@ impl PipelineData {
             PipelineData::Value(Value::Range { val, .. }) => {
                 Ok(val.into_range_iter()?.map(f).into_pipeline_data(ctrlc))
             }
-            PipelineData::Value(v) => {
-                let output = f(v);
-                match output {
-                    Value::Error { error } => Err(error),
-                    v => Ok(v.into_pipeline_data()),
-                }
-            }
+            PipelineData::Value(v) => match f(v) {
+                Value::Error { error } => Err(error),
+                v => Ok(v.into_pipeline_data()),
+            },
         }
     }
 
@@ -163,10 +160,9 @@ impl PipelineData {
                 Ok(vals.into_iter().filter(f).into_pipeline_data(ctrlc))
             }
             PipelineData::Stream(stream) => Ok(stream.filter(f).into_pipeline_data(ctrlc)),
-            PipelineData::Value(Value::Range { val, .. }) => match val.into_range_iter() {
-                Ok(iter) => Ok(iter.filter(f).into_pipeline_data(ctrlc)),
-                Err(error) => Err(error),
-            },
+            PipelineData::Value(Value::Range { val, .. }) => {
+                Ok(val.into_range_iter()?.filter(f).into_pipeline_data(ctrlc))
+            }
             PipelineData::Value(v) => {
                 if f(&v) {
                     Ok(v.into_pipeline_data())
