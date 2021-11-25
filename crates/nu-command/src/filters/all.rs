@@ -64,7 +64,7 @@ impl Command for All {
         let ctrlc = engine_state.ctrlc.clone();
         let engine_state = engine_state.clone();
 
-        // FIXME: Expensive clone. I would need a way to collect the captures of the `RowCondition`.
+        // FIXME: Expensive clone. We would need a way to collect the captures of the `RowCondition`.
         let mut stack = stack.clone();
 
         Ok(input
