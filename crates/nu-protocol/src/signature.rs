@@ -42,9 +42,11 @@ pub enum Category {
     Filters,
     Formats,
     Math,
+    Shells,
     Strings,
     System,
     Viewers,
+    Custom(String),
 }
 
 impl std::fmt::Display for Category {
@@ -60,9 +62,11 @@ impl std::fmt::Display for Category {
             Category::Filters => "filters",
             Category::Formats => "formats",
             Category::Math => "math",
+            Category::Shells => "shells",
             Category::Strings => "strings",
             Category::System => "system",
             Category::Viewers => "viewers",
+            Category::Custom(name) => name,
         };
 
         write!(f, "{}", msg)

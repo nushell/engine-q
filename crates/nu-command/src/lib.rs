@@ -9,9 +9,13 @@ mod filesystem;
 mod filters;
 mod formats;
 mod math;
+mod shells;
 mod strings;
 mod system;
 mod viewers;
+
+#[cfg(feature = "dataframe")]
+mod dataframe;
 
 pub use conversions::*;
 pub use core_commands::*;
@@ -24,6 +28,10 @@ pub use filesystem::*;
 pub use filters::*;
 pub use formats::*;
 pub use math::*;
+pub use shells::*;
 pub use strings::*;
 pub use system::*;
 pub use viewers::*;
+
+#[cfg(feature = "dataframe")]
+pub use dataframe::*;

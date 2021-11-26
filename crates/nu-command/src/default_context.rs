@@ -1,7 +1,4 @@
-use nu_protocol::{
-    engine::{EngineState, StateWorkingSet},
-    Signature,
-};
+use nu_protocol::engine::{EngineState, StateWorkingSet};
 
 use crate::*;
 
@@ -43,6 +40,7 @@ pub fn create_default_context() -> EngineState {
             Drop,
             Each,
             Echo,
+            Exit,
             ExportCommand,
             ExportDef,
             ExportEnv,
@@ -60,6 +58,9 @@ pub fn create_default_context() -> EngineState {
             FromUrl,
             FromEml,
             FromOds,
+            FromIcs,
+            FromIni,
+            FromVcf,
             FromXlsx,
             Get,
             Griddle,
@@ -105,6 +106,7 @@ pub fn create_default_context() -> EngineState {
             Select,
             Shuffle,
             Size,
+            Source,
             Split,
             SplitChars,
             SplitColumn,
@@ -143,11 +145,11 @@ pub fn create_default_context() -> EngineState {
         #[cfg(feature = "plugin")]
         bind_command!(Register);
 
-        // This is a WIP proof of concept
-        bind_command!(ListGitBranches, Git, GitCheckout, Source);
+        #[cfg(feature = "dataframe")]
+        bind_command!(OpenDataFrame, ToDataFrame);
 
-        let sig = Signature::build("exit");
-        working_set.add_decl(sig.predeclare());
+        // This is a WIP proof of concept
+        // bind_command!(ListGitBranches, Git, GitCheckout, Source);
 
         working_set.render()
     };
