@@ -1,4 +1,4 @@
-use nu_engine::eval_expression;
+use nu_engine::eval_block;
 use nu_protocol::{
     ast::{Call, Expr, Expression},
     engine::{Command, EngineState, Stack},
@@ -52,26 +52,34 @@ impl Command for All {
         input: PipelineData,
     ) -> Result<PipelineData, ShellError> {
         let predicate = &call.positional[0];
-
-        let (var_id, expr) = match predicate {
+        let block_id = match predicate {
             Expression {
-                expr: Expr::RowCondition(var_id, expr),
+                expr: Expr::RowCondition(block_id),
                 ..
-            } => (*var_id, expr.clone()),
+            } => *block_id,
             _ => return Err(ShellError::InternalError("Expected row condition".into())),
         };
+
+        let span = call.head;
+
+        let block = engine_state.get_block(block_id);
+        let var_id = block.signature.get_positional(0).and_then(|arg| arg.var_id);
+        let mut stack = stack.collect_captures(&block.captures);
 
         let ctrlc = engine_state.ctrlc.clone();
         let engine_state = engine_state.clone();
 
-        // FIXME: Expensive clone. We would need a way to collect the captures of the `RowCondition`.
-        let mut stack = stack.clone();
-
         Ok(input
             .into_interruptible_iter(ctrlc)
             .all(move |value| {
-                stack.add_var(var_id, value);
-                eval_expression(&engine_state, &mut stack, &expr).map_or(false, |v| v.is_true())
+                if let Some(var_id) = var_id {
+                    stack.add_var(var_id, value);
+                }
+
+                eval_block(&engine_state, &mut stack, &block, PipelineData::new(span))
+                    .map_or(false, |pipeline_data| {
+                        pipeline_data.into_value(span).is_true()
+                    })
             })
             .into_pipeline_data())
     }
