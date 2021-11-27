@@ -28,10 +28,6 @@ impl Command for DescribeDF {
         Signature::build("describe").category(Category::Custom("dataframe".into()))
     }
 
-    fn can_replace(&self) -> Option<(&str, Category)> {
-        Some((self.name(), Category::Core))
-    }
-
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "dataframe description",
