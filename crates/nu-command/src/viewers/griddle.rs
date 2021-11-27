@@ -1,3 +1,4 @@
+use super::icons::{icon_for_file, iconify_style_ansi};
 use lscolors::{LsColors, Style};
 use nu_engine::CallExt;
 use nu_protocol::{
@@ -57,9 +58,7 @@ prints out the list properly."#
         let width_param: Option<String> = call.get_flag(engine_state, stack, "width")?;
         let color_param: bool = call.has_flag("color");
         let separator_param: Option<String> = call.get_flag(engine_state, stack, "separator")?;
-
         let config = stack.get_config()?;
-
         let env_str = stack.get_env_var("LS_COLORS");
 
         match input {
@@ -67,7 +66,7 @@ prints out the list properly."#
                 // dbg!("value::list");
                 let data = convert_to_list2(vals, &config);
                 if let Some(items) = data {
-                    Ok(create_grid_output2(
+                    Ok(create_grid_output(
                         items,
                         call,
                         width_param,
@@ -83,7 +82,7 @@ prints out the list properly."#
                 // dbg!("value::stream");
                 let data = convert_to_list2(stream, &config);
                 if let Some(items) = data {
-                    Ok(create_grid_output2(
+                    Ok(create_grid_output(
                         items,
                         call,
                         width_param,
@@ -104,7 +103,7 @@ prints out the list properly."#
                     items.push((i, c, v.into_string(", ", &config)))
                 }
 
-                Ok(create_grid_output2(
+                Ok(create_grid_output(
                     items,
                     call,
                     width_param,
@@ -122,7 +121,30 @@ prints out the list properly."#
     }
 }
 
-fn create_grid_output2(
+pub fn to_nu_ansi_term_color(ls_colors_color: lscolors::Color) -> nu_ansi_term::Color {
+    match ls_colors_color {
+        lscolors::Color::RGB(r, g, b) => nu_ansi_term::Color::Rgb(r, g, b),
+        lscolors::Color::Fixed(n) => nu_ansi_term::Color::Fixed(n),
+        lscolors::Color::Black => nu_ansi_term::Color::Black,
+        lscolors::Color::Red => nu_ansi_term::Color::Red,
+        lscolors::Color::Green => nu_ansi_term::Color::Green,
+        lscolors::Color::Yellow => nu_ansi_term::Color::Yellow,
+        lscolors::Color::Blue => nu_ansi_term::Color::Blue,
+        lscolors::Color::Magenta => nu_ansi_term::Color::Purple,
+        lscolors::Color::Cyan => nu_ansi_term::Color::Cyan,
+        lscolors::Color::White => nu_ansi_term::Color::White,
+    }
+}
+
+fn strip_ansi(astring: &str) -> String {
+    if let Ok(bytes) = strip_ansi_escapes::strip(astring) {
+        String::from_utf8_lossy(&bytes).to_string()
+    } else {
+        astring.to_string()
+    }
+}
+
+fn create_grid_output(
     items: Vec<(usize, String, String)>,
     call: &Call,
     width_param: Option<String>,
@@ -157,14 +179,46 @@ fn create_grid_output2(
         // only output value if the header name is 'name'
         if header == "name" {
             if color_param {
-                let style = ls_colors.style_for_path(value.clone());
-                let ansi_style = style.map(Style::to_crossterm_style).unwrap_or_default();
-                let mut cell = Cell::from(ansi_style.apply(value).to_string());
-                cell.alignment = Alignment::Right;
+                let no_ansi = strip_ansi(&value);
+                let path = std::path::Path::new(&no_ansi);
+                let icon = icon_for_file(path.clone());
+                let ls_colors_style = ls_colors.style_for_path(path);
+                // eprintln!("ls_colors_style: {:?}", &ls_colors_style);
+                let ls_to_ansi = match ls_colors_style {
+                    Some(c) => c.to_ansi_term_style(),
+                    None => ansi_term::Style::default(),
+                };
+                // eprintln!("ls_to_ansi: {:?}", &ls_to_ansi);
+
+                let icon_style = iconify_style_ansi(ansi_term::Style {
+                    foreground: ls_to_ansi.foreground,
+                    background: ls_to_ansi.background,
+                    ..Default::default()
+                });
+                // eprintln!("icon_style: {:?}", &icon_style);
+
+                let ansi_style = ls_colors_style
+                    .map(Style::to_crossterm_style)
+                    .unwrap_or_default();
+
+                // eprintln!("ansi_style: {:?}", &ansi_style);
+                // let xt_icon_style = icon_style
+                //     .map(Style::to_crossterm_style)
+                //     .unwrap_or_default();
+                // let xt_icon_style = Style::to_crossterm_style(icon_style);
+                let item = format!(
+                    "{} {}",
+                    // ansi_style.apply(icon).to_string(),
+                    icon_style.paint(icon.to_string()),
+                    ansi_style.apply(value).to_string()
+                );
+                // let mut cell = Cell::from(ansi_style.apply(file_with_icon).to_string());
+                let mut cell = Cell::from(item);
+                cell.alignment = Alignment::Left;
                 grid.add(cell);
             } else {
                 let mut cell = Cell::from(value);
-                cell.alignment = Alignment::Right;
+                cell.alignment = Alignment::Left;
                 grid.add(cell);
             }
         }

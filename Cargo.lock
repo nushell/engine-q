@@ -1429,6 +1429,7 @@ name = "nu-command"
 version = "0.1.0"
 dependencies = [
  "Inflector",
+ "ansi_term",
  "bytesize",
  "calamine",
  "chrono",
@@ -1441,6 +1442,7 @@ dependencies = [
  "ical",
  "indexmap",
  "itertools",
+ "lazy_static",
  "lscolors",
  "meval",
  "nu-ansi-term 0.39.0",
@@ -1460,6 +1462,7 @@ dependencies = [
  "serde_ini",
  "serde_urlencoded",
  "serde_yaml",
+ "strip-ansi-escapes",
  "sysinfo",
  "terminal_size",
  "thiserror",
