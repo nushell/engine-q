@@ -106,6 +106,7 @@ pub fn create_default_context() -> EngineState {
             Select,
             Shuffle,
             Size,
+            Sleep,
             Source,
             Split,
             SplitChars,
