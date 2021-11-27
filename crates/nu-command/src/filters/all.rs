@@ -93,6 +93,6 @@ mod tests {
     fn test_examples() {
         use crate::test_examples;
 
-        test_examples(All {})
+        test_examples(All)
     }
 }
