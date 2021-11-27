@@ -39,7 +39,7 @@ impl Command for Sleep {
         _input: PipelineData,
     ) -> Result<PipelineData, ShellError> {
         fn duration_from_i64(val: i64) -> Duration {
-            Duration::from_nanos(if val < 0 { 0 as u64 } else { val as u64 })
+            Duration::from_nanos(if val < 0 { 0 } else { val as u64 })
         }
 
         let duration: i64 = call.req(engine_state, stack, 0)?;
