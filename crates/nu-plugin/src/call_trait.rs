@@ -13,7 +13,7 @@ pub trait CallExtPlugin {
 impl CallExtPlugin for Call {
     fn get_flag<T: FromValue>(&self, name: &str) -> Result<Option<T>, ShellError> {
         if let Some(expression) = self.get_flag_expr(name) {
-            let value = expression_to_value(expression)?;
+            let value = expression_to_value(expression, self.head)?;
             FromValue::from_value(&value).map(Some)
         } else {
             Ok(None)
@@ -25,7 +25,7 @@ impl CallExtPlugin for Call {
             .iter()
             .skip(starting_pos)
             .map(|expression| {
-                expression_to_value(expression.clone())
+                expression_to_value(expression.clone(), self.head)
                     .and_then(|value| FromValue::from_value(&value))
             })
             .collect()
@@ -33,7 +33,7 @@ impl CallExtPlugin for Call {
 
     fn opt<T: FromValue>(&self, pos: usize) -> Result<Option<T>, ShellError> {
         if let Some(expression) = self.nth(pos) {
-            let value = expression_to_value(expression)?;
+            let value = expression_to_value(expression, self.head)?;
             FromValue::from_value(&value).map(Some)
         } else {
             Ok(None)
@@ -42,7 +42,7 @@ impl CallExtPlugin for Call {
 
     fn req<T: FromValue>(&self, pos: usize) -> Result<T, ShellError> {
         if let Some(expression) = self.nth(pos) {
-            let value = expression_to_value(expression)?;
+            let value = expression_to_value(expression, self.head)?;
             FromValue::from_value(&value)
         } else {
             Err(ShellError::AccessBeyondEnd(
@@ -53,34 +53,19 @@ impl CallExtPlugin for Call {
     }
 }
 
-fn expression_to_value(expression: Expression) -> Result<Value, ShellError> {
+fn expression_to_value(expression: Expression, span: Span) -> Result<Value, ShellError> {
     match expression.expr {
-        Expr::Bool(val) => Ok(Value::Bool {
-            val,
-            span: Span::unknown(),
-        }),
-        Expr::Int(val) => Ok(Value::Int {
-            val,
-            span: Span::unknown(),
-        }),
-        Expr::Float(val) => Ok(Value::Float {
-            val,
-            span: Span::unknown(),
-        }),
-        Expr::String(val) => Ok(Value::String {
-            val,
-            span: Span::unknown(),
-        }),
+        Expr::Bool(val) => Ok(Value::Bool { val, span }),
+        Expr::Int(val) => Ok(Value::Int { val, span }),
+        Expr::Float(val) => Ok(Value::Float { val, span }),
+        Expr::String(val) => Ok(Value::String { val, span }),
         Expr::List(exprs) => {
             let values = exprs
                 .into_iter()
-                .map(expression_to_value)
+                .map(|expression| expression_to_value(expression, span.clone()))
                 .collect::<Result<Vec<Value>, ShellError>>()?;
 
-            Ok(Value::List {
-                vals: values,
-                span: Span::unknown(),
-            })
+            Ok(Value::List { vals: values, span })
         }
         v => Err(ShellError::InternalError(format!(
             "Expression type {:?} not allowed as plugin argument",

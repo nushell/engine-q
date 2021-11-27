@@ -14,6 +14,7 @@ members = [
 	"crates/nu-protocol",
 	"crates/nu-plugin",
 	"crates/nu-dataframe",
+	"crates/nu_plugin_example",
 	"crates/nu_plugin_inc",
 ]
 

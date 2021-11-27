@@ -222,7 +222,7 @@ impl EngineState {
         if let Some(plugin_path) = &self.plugin_signatures {
             // Always creating the file which will erase previous signatures
             let mut plugin_file = std::fs::File::create(plugin_path.as_path())
-                .map_err(|err| ShellError::PluginError(err.to_string()))?;
+                .map_err(|err| ShellError::InternalError(err.to_string()))?;
 
             // Plugin definitions with parsed signature
             for decl in self.plugin_decls() {
@@ -232,16 +232,16 @@ impl EngineState {
 
                 let line = serde_json::to_string_pretty(&decl.signature())
                     .map(|signature| format!("register {} {}\n", file_name, signature))
-                    .map_err(|err| ShellError::PluginError(err.to_string()))?;
+                    .map_err(|err| ShellError::InternalError(err.to_string()))?;
 
                 plugin_file
                     .write_all(line.as_bytes())
-                    .map_err(|err| ShellError::PluginError(err.to_string()))?;
+                    .map_err(|err| ShellError::InternalError(err.to_string()))?;
             }
 
             Ok(())
         } else {
-            Err(ShellError::PluginError("Plugin file not found".into()))
+            Err(ShellError::InternalError("Plugin file not found".into()))
         }
     }
 

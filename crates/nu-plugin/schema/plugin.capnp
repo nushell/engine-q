@@ -108,11 +108,9 @@ enum Shape {
 struct Expression {
 	union {
 		garbage @0 :Void;
-		bool @1 :Bool;
-		int @2 :Int64;
-		float @3 :Float64;
-		string @4 :Text;
-		list @5 :List(Expression);
+		int @1 :Int64;
+		float @2 :Float64;
+		string @3 :Text;
 		# The expression list can be exteded based on the user needs
 		# If a plugin requires something from the expression object, it
 		# will need to be added to this list

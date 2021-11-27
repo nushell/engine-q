@@ -2828,7 +2828,7 @@ impl ::capnp::traits::HasTypeId for Shape {
 }
 
 pub mod expression {
-    pub use self::Which::{Bool, Float, Garbage, Int, List, String};
+    pub use self::Which::{Float, Garbage, Int, String};
 
     #[derive(Copy, Clone)]
     pub struct Owned(());
@@ -2894,13 +2894,7 @@ pub mod expression {
             self.reader.total_size()
         }
         pub fn has_string(&self) -> bool {
-            if self.reader.get_data_field::<u16>(0) != 4 {
-                return false;
-            }
-            !self.reader.get_pointer_field(0).is_null()
-        }
-        pub fn has_list(&self) -> bool {
-            if self.reader.get_data_field::<u16>(0) != 5 {
+            if self.reader.get_data_field::<u16>(0) != 3 {
                 return false;
             }
             !self.reader.get_pointer_field(0).is_null()
@@ -2909,16 +2903,9 @@ pub mod expression {
         pub fn which(self) -> ::core::result::Result<WhichReader<'a>, ::capnp::NotInSchema> {
             match self.reader.get_data_field::<u16>(0) {
                 0 => ::core::result::Result::Ok(Garbage(())),
-                1 => ::core::result::Result::Ok(Bool(self.reader.get_bool_field(16))),
-                2 => ::core::result::Result::Ok(Int(self.reader.get_data_field::<i64>(1))),
-                3 => ::core::result::Result::Ok(Float(self.reader.get_data_field::<f64>(1))),
-                4 => ::core::result::Result::Ok(String(
-                    ::capnp::traits::FromPointerReader::get_from_pointer(
-                        &self.reader.get_pointer_field(0),
-                        ::core::option::Option::None,
-                    ),
-                )),
-                5 => ::core::result::Result::Ok(List(
+                1 => ::core::result::Result::Ok(Int(self.reader.get_data_field::<i64>(1))),
+                2 => ::core::result::Result::Ok(Float(self.reader.get_data_field::<f64>(1))),
+                3 => ::core::result::Result::Ok(String(
                     ::capnp::traits::FromPointerReader::get_from_pointer(
                         &self.reader.get_pointer_field(0),
                         ::core::option::Option::None,
@@ -3003,61 +2990,27 @@ pub mod expression {
             self.builder.set_data_field::<u16>(0, 0);
         }
         #[inline]
-        pub fn set_bool(&mut self, value: bool) {
-            self.builder.set_data_field::<u16>(0, 1);
-            self.builder.set_bool_field(16, value);
-        }
-        #[inline]
         pub fn set_int(&mut self, value: i64) {
-            self.builder.set_data_field::<u16>(0, 2);
+            self.builder.set_data_field::<u16>(0, 1);
             self.builder.set_data_field::<i64>(1, value);
         }
         #[inline]
         pub fn set_float(&mut self, value: f64) {
-            self.builder.set_data_field::<u16>(0, 3);
+            self.builder.set_data_field::<u16>(0, 2);
             self.builder.set_data_field::<f64>(1, value);
         }
         #[inline]
         pub fn set_string(&mut self, value: ::capnp::text::Reader<'_>) {
-            self.builder.set_data_field::<u16>(0, 4);
+            self.builder.set_data_field::<u16>(0, 3);
             self.builder.get_pointer_field(0).set_text(value);
         }
         #[inline]
         pub fn init_string(self, size: u32) -> ::capnp::text::Builder<'a> {
-            self.builder.set_data_field::<u16>(0, 4);
+            self.builder.set_data_field::<u16>(0, 3);
             self.builder.get_pointer_field(0).init_text(size)
         }
         pub fn has_string(&self) -> bool {
-            if self.builder.get_data_field::<u16>(0) != 4 {
-                return false;
-            }
-            !self.builder.get_pointer_field(0).is_null()
-        }
-        #[inline]
-        pub fn set_list(
-            &mut self,
-            value: ::capnp::struct_list::Reader<'a, crate::plugin_capnp::expression::Owned>,
-        ) -> ::capnp::Result<()> {
-            self.builder.set_data_field::<u16>(0, 5);
-            ::capnp::traits::SetPointerBuilder::set_pointer_builder(
-                self.builder.get_pointer_field(0),
-                value,
-                false,
-            )
-        }
-        #[inline]
-        pub fn init_list(
-            self,
-            size: u32,
-        ) -> ::capnp::struct_list::Builder<'a, crate::plugin_capnp::expression::Owned> {
-            self.builder.set_data_field::<u16>(0, 5);
-            ::capnp::traits::FromPointerBuilder::init_pointer(
-                self.builder.get_pointer_field(0),
-                size,
-            )
-        }
-        pub fn has_list(&self) -> bool {
-            if self.builder.get_data_field::<u16>(0) != 5 {
+            if self.builder.get_data_field::<u16>(0) != 3 {
                 return false;
             }
             !self.builder.get_pointer_field(0).is_null()
@@ -3066,16 +3019,9 @@ pub mod expression {
         pub fn which(self) -> ::core::result::Result<WhichBuilder<'a>, ::capnp::NotInSchema> {
             match self.builder.get_data_field::<u16>(0) {
                 0 => ::core::result::Result::Ok(Garbage(())),
-                1 => ::core::result::Result::Ok(Bool(self.builder.get_bool_field(16))),
-                2 => ::core::result::Result::Ok(Int(self.builder.get_data_field::<i64>(1))),
-                3 => ::core::result::Result::Ok(Float(self.builder.get_data_field::<f64>(1))),
-                4 => ::core::result::Result::Ok(String(
-                    ::capnp::traits::FromPointerBuilder::get_from_pointer(
-                        self.builder.get_pointer_field(0),
-                        ::core::option::Option::None,
-                    ),
-                )),
-                5 => ::core::result::Result::Ok(List(
+                1 => ::core::result::Result::Ok(Int(self.builder.get_data_field::<i64>(1))),
+                2 => ::core::result::Result::Ok(Float(self.builder.get_data_field::<f64>(1))),
+                3 => ::core::result::Result::Ok(String(
                     ::capnp::traits::FromPointerBuilder::get_from_pointer(
                         self.builder.get_pointer_field(0),
                         ::core::option::Option::None,
@@ -3105,22 +3051,14 @@ pub mod expression {
         };
         pub const TYPE_ID: u64 = 0xb831_c4c2_80ed_4dbb;
     }
-    pub enum Which<A0, A1> {
+    pub enum Which<A0> {
         Garbage(()),
-        Bool(bool),
         Int(i64),
         Float(f64),
         String(A0),
-        List(A1),
     }
-    pub type WhichReader<'a> = Which<
-        ::capnp::Result<::capnp::text::Reader<'a>>,
-        ::capnp::Result<::capnp::struct_list::Reader<'a, crate::plugin_capnp::expression::Owned>>,
-    >;
-    pub type WhichBuilder<'a> = Which<
-        ::capnp::Result<::capnp::text::Builder<'a>>,
-        ::capnp::Result<::capnp::struct_list::Builder<'a, crate::plugin_capnp::expression::Owned>>,
-    >;
+    pub type WhichReader<'a> = Which<::capnp::Result<::capnp::text::Reader<'a>>>;
+    pub type WhichBuilder<'a> = Which<::capnp::Result<::capnp::text::Builder<'a>>>;
 }
 
 pub mod call {

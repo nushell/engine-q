@@ -1126,8 +1126,13 @@ pub fn parse_plugin(
                                     .expect("It has being checked that is a file and exists")
                                     .to_string();
 
-                                get_signature(source_file.as_path())
-                                    .map_err(|err| ParseError::PluginError(format!("{}", err)))
+                                get_signature(source_file.as_path(), spans[0]).map_err(|err| {
+                                    ParseError::LabeledError(
+                                        "Extracting signature error".into(),
+                                        err.to_string(),
+                                        call.head,
+                                    )
+                                })
                             } else {
                                 Err(ParseError::FileNotFound(format!("{:?}", source_file)))
                             }
@@ -1154,7 +1159,11 @@ pub fn parse_plugin(
                         .and_then(|name| {
                             filename = name;
                             serde_json::from_slice::<Signature>(signature).map_err(|_| {
-                                ParseError::PluginError("unable to deserialize signature".into())
+                                ParseError::LabeledError(
+                                    "Signature deserialization error".into(),
+                                    "unable to deserialize signature".into(),
+                                    spans[0],
+                                )
                             })
                         })
                         .map(|signature| {
