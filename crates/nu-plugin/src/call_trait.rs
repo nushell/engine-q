@@ -62,7 +62,7 @@ fn expression_to_value(expression: Expression, span: Span) -> Result<Value, Shel
         Expr::List(exprs) => {
             let values = exprs
                 .into_iter()
-                .map(|expression| expression_to_value(expression, span.clone()))
+                .map(|expression| expression_to_value(expression, span))
                 .collect::<Result<Vec<Value>, ShellError>>()?;
 
             Ok(Value::List { vals: values, span })
