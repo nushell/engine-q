@@ -146,7 +146,7 @@ pub fn create_default_context() -> EngineState {
         bind_command!(Register);
 
         #[cfg(feature = "dataframe")]
-        bind_command!(OpenDataFrame, ToDataFrame);
+        bind_command!(OpenDataFrame, ToDataFrame, DescribeDF);
 
         // This is a WIP proof of concept
         // bind_command!(ListGitBranches, Git, GitCheckout, Source);

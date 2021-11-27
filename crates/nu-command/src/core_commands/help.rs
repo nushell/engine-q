@@ -200,6 +200,7 @@ fn help(
                 if cmd.0.name == name {
                     let help = get_full_help(&cmd.0, &cmd.1, engine_state);
                     output.push_str(&help);
+                    output.push_str("=======\n");
                 }
             }
 

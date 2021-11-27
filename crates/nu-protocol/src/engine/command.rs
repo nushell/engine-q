@@ -1,4 +1,4 @@
-use crate::{ast::Call, BlockId, Example, PipelineData, ShellError, Signature};
+use crate::{ast::Call, BlockId, Category, Example, PipelineData, ShellError, Signature};
 
 use super::{EngineState, Stack};
 
@@ -53,6 +53,11 @@ pub trait Command: Send + Sync + CommandClone {
 
     // If command is a block i.e. def blah [] { }, get the block id
     fn get_block_id(&self) -> Option<BlockId> {
+        None
+    }
+
+    // If a decl can substitute another decl based on signature category
+    fn can_replace(&self) -> Option<(&str, Category)> {
         None
     }
 }

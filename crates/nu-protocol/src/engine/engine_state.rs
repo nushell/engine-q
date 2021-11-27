@@ -1,7 +1,7 @@
 use super::Command;
 use crate::{
-    ast::Block, BlockId, DeclId, Example, Overlay, OverlayId, ShellError, Signature, Span, Type,
-    VarId,
+    ast::Block, BlockId, DeclId, Example, Overlay, OverlayId, PipelineData, ShellError, Signature,
+    Span, Type, Value, VarId,
 };
 use core::panic;
 use std::{
@@ -355,6 +355,57 @@ impl EngineState {
         self.decls
             .get(decl_id)
             .expect("internal error: missing declaration")
+    }
+
+    #[allow(clippy::borrowed_box)]
+    pub fn get_decl_with_input(&self, decl_id: DeclId, input: &PipelineData) -> &Box<dyn Command> {
+        let decl = self.get_decl(decl_id);
+
+        match decl.can_replace() {
+            None => decl,
+            Some((name, category)) => {
+                let replaced_decl = self
+                    .decls
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, decl_inner)| {
+                        decl_inner.name() == name && decl_inner.signature().category == category
+                    })
+                    .map(|(index, _)| index)
+                    .collect::<Vec<usize>>();
+
+                let replaced_decl = match replaced_decl.first() {
+                    Some(index) => self.get_decl(*index),
+                    None => decl,
+                };
+
+                match input {
+                    PipelineData::Stream(_) => replaced_decl,
+                    PipelineData::Value(value) => match value {
+                        Value::CustomValue { val, .. } => {
+                            // We could avoid this search if we can guarantee that replacing
+                            // declaration will always be on top of other declaration
+                            let new_decl = self
+                                .decls
+                                .iter()
+                                .enumerate()
+                                .filter(|(_, decl_inner)| {
+                                    decl_inner.name() == decl.name()
+                                        && decl_inner.signature().category == val.category()
+                                })
+                                .map(|(index, _)| index)
+                                .collect::<Vec<usize>>();
+
+                            match new_decl.first() {
+                                Some(index) => self.get_decl(*index),
+                                None => decl,
+                            }
+                        }
+                        _ => replaced_decl,
+                    },
+                }
+            }
+        }
     }
 
     pub fn get_signatures(&self) -> Vec<Signature> {

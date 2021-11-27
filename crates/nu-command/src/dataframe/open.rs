@@ -64,7 +64,7 @@ impl Command for OpenDataFrame {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "Takes a file name and creates a dataframe",
-            example: "dataframe open test.csv",
+            example: "dataframe open-df test.csv",
             result: None,
         }]
     }

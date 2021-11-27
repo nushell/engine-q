@@ -7,7 +7,7 @@ use std::{cmp::Ordering, fmt::Display, hash::Hasher};
 
 use conversion::{Column, ColumnMap};
 use indexmap::map::IndexMap;
-use nu_protocol::{did_you_mean, ShellError, Span, Value};
+use nu_protocol::{did_you_mean, PipelineData, ShellError, Span, Value};
 use polars::prelude::{DataFrame, PolarsObject, Series};
 use serde::{Deserialize, Serialize};
 
@@ -68,6 +68,18 @@ impl PolarsObject for DataFrameValue {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NuDataFrame(DataFrame);
+
+impl AsRef<DataFrame> for NuDataFrame {
+    fn as_ref(&self) -> &polars::prelude::DataFrame {
+        &self.0
+    }
+}
+
+impl AsMut<DataFrame> for NuDataFrame {
+    fn as_mut(&mut self) -> &mut polars::prelude::DataFrame {
+        &mut self.0
+    }
+}
 
 impl NuDataFrame {
     pub fn new(dataframe: DataFrame) -> Self {
@@ -149,6 +161,24 @@ impl NuDataFrame {
         }
 
         conversion::from_parsed_columns(column_values)
+    }
+
+    pub fn try_from_pipeline(input: PipelineData, span: Span) -> Result<Self, ShellError> {
+        match input.into_value(span) {
+            Value::CustomValue { val, span } => match val.as_any().downcast_ref::<NuDataFrame>() {
+                Some(df) => Ok(NuDataFrame(df.0.clone())),
+                None => Err(ShellError::CantConvert(
+                    "Dataframe not found".into(),
+                    "value is not a dataframe".into(),
+                    span,
+                )),
+            },
+            _ => Err(ShellError::CantConvert(
+                "Dataframe not found".into(),
+                "value is not a dataframe".into(),
+                span,
+            )),
+        }
     }
 
     pub fn column(&self, column: &str, span: Span) -> Result<Self, ShellError> {
