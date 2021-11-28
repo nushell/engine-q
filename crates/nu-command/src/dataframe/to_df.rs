@@ -1,4 +1,4 @@
-use nu_dataframe::NuDataFrame;
+use super::objects::nu_dataframe::NuDataFrame;
 use nu_protocol::{
     ast::Call,
     engine::{Command, EngineState, Stack},

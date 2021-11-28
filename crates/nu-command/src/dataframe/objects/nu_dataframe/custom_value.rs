@@ -1,4 +1,4 @@
-use crate::NuDataFrame;
+use super::NuDataFrame;
 use nu_protocol::{ast::Operator, Category, CustomValue, ShellError, Span, Value};
 
 // CustomValue implementation for NuDataFrame

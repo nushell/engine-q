@@ -1,6 +1,6 @@
 use std::{fs::File, path::PathBuf};
 
-use nu_dataframe::NuDataFrame;
+use super::objects::nu_dataframe::NuDataFrame;
 use nu_engine::CallExt;
 use nu_protocol::{
     ast::Call,

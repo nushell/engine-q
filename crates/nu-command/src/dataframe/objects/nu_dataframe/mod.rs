@@ -143,25 +143,25 @@ impl NuDataFrame {
         conversion::from_parsed_columns(column_values)
     }
 
-    pub fn try_from_series(columns: Vec<Series>) -> Result<Self, ShellError> {
-        let dataframe = DataFrame::new(columns)
-            .map_err(|e| ShellError::InternalError(format!("Unable to create DataFrame: {}", e)))?;
+    //pub fn try_from_series(columns: Vec<Series>) -> Result<Self, ShellError> {
+    //    let dataframe = DataFrame::new(columns)
+    //        .map_err(|e| ShellError::InternalError(format!("Unable to create DataFrame: {}", e)))?;
 
-        Ok(Self::new(dataframe))
-    }
+    //    Ok(Self::new(dataframe))
+    //}
 
-    pub fn try_from_columns(columns: Vec<Column>) -> Result<Self, ShellError> {
-        let mut column_values: ColumnMap = IndexMap::new();
+    //pub fn try_from_columns(columns: Vec<Column>) -> Result<Self, ShellError> {
+    //    let mut column_values: ColumnMap = IndexMap::new();
 
-        for column in columns {
-            let name = column.name().to_string();
-            for value in column {
-                conversion::insert_value(value, name.clone(), &mut column_values)?;
-            }
-        }
+    //    for column in columns {
+    //        let name = column.name().to_string();
+    //        for value in column {
+    //            conversion::insert_value(value, name.clone(), &mut column_values)?;
+    //        }
+    //    }
 
-        conversion::from_parsed_columns(column_values)
-    }
+    //    conversion::from_parsed_columns(column_values)
+    //}
 
     pub fn try_from_pipeline(input: PipelineData, span: Span) -> Result<Self, ShellError> {
         match input.into_value(span) {
