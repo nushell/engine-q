@@ -118,6 +118,7 @@ pub fn create_default_context() -> EngineState {
             Size,
             Skip,
             SkipUntil,
+            SkipWhile,
             Sleep,
             Source,
             Split,
