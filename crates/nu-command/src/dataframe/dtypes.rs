@@ -18,7 +18,7 @@ impl Command for DataTypes {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("dtypes").category(Category::Custom("dataframe".into()))
+        Signature::build(self.name().to_string()).category(Category::Custom("dataframe".into()))
     }
 
     fn examples(&self) -> Vec<Example> {

@@ -15,7 +15,7 @@ pub struct OpenDataFrame;
 
 impl Command for OpenDataFrame {
     fn name(&self) -> &str {
-        "open df"
+        "open-df"
     }
 
     fn usage(&self) -> &str {
@@ -23,7 +23,7 @@ impl Command for OpenDataFrame {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("open df")
+        Signature::build(self.name().to_string())
             .required(
                 "file",
                 SyntaxShape::Filepath,
@@ -64,7 +64,7 @@ impl Command for OpenDataFrame {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "Takes a file name and creates a dataframe",
-            example: "dataframe open df test.csv",
+            example: "open-df test.csv",
             result: None,
         }]
     }

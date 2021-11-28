@@ -25,7 +25,7 @@ impl Command for DescribeDF {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("describe").category(Category::Custom("dataframe".into()))
+        Signature::build(self.name().to_string()).category(Category::Custom("dataframe".into()))
     }
 
     fn examples(&self) -> Vec<Example> {

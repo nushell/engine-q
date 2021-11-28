@@ -18,7 +18,7 @@ impl Command for ToDataFrame {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("to df").category(Category::Custom("dataframe".into()))
+        Signature::build(self.name().to_string()).category(Category::Custom("dataframe".into()))
     }
 
     fn examples(&self) -> Vec<Example> {
