@@ -8,8 +8,7 @@ use nu_protocol::{
 use polars::{
     chunked_array::ChunkedArray,
     prelude::{
-        AnyValue, DataFrame as PolarsDF, DataType, Float64Type, IntoSeries, NewChunkedArray,
-        Series, Utf8Type,
+        AnyValue, DataFrame, DataType, Float64Type, IntoSeries, NewChunkedArray, Series, Utf8Type,
     },
 };
 
@@ -75,102 +74,107 @@ fn command(
 
     let head = std::iter::once(names);
 
-    let tail = df.as_ref().get_columns().iter().map(|col| {
-        let count = col.len() as f64;
+    let tail = df
+        .as_ref()
+        .get_columns()
+        .iter()
+        .filter(|col| col.dtype() != &DataType::Object("object"))
+        .map(|col| {
+            let count = col.len() as f64;
 
-        let sum = match col.sum_as_series().cast(&DataType::Float64) {
-            Ok(ca) => match ca.get(0) {
-                AnyValue::Float64(v) => Some(v),
-                _ => None,
-            },
-            Err(_) => None,
-        };
-
-        let mean = match col.mean_as_series().get(0) {
-            AnyValue::Float64(v) => Some(v),
-            _ => None,
-        };
-
-        let median = match col.median_as_series().get(0) {
-            AnyValue::Float64(v) => Some(v),
-            _ => None,
-        };
-
-        let std = match col.std_as_series().get(0) {
-            AnyValue::Float64(v) => Some(v),
-            _ => None,
-        };
-
-        let min = match col.min_as_series().cast(&DataType::Float64) {
-            Ok(ca) => match ca.get(0) {
-                AnyValue::Float64(v) => Some(v),
-                _ => None,
-            },
-            Err(_) => None,
-        };
-
-        let q_25 = match col.quantile_as_series(0.25) {
-            Ok(ca) => match ca.cast(&DataType::Float64) {
+            let sum = match col.sum_as_series().cast(&DataType::Float64) {
                 Ok(ca) => match ca.get(0) {
                     AnyValue::Float64(v) => Some(v),
                     _ => None,
                 },
                 Err(_) => None,
-            },
-            Err(_) => None,
-        };
+            };
 
-        let q_50 = match col.quantile_as_series(0.50) {
-            Ok(ca) => match ca.cast(&DataType::Float64) {
-                Ok(ca) => match ca.get(0) {
-                    AnyValue::Float64(v) => Some(v),
-                    _ => None,
-                },
-                Err(_) => None,
-            },
-            Err(_) => None,
-        };
-
-        let q_75 = match col.quantile_as_series(0.75) {
-            Ok(ca) => match ca.cast(&DataType::Float64) {
-                Ok(ca) => match ca.get(0) {
-                    AnyValue::Float64(v) => Some(v),
-                    _ => None,
-                },
-                Err(_) => None,
-            },
-            Err(_) => None,
-        };
-
-        let max = match col.max_as_series().cast(&DataType::Float64) {
-            Ok(ca) => match ca.get(0) {
+            let mean = match col.mean_as_series().get(0) {
                 AnyValue::Float64(v) => Some(v),
                 _ => None,
-            },
-            Err(_) => None,
-        };
+            };
 
-        let name = format!("{} ({})", col.name(), col.dtype());
-        ChunkedArray::<Float64Type>::new_from_opt_slice(
-            &name,
-            &[
-                Some(count),
-                sum,
-                mean,
-                median,
-                std,
-                min,
-                q_25,
-                q_50,
-                q_75,
-                max,
-            ],
-        )
-        .into_series()
-    });
+            let median = match col.median_as_series().get(0) {
+                AnyValue::Float64(v) => Some(v),
+                _ => None,
+            };
+
+            let std = match col.std_as_series().get(0) {
+                AnyValue::Float64(v) => Some(v),
+                _ => None,
+            };
+
+            let min = match col.min_as_series().cast(&DataType::Float64) {
+                Ok(ca) => match ca.get(0) {
+                    AnyValue::Float64(v) => Some(v),
+                    _ => None,
+                },
+                Err(_) => None,
+            };
+
+            let q_25 = match col.quantile_as_series(0.25) {
+                Ok(ca) => match ca.cast(&DataType::Float64) {
+                    Ok(ca) => match ca.get(0) {
+                        AnyValue::Float64(v) => Some(v),
+                        _ => None,
+                    },
+                    Err(_) => None,
+                },
+                Err(_) => None,
+            };
+
+            let q_50 = match col.quantile_as_series(0.50) {
+                Ok(ca) => match ca.cast(&DataType::Float64) {
+                    Ok(ca) => match ca.get(0) {
+                        AnyValue::Float64(v) => Some(v),
+                        _ => None,
+                    },
+                    Err(_) => None,
+                },
+                Err(_) => None,
+            };
+
+            let q_75 = match col.quantile_as_series(0.75) {
+                Ok(ca) => match ca.cast(&DataType::Float64) {
+                    Ok(ca) => match ca.get(0) {
+                        AnyValue::Float64(v) => Some(v),
+                        _ => None,
+                    },
+                    Err(_) => None,
+                },
+                Err(_) => None,
+            };
+
+            let max = match col.max_as_series().cast(&DataType::Float64) {
+                Ok(ca) => match ca.get(0) {
+                    AnyValue::Float64(v) => Some(v),
+                    _ => None,
+                },
+                Err(_) => None,
+            };
+
+            let name = format!("{} ({})", col.name(), col.dtype());
+            ChunkedArray::<Float64Type>::new_from_opt_slice(
+                &name,
+                &[
+                    Some(count),
+                    sum,
+                    mean,
+                    median,
+                    std,
+                    min,
+                    q_25,
+                    q_50,
+                    q_75,
+                    max,
+                ],
+            )
+            .into_series()
+        });
 
     let res = head.chain(tail).collect::<Vec<Series>>();
-    let df = PolarsDF::new(res).map_err(|e| {
+    let df = DataFrame::new(res).map_err(|e| {
         ShellError::LabeledError("Dataframe Error".into(), e.to_string(), call.head)
     })?;
     Ok(PipelineData::Value(NuDataFrame::dataframe_into_value(

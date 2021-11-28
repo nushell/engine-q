@@ -5,7 +5,7 @@ mod operations;
 
 use std::{cmp::Ordering, fmt::Display, hash::Hasher};
 
-use conversion::{Column, ColumnMap};
+pub use conversion::{Column, ColumnMap};
 use indexmap::map::IndexMap;
 use nu_protocol::{did_you_mean, PipelineData, ShellError, Span, Value};
 use polars::prelude::{DataFrame, PolarsObject, Series};
@@ -62,7 +62,7 @@ impl std::hash::Hash for DataFrameValue {
 
 impl PolarsObject for DataFrameValue {
     fn type_name() -> &'static str {
-        "value"
+        "object"
     }
 }
 
@@ -150,18 +150,18 @@ impl NuDataFrame {
     //    Ok(Self::new(dataframe))
     //}
 
-    //pub fn try_from_columns(columns: Vec<Column>) -> Result<Self, ShellError> {
-    //    let mut column_values: ColumnMap = IndexMap::new();
+    pub fn try_from_columns(columns: Vec<Column>) -> Result<Self, ShellError> {
+        let mut column_values: ColumnMap = IndexMap::new();
 
-    //    for column in columns {
-    //        let name = column.name().to_string();
-    //        for value in column {
-    //            conversion::insert_value(value, name.clone(), &mut column_values)?;
-    //        }
-    //    }
+        for column in columns {
+            let name = column.name().to_string();
+            for value in column {
+                conversion::insert_value(value, name.clone(), &mut column_values)?;
+            }
+        }
 
-    //    conversion::from_parsed_columns(column_values)
-    //}
+        conversion::from_parsed_columns(column_values)
+    }
 
     pub fn try_from_pipeline(input: PipelineData, span: Span) -> Result<Self, ShellError> {
         match input.into_value(span) {
