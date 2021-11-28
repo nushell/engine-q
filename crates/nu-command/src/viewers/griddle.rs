@@ -1,4 +1,5 @@
-use super::icons::{icon_for_file, iconify_style_ansi_to_nu};
+// use super::icons::{icon_for_file, iconify_style_ansi_to_nu};
+use super::icons::icon_for_file;
 use lscolors::{LsColors, Style};
 use nu_engine::CallExt;
 use nu_protocol::{
@@ -169,13 +170,13 @@ fn create_grid_output(
                 let icon = icon_for_file(path.clone());
                 let ls_colors_style = ls_colors.style_for_path(path);
                 // eprintln!("ls_colors_style: {:?}", &ls_colors_style);
-                let ls_to_ansi = match ls_colors_style {
-                    Some(c) => c.to_ansi_term_style(),
-                    None => ansi_term::Style::default(),
+
+                let icon_style = match ls_colors_style {
+                    Some(c) => c.to_crossterm_style(),
+                    None => crossterm::style::ContentStyle::default(),
                 };
-                // eprintln!("ls_to_ansi: {:?}", &ls_to_ansi);
-                let icon_style = iconify_style_ansi_to_nu(ls_to_ansi);
                 // eprintln!("icon_style: {:?}", &icon_style);
+
                 let ansi_style = ls_colors_style
                     .map(Style::to_crossterm_style)
                     .unwrap_or_default();
@@ -183,7 +184,7 @@ fn create_grid_output(
 
                 let item = format!(
                     "{} {}",
-                    icon_style.paint(icon.to_string()),
+                    icon_style.apply(icon).to_string(),
                     ansi_style.apply(value).to_string()
                 );
 

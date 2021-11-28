@@ -1429,12 +1429,12 @@ name = "nu-command"
 version = "0.1.0"
 dependencies = [
  "Inflector",
- "ansi_term",
  "bytesize",
  "calamine",
  "chrono",
  "chrono-humanize",
  "chrono-tz",
+ "crossterm",
  "csv",
  "dialoguer",
  "eml-parser",

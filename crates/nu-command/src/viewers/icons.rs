@@ -1,9 +1,9 @@
-use nu_ansi_term::Style;
-// use crate::fs::File;
-// use crate::info::filetype::FileExtensions;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::path::Path;
+
+// Attribution: Thanks exa. Most of this file is taken from around here
+// https://github.com/ogham/exa/blob/dbd11d38042284cc890fdd91760c2f93b65e8553/src/output/icons.rs
 
 pub trait FileIcon {
     fn icon_file(&self, file: &Path) -> Option<char>;
@@ -26,79 +26,63 @@ impl Icons {
     }
 }
 
-/// Converts the style used to paint a file name into the style that should be
-/// used to paint an icon.
-///
-/// - The background colour should be preferred to the foreground colour, as
-///   if one is set, it’s the more “obvious” colour choice.
-/// - If neither is set, just use the default style.
-/// - Attributes such as bold or underline should not be used to paint the
-///   icon, as they can make it look weird.
-#[allow(dead_code)]
-pub fn iconify_style<'a>(style: Style) -> Style {
-    style
-        .background
-        .or(style.foreground)
-        .map(Style::from)
-        .unwrap_or_default()
-}
-
+// keeping this for now in case we have to revert to ansi style instead of crossterm style
 // Helper function to convert ansi_term style to nu_ansi_term. unfortunately
 // this is necessary because ls_colors has a dependency on ansi_term vs nu_ansi_term
 // double unfortunately, now we have a dependency on both. we may have to bring
 // in ls_colors crate to nushell
-pub fn iconify_style_ansi_to_nu<'a>(style: ansi_term::Style) -> nu_ansi_term::Style {
-    let bg = match style.background {
-        Some(c) => match c {
-            ansi_term::Color::Black => Some(nu_ansi_term::Color::Black),
-            ansi_term::Color::Red => Some(nu_ansi_term::Color::Red),
-            ansi_term::Color::Green => Some(nu_ansi_term::Color::Green),
-            ansi_term::Color::Yellow => Some(nu_ansi_term::Color::Yellow),
-            ansi_term::Color::Blue => Some(nu_ansi_term::Color::Blue),
-            ansi_term::Color::Purple => Some(nu_ansi_term::Color::Purple),
-            ansi_term::Color::Cyan => Some(nu_ansi_term::Color::Cyan),
-            ansi_term::Color::White => Some(nu_ansi_term::Color::White),
-            ansi_term::Color::Fixed(f) => Some(nu_ansi_term::Color::Fixed(f)),
-            ansi_term::Color::RGB(r, g, b) => Some(nu_ansi_term::Color::Rgb(r, g, b)),
-        },
-        None => None,
-    };
+// pub fn iconify_style_ansi_to_nu<'a>(style: ansi_term::Style) -> nu_ansi_term::Style {
+//     let bg = match style.background {
+//         Some(c) => match c {
+//             ansi_term::Color::Black => Some(nu_ansi_term::Color::Black),
+//             ansi_term::Color::Red => Some(nu_ansi_term::Color::Red),
+//             ansi_term::Color::Green => Some(nu_ansi_term::Color::Green),
+//             ansi_term::Color::Yellow => Some(nu_ansi_term::Color::Yellow),
+//             ansi_term::Color::Blue => Some(nu_ansi_term::Color::Blue),
+//             ansi_term::Color::Purple => Some(nu_ansi_term::Color::Purple),
+//             ansi_term::Color::Cyan => Some(nu_ansi_term::Color::Cyan),
+//             ansi_term::Color::White => Some(nu_ansi_term::Color::White),
+//             ansi_term::Color::Fixed(f) => Some(nu_ansi_term::Color::Fixed(f)),
+//             ansi_term::Color::RGB(r, g, b) => Some(nu_ansi_term::Color::Rgb(r, g, b)),
+//         },
+//         None => None,
+//     };
 
-    let fg = match style.foreground {
-        Some(c) => match c {
-            ansi_term::Color::Black => Some(nu_ansi_term::Color::Black),
-            ansi_term::Color::Red => Some(nu_ansi_term::Color::Red),
-            ansi_term::Color::Green => Some(nu_ansi_term::Color::Green),
-            ansi_term::Color::Yellow => Some(nu_ansi_term::Color::Yellow),
-            ansi_term::Color::Blue => Some(nu_ansi_term::Color::Blue),
-            ansi_term::Color::Purple => Some(nu_ansi_term::Color::Purple),
-            ansi_term::Color::Cyan => Some(nu_ansi_term::Color::Cyan),
-            ansi_term::Color::White => Some(nu_ansi_term::Color::White),
-            ansi_term::Color::Fixed(f) => Some(nu_ansi_term::Color::Fixed(f)),
-            ansi_term::Color::RGB(r, g, b) => Some(nu_ansi_term::Color::Rgb(r, g, b)),
-        },
-        None => None,
-    };
+//     let fg = match style.foreground {
+//         Some(c) => match c {
+//             ansi_term::Color::Black => Some(nu_ansi_term::Color::Black),
+//             ansi_term::Color::Red => Some(nu_ansi_term::Color::Red),
+//             ansi_term::Color::Green => Some(nu_ansi_term::Color::Green),
+//             ansi_term::Color::Yellow => Some(nu_ansi_term::Color::Yellow),
+//             ansi_term::Color::Blue => Some(nu_ansi_term::Color::Blue),
+//             ansi_term::Color::Purple => Some(nu_ansi_term::Color::Purple),
+//             ansi_term::Color::Cyan => Some(nu_ansi_term::Color::Cyan),
+//             ansi_term::Color::White => Some(nu_ansi_term::Color::White),
+//             ansi_term::Color::Fixed(f) => Some(nu_ansi_term::Color::Fixed(f)),
+//             ansi_term::Color::RGB(r, g, b) => Some(nu_ansi_term::Color::Rgb(r, g, b)),
+//         },
+//         None => None,
+//     };
 
-    let nu_style = nu_ansi_term::Style {
-        foreground: fg,
-        background: bg,
-        is_blink: style.is_blink,
-        is_bold: style.is_bold,
-        is_dimmed: style.is_dimmed,
-        is_hidden: style.is_hidden,
-        is_italic: style.is_italic,
-        is_underline: style.is_underline,
-        is_reverse: style.is_reverse,
-        is_strikethrough: style.is_strikethrough,
-    };
+//     let nu_style = nu_ansi_term::Style {
+//         foreground: fg,
+//         background: bg,
+//         is_blink: style.is_blink,
+//         is_bold: style.is_bold,
+//         is_dimmed: style.is_dimmed,
+//         is_hidden: style.is_hidden,
+//         is_italic: style.is_italic,
+//         is_underline: style.is_underline,
+//         is_reverse: style.is_reverse,
+//         is_strikethrough: style.is_strikethrough,
+//     };
 
-    nu_style
-        .background
-        .or(nu_style.foreground)
-        .map(nu_ansi_term::Style::from)
-        .unwrap_or_default()
-}
+//     nu_style
+//         .background
+//         .or(nu_style.foreground)
+//         .map(nu_ansi_term::Style::from)
+//         .unwrap_or_default()
+// }
 
 lazy_static! {
     static ref MAP_BY_NAME: HashMap<&'static str, char> = {
@@ -398,12 +382,6 @@ pub fn icon_for_file(file_path: &Path) -> char {
 ///
 /// This will always return `false` if the file has no extension.
 pub fn extension_is_one_of(path: &Path, choices: &[&str]) -> bool {
-    // let extension = path.extension().unwrap().to_str();
-    // match extension {
-    //     Some(ext) => choices.contains(&&ext[..]),
-    //     None => false,
-    // }
-
     match path.extension() {
         Some(os_ext) => match os_ext.to_str() {
             Some(ext) => choices.contains(&&ext[..]),
@@ -415,73 +393,76 @@ pub fn extension_is_one_of(path: &Path, choices: &[&str]) -> bool {
 
 /// Whether this file’s name, including extension, is any of the strings
 /// that get passed in.
-pub fn name_is_one_of(name: &str, choices: &[&str]) -> bool {
-    choices.contains(&&name[..])
-}
+// pub fn name_is_one_of(name: &str, choices: &[&str]) -> bool {
+//     choices.contains(&&name[..])
+// }
 
 #[derive(Debug, Default, PartialEq)]
 pub struct FileExtensions;
 
-impl FileExtensions {
-    /// An “immediate” file is something that can be run or activated somehow
-    /// in order to kick off the build of a project. It’s usually only present
-    /// in directories full of source code.
-    #[allow(clippy::case_sensitive_file_extension_comparisons)]
-    #[allow(dead_code)]
-    fn is_immediate(&self, file_path: &Path) -> bool {
-        file_path
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_lowercase()
-            .starts_with("readme")
-            || file_path
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .ends_with(".ninja")
-            || name_is_one_of(
-                file_path.file_name().unwrap().to_str().unwrap(),
-                &[
-                    "Makefile",
-                    "Cargo.toml",
-                    "SConstruct",
-                    "CMakeLists.txt",
-                    "build.gradle",
-                    "pom.xml",
-                    "Rakefile",
-                    "package.json",
-                    "Gruntfile.js",
-                    "Gruntfile.coffee",
-                    "BUILD",
-                    "BUILD.bazel",
-                    "WORKSPACE",
-                    "build.xml",
-                    "Podfile",
-                    "webpack.config.js",
-                    "meson.build",
-                    "composer.json",
-                    "RoboFile.php",
-                    "PKGBUILD",
-                    "Justfile",
-                    "Procfile",
-                    "Dockerfile",
-                    "Containerfile",
-                    "Vagrantfile",
-                    "Brewfile",
-                    "Gemfile",
-                    "Pipfile",
-                    "build.sbt",
-                    "mix.exs",
-                    "bsconfig.json",
-                    "tsconfig.json",
-                ],
-            )
-    }
+// TODO: We may want to re-add these FileExtensions impl fns back. I have disabled
+// it now because it's hard coding colors which kind of defeats the LS_COLORS
+// functionality. We may want to enable and augment at some point.
 
-    #[allow(dead_code)]
+impl FileExtensions {
+    //     /// An “immediate” file is something that can be run or activated somehow
+    //     /// in order to kick off the build of a project. It’s usually only present
+    //     /// in directories full of source code.
+    //     #[allow(clippy::case_sensitive_file_extension_comparisons)]
+    //     #[allow(dead_code)]
+    //     fn is_immediate(&self, file_path: &Path) -> bool {
+    //         file_path
+    //             .file_name()
+    //             .unwrap()
+    //             .to_str()
+    //             .unwrap()
+    //             .to_lowercase()
+    //             .starts_with("readme")
+    //             || file_path
+    //                 .file_name()
+    //                 .unwrap()
+    //                 .to_str()
+    //                 .unwrap()
+    //                 .ends_with(".ninja")
+    //             || name_is_one_of(
+    //                 file_path.file_name().unwrap().to_str().unwrap(),
+    //                 &[
+    //                     "Makefile",
+    //                     "Cargo.toml",
+    //                     "SConstruct",
+    //                     "CMakeLists.txt",
+    //                     "build.gradle",
+    //                     "pom.xml",
+    //                     "Rakefile",
+    //                     "package.json",
+    //                     "Gruntfile.js",
+    //                     "Gruntfile.coffee",
+    //                     "BUILD",
+    //                     "BUILD.bazel",
+    //                     "WORKSPACE",
+    //                     "build.xml",
+    //                     "Podfile",
+    //                     "webpack.config.js",
+    //                     "meson.build",
+    //                     "composer.json",
+    //                     "RoboFile.php",
+    //                     "PKGBUILD",
+    //                     "Justfile",
+    //                     "Procfile",
+    //                     "Dockerfile",
+    //                     "Containerfile",
+    //                     "Vagrantfile",
+    //                     "Brewfile",
+    //                     "Gemfile",
+    //                     "Pipfile",
+    //                     "build.sbt",
+    //                     "mix.exs",
+    //                     "bsconfig.json",
+    //                     "tsconfig.json",
+    //                 ],
+    //             )
+    //     }
+
     fn is_image(&self, file: &Path) -> bool {
         extension_is_one_of(
             file,
@@ -493,7 +474,6 @@ impl FileExtensions {
         )
     }
 
-    #[allow(dead_code)]
     fn is_video(&self, file: &Path) -> bool {
         extension_is_one_of(
             file,
@@ -504,93 +484,89 @@ impl FileExtensions {
         )
     }
 
-    #[allow(dead_code)]
     fn is_music(&self, file: &Path) -> bool {
         extension_is_one_of(file, &["aac", "m4a", "mp3", "ogg", "wma", "mka", "opus"])
     }
 
     // Lossless music, rather than any other kind of data...
-    #[allow(dead_code)]
     fn is_lossless(&self, file: &Path) -> bool {
         extension_is_one_of(file, &["alac", "ape", "flac", "wav"])
     }
 
-    #[allow(dead_code)]
-    fn is_crypto(&self, file: &Path) -> bool {
-        extension_is_one_of(
-            file,
-            &["asc", "enc", "gpg", "pgp", "sig", "signature", "pfx", "p12"],
-        )
-    }
+    //     #[allow(dead_code)]
+    //     fn is_crypto(&self, file: &Path) -> bool {
+    //         extension_is_one_of(
+    //             file,
+    //             &["asc", "enc", "gpg", "pgp", "sig", "signature", "pfx", "p12"],
+    //         )
+    //     }
 
-    #[allow(dead_code)]
-    fn is_document(&self, file: &Path) -> bool {
-        extension_is_one_of(
-            file,
-            &[
-                "djvu", "doc", "docx", "dvi", "eml", "eps", "fotd", "key", "keynote", "numbers",
-                "odp", "odt", "pages", "pdf", "ppt", "pptx", "rtf", "xls", "xlsx",
-            ],
-        )
-    }
+    //     #[allow(dead_code)]
+    //     fn is_document(&self, file: &Path) -> bool {
+    //         extension_is_one_of(
+    //             file,
+    //             &[
+    //                 "djvu", "doc", "docx", "dvi", "eml", "eps", "fotd", "key", "keynote", "numbers",
+    //                 "odp", "odt", "pages", "pdf", "ppt", "pptx", "rtf", "xls", "xlsx",
+    //             ],
+    //         )
+    //     }
 
-    #[allow(dead_code)]
-    fn is_compressed(&self, file: &Path) -> bool {
-        extension_is_one_of(
-            file,
-            &[
-                "zip", "tar", "Z", "z", "gz", "bz2", "a", "ar", "7z", "iso", "dmg", "tc", "rar",
-                "par", "tgz", "xz", "txz", "lz", "tlz", "lzma", "deb", "rpm", "zst", "lz4",
-            ],
-        )
-    }
+    //     #[allow(dead_code)]
+    //     fn is_compressed(&self, file: &Path) -> bool {
+    //         extension_is_one_of(
+    //             file,
+    //             &[
+    //                 "zip", "tar", "Z", "z", "gz", "bz2", "a", "ar", "7z", "iso", "dmg", "tc", "rar",
+    //                 "par", "tgz", "xz", "txz", "lz", "tlz", "lzma", "deb", "rpm", "zst", "lz4",
+    //             ],
+    //         )
+    //     }
 
-    #[allow(dead_code)]
-    fn is_temp(&self, file: &Path) -> bool {
-        file.file_name().unwrap().to_str().unwrap().ends_with('~')
-            || (file.file_name().unwrap().to_str().unwrap().starts_with('#')
-                && file.file_name().unwrap().to_str().unwrap().ends_with('#'))
-            || extension_is_one_of(file, &["tmp", "swp", "swo", "swn", "bak", "bkp", "bk"])
-    }
+    //     #[allow(dead_code)]
+    //     fn is_temp(&self, file: &Path) -> bool {
+    //         file.file_name().unwrap().to_str().unwrap().ends_with('~')
+    //             || (file.file_name().unwrap().to_str().unwrap().starts_with('#')
+    //                 && file.file_name().unwrap().to_str().unwrap().ends_with('#'))
+    //             || extension_is_one_of(file, &["tmp", "swp", "swo", "swn", "bak", "bkp", "bk"])
+    //     }
 
-    #[allow(dead_code)]
-    fn is_compiled(&self, file: &Path) -> bool {
-        if extension_is_one_of(file, &["class", "elc", "hi", "o", "pyc", "zwc", "ko"]) {
-            true
-        // } else if let Some(dir) = file.parent() {
-        //     file.get_source_files()
-        //         .iter()
-        // .any(|path| dir.contains(path))
-        } else {
-            false
-        }
-    }
+    //     #[allow(dead_code)]
+    //     fn is_compiled(&self, file: &Path) -> bool {
+    //         if extension_is_one_of(file, &["class", "elc", "hi", "o", "pyc", "zwc", "ko"]) {
+    //             true
+    //         // } else if let Some(dir) = file.parent() {
+    //         //     file.get_source_files()
+    //         //         .iter()
+    //         // .any(|path| dir.contains(path))
+    //         } else {
+    //             false
+    //         }
+    //     }
+    // }
+
+    // impl FileColours for FileExtensions {
+    //     fn colour_file(&self, file: &Path) -> Option<Style> {
+    //         use ansi_term::Colour::*;
+
+    //         Some(match file {
+    //             f if self.is_temp(f)        => Fixed(244).normal(),
+    //             f if self.is_immediate(f)   => Yellow.bold().underline(),
+    //             f if self.is_image(f)       => Fixed(133).normal(),
+    //             f if self.is_video(f)       => Fixed(135).normal(),
+    //             f if self.is_music(f)       => Fixed(92).normal(),
+    //             f if self.is_lossless(f)    => Fixed(93).normal(),
+    //             f if self.is_crypto(f)      => Fixed(109).normal(),
+    //             f if self.is_document(f)    => Fixed(105).normal(),
+    //             f if self.is_compressed(f)  => Red.normal(),
+    //             f if self.is_compiled(f)    => Fixed(137).normal(),
+    //             _                           => return None,
+    //         })
+    //     }
 }
-
-// impl FileColours for FileExtensions {
-//     fn colour_file(&self, file: &Path) -> Option<Style> {
-//         use ansi_term::Colour::*;
-
-//         Some(match file {
-//             f if self.is_temp(f)        => Fixed(244).normal(),
-//             f if self.is_immediate(f)   => Yellow.bold().underline(),
-//             f if self.is_image(f)       => Fixed(133).normal(),
-//             f if self.is_video(f)       => Fixed(135).normal(),
-//             f if self.is_music(f)       => Fixed(92).normal(),
-//             f if self.is_lossless(f)    => Fixed(93).normal(),
-//             f if self.is_crypto(f)      => Fixed(109).normal(),
-//             f if self.is_document(f)    => Fixed(105).normal(),
-//             f if self.is_compressed(f)  => Red.normal(),
-//             f if self.is_compiled(f)    => Fixed(137).normal(),
-//             _                           => return None,
-//         })
-//     }
-// }
 
 impl FileIcon for FileExtensions {
     fn icon_file(&self, file: &Path) -> Option<char> {
-        // use crate::output::icons::Icons;
-
         if self.is_music(file) || self.is_lossless(file) {
             Some(Icons::Audio.value())
         } else if self.is_image(file) {
