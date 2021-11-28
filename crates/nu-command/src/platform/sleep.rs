@@ -97,7 +97,7 @@ mod tests {
         use std::time::Instant;
 
         let start = Instant::now();
-        let results = test_examples(Sleep {});
+        test_examples(Sleep {});
 
         let elapsed = start.elapsed();
 
