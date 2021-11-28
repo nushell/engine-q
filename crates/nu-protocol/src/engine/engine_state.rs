@@ -417,6 +417,7 @@ impl EngineState {
             }
         }
 
+        output.sort_by(|a, b| a.0.name.cmp(&b.0.name));
         output
     }
 

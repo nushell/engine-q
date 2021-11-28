@@ -32,7 +32,7 @@ impl Command for DescribeDF {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "dataframe description",
-            example: "[[a b]; [1 1] [1 1]] | dataframe to-df | dataframe describe",
+            example: "[[a b]; [1 1] [1 1]] | to-df | describe",
             result: None,
         }]
     }
