@@ -1,6 +1,6 @@
 use nu_engine::eval_block;
 use nu_protocol::{
-    ast::{Call, Expr, Expression},
+    ast::Call,
     engine::{Command, EngineState, Stack},
     Category, Example, IntoInterruptiblePipelineData, PipelineData, ShellError, Signature, Span,
     SyntaxShape, Value,
@@ -47,13 +47,9 @@ impl Command for SkipUntil {
         input: PipelineData,
     ) -> Result<PipelineData, ShellError> {
         let predicate = &call.positional[0];
-        let block_id = match predicate {
-            Expression {
-                expr: Expr::RowCondition(block_id),
-                ..
-            } => *block_id,
-            _ => return Err(ShellError::InternalError("Expected row condition".into())),
-        };
+        let block_id = predicate
+            .as_row_condition_block()
+            .ok_or_else(|| ShellError::InternalError("Expected row condition".to_owned()))?;
 
         let span = call.head;
 
