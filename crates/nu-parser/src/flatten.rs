@@ -194,7 +194,7 @@ pub fn flatten_expression(
             output
         }
         Expr::Keyword(_, span, expr) => {
-            let mut output = vec![(*span, FlatShape::Operator)];
+            let mut output = vec![(*span, FlatShape::InternalCall)];
             output.extend(flatten_expression(working_set, expr));
             output
         }
@@ -207,8 +207,7 @@ pub fn flatten_expression(
         Expr::String(_) => {
             vec![(expr.span, FlatShape::String)]
         }
-        Expr::RowCondition(_, expr) => flatten_expression(working_set, expr),
-        Expr::Subexpression(block_id) => {
+        Expr::RowCondition(block_id) | Expr::Subexpression(block_id) => {
             flatten_block(working_set, working_set.get_block(*block_id))
         }
         Expr::Table(headers, cells) => {
