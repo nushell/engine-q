@@ -13,7 +13,6 @@ nu-protocol = { path = "../nu-protocol" }
 nu-table = { path = "../nu-table" }
 nu-term-grid = { path = "../nu-term-grid" }
 nu-parser = { path = "../nu-parser" }
-nu-dataframe = { path = "../nu-dataframe", optional = true }
 nu-ansi-term = { path = "../nu-ansi-term" }
 
 # Potential dependencies for extras
@@ -50,13 +49,14 @@ lazy_static = "1.4.0"
 ansi_term = "0.12.1"
 strip-ansi-escapes = "0.1.1"
 
+num = {version="0.4.0", optional=true}
+
 [dependencies.polars]
 version = "0.17.0"
 optional = true
-features = ["default", "parquet", "json"]
+features = ["default", "parquet", "json", "serde", "object", "checked_arithmetic", "strings"]
 
 [features]
 trash-support = ["trash"]
 plugin = ["nu-parser/plugin"]
-custom = ["nu-protocol/custom"]
-dataframe = ["custom", "nu-dataframe", "polars"]
+dataframe = ["polars", "num"]

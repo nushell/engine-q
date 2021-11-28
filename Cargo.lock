@@ -1446,7 +1446,6 @@ dependencies = [
  "lscolors",
  "meval",
  "nu-ansi-term 0.39.0",
- "nu-dataframe",
  "nu-engine",
  "nu-json",
  "nu-parser",
@@ -1454,6 +1453,7 @@ dependencies = [
  "nu-protocol",
  "nu-table",
  "nu-term-grid",
+ "num",
  "polars",
  "rand",
  "rayon",
@@ -1470,19 +1470,6 @@ dependencies = [
  "toml",
  "trash",
  "unicode-segmentation",
-]
-
-[[package]]
-name = "nu-dataframe"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "indexmap",
- "nu-json",
- "nu-protocol",
- "num",
- "polars",
- "serde",
 ]
 
 [[package]]
