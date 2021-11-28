@@ -232,7 +232,8 @@ fn main() -> Result<()> {
 
             // Get animation milliseconds every loop, if not set, the animation
             // is defaulted to 1 second. If set to some non-number value,
-            // like "OFF", then the animation is disabled.
+            // like "OFF", then the animation is disabled. If set to some number
+            // like "5000" then the animation will run at 5 seconds.
             let animate_ms = match std::env::var("EQ_PROMPT_ANIMATE_MS") {
                 Ok(ms_str) => match ms_str.parse::<u64>() {
                     Ok(ms_int) => Some(ms_int),
