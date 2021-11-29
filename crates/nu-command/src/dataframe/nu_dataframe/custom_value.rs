@@ -1,5 +1,5 @@
-use crate::NuDataFrame;
-use nu_protocol::{ast::Operator, CustomValue, ShellError, Span, Value};
+use super::NuDataFrame;
+use nu_protocol::{ast::Operator, Category, CustomValue, ShellError, Span, Value};
 
 // CustomValue implementation for NuDataFrame
 impl CustomValue for NuDataFrame {
@@ -18,6 +18,10 @@ impl CustomValue for NuDataFrame {
             val: Box::new(cloned),
             span,
         }
+    }
+
+    fn category(&self) -> Category {
+        Category::Custom(self.typetag_name().into())
     }
 
     fn value_string(&self) -> String {
@@ -44,7 +48,17 @@ impl CustomValue for NuDataFrame {
 
     fn follow_path_string(&self, column_name: String, span: Span) -> Result<Value, ShellError> {
         let column = self.column(&column_name, span)?;
-        Ok(column.to_value(span))
+        Ok(column.into_value(span))
+    }
+
+    fn partial_cmp(&self, other: &Value) -> Option<std::cmp::Ordering> {
+        match other {
+            Value::CustomValue { val, .. } => val
+                .as_any()
+                .downcast_ref::<Self>()
+                .and_then(|other| self.is_equal(other)),
+            _ => None,
+        }
     }
 
     fn operation(
