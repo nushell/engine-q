@@ -690,7 +690,7 @@ fn hides_env_import_2() -> TestResult {
 #[test]
 fn hides_env_import_3() -> TestResult {
     fail_test(
-        r#"module spam { export env foo { "foo" }; } use spam; hide spam [foo]; $nu.env.'spam foo'"#,
+        r#"module spam { export env foo { "foo" } }; use spam; hide spam [foo]; $nu.env.'spam foo'"#,
         "did you mean",
     )
 }
