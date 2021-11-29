@@ -590,7 +590,10 @@ fn hides_env_in_scope_4() -> TestResult {
 
 #[test]
 fn hide_def_twice_not_allowed() -> TestResult {
-    fail_test(r#"def foo [] { "foo" }; hide foo; hide foo"#, "did not find")
+    fail_test(
+        r#"def foo [] { "foo" }; hide foo; hide foo"#,
+        "did not find",
+    )
 }
 
 #[test]

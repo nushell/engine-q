@@ -91,14 +91,15 @@ impl Command for Hide {
                 let name = if let Ok(s) = String::from_utf8(name.clone()) {
                     s
                 } else {
-                    // TODO: Fix this span
-                    return Err(ShellError::NonUtf8(import_pattern.head.span));
+                    return Err(ShellError::NonUtf8(import_pattern.span()));
                 };
 
                 // TODO: report error
                 stack.remove_env_var(&name);
             }
-        } else if stack.remove_env_var(&head_name_str).is_none() {
+        } else if !import_pattern.hidden.contains(&import_pattern.head.name)
+            && stack.remove_env_var(&head_name_str).is_none()
+        {
             return Err(ShellError::NotFound(call.positional[0].span));
         }
 

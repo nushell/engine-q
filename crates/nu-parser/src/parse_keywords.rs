@@ -6,7 +6,7 @@ use nu_protocol::{
     engine::StateWorkingSet,
     span, Exportable, Overlay, Span, SyntaxShape, Type, CONFIG_VARIABLE_ID,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 #[cfg(feature = "plugin")]
@@ -711,6 +711,7 @@ pub fn parse_use(
                                     span: spans[1],
                                 },
                                 members: import_pattern.members,
+                                hidden: HashSet::new(),
                             },
                             overlay,
                         )
@@ -896,6 +897,8 @@ pub fn parse_hide(
         // TODO: `use spam; use spam foo; hide foo` will hide both `foo` and `spam foo` since
         // they point to the same DeclId. Do we want to keep it that way?
         working_set.hide_decls(&decls_to_hide);
+        let import_pattern = import_pattern
+            .with_hidden(decls_to_hide.iter().map(|(name, _)| name.clone()).collect());
 
         // Create the Hide command call
         let hide_decl_id = working_set

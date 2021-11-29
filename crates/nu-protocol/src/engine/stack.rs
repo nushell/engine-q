@@ -74,11 +74,7 @@ impl Stack {
 
         // FIXME: this is probably slow
         output.env_vars = self.env_vars.clone();
-        if let Some(scope) = output.env_vars.last_mut().cloned() {
-            output.env_vars.push(scope);
-        } else {
-            output.env_vars.push(HashMap::new());
-        }
+        output.env_vars.push(HashMap::new());
 
         let config = self
             .get_var(CONFIG_VARIABLE_ID)
