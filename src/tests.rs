@@ -635,7 +635,7 @@ fn hides_def_runs_env_2() -> TestResult {
 fn hides_def_and_env() -> TestResult {
     fail_test(
         r#"let-env foo = "bar"; def foo [] { "foo" }; hide foo; hide foo; $nu.env.foo"#,
-        not_found_msg(),
+        "did you mean",
     )
 }
 
