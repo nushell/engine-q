@@ -1,6 +1,6 @@
 use nu_engine::CallExt;
-use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
+use nu_protocol::{ast::Call, span};
 use nu_protocol::{
     Category, Example, IntoPipelineData, PipelineData, ShellError, Signature, Spanned, SyntaxShape,
     Value,
@@ -86,7 +86,10 @@ impl Command for Kill {
                         left_message: "force".to_string(),
                         left_span: call.get_named_arg("force").unwrap().span,
                         right_message: "signal".to_string(),
-                        right_span: signal_span,
+                        right_span: span(&[
+                            call.get_named_arg("signal").unwrap().span,
+                            signal_span,
+                        ]),
                     });
                 }
                 cmd.arg("-9");
