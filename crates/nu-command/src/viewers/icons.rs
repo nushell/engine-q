@@ -384,7 +384,7 @@ pub fn icon_for_file(file_path: &Path) -> char {
 pub fn extension_is_one_of(path: &Path, choices: &[&str]) -> bool {
     match path.extension() {
         Some(os_ext) => match os_ext.to_str() {
-            Some(ext) => choices.contains(&&ext[..]),
+            Some(ext) => choices.contains(&ext),
             None => false,
         },
         None => false,

@@ -167,7 +167,7 @@ fn create_grid_output(
             if color_param {
                 let no_ansi = strip_ansi(&value);
                 let path = std::path::Path::new(&no_ansi);
-                let icon = icon_for_file(path.clone());
+                let icon = icon_for_file(path);
                 let ls_colors_style = ls_colors.style_for_path(path);
                 // eprintln!("ls_colors_style: {:?}", &ls_colors_style);
 
