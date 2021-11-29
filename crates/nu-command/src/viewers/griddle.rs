@@ -61,11 +61,12 @@ prints out the list properly."#
         let separator_param: Option<String> = call.get_flag(engine_state, stack, "separator")?;
         let config = stack.get_config()?;
         let env_str = stack.get_env_var("LS_COLORS");
+        let use_grid_icons = config.use_grid_icons;
 
         match input {
             PipelineData::Value(Value::List { vals, .. }) => {
                 // dbg!("value::list");
-                let data = convert_to_list2(vals, &config);
+                let data = convert_to_list(vals, &config);
                 if let Some(items) = data {
                     Ok(create_grid_output(
                         items,
@@ -74,6 +75,7 @@ prints out the list properly."#
                         color_param,
                         separator_param,
                         env_str,
+                        use_grid_icons,
                     ))
                 } else {
                     Ok(PipelineData::new(call.head))
@@ -81,7 +83,7 @@ prints out the list properly."#
             }
             PipelineData::Stream(stream) => {
                 // dbg!("value::stream");
-                let data = convert_to_list2(stream, &config);
+                let data = convert_to_list(stream, &config);
                 if let Some(items) = data {
                     Ok(create_grid_output(
                         items,
@@ -90,6 +92,7 @@ prints out the list properly."#
                         color_param,
                         separator_param,
                         env_str,
+                        use_grid_icons,
                     ))
                 } else {
                     // dbg!(data);
@@ -111,6 +114,7 @@ prints out the list properly."#
                     color_param,
                     separator_param,
                     env_str,
+                    use_grid_icons,
                 ))
             }
             x => {
@@ -137,6 +141,7 @@ fn create_grid_output(
     color_param: bool,
     separator_param: Option<String>,
     env_str: Option<String>,
+    use_grid_icons: bool,
 ) -> PipelineData {
     let ls_colors = match env_str {
         Some(s) => LsColors::from_string(&s),
@@ -165,32 +170,40 @@ fn create_grid_output(
         // only output value if the header name is 'name'
         if header == "name" {
             if color_param {
-                let no_ansi = strip_ansi(&value);
-                let path = std::path::Path::new(&no_ansi);
-                let icon = icon_for_file(path);
-                let ls_colors_style = ls_colors.style_for_path(path);
-                // eprintln!("ls_colors_style: {:?}", &ls_colors_style);
+                if use_grid_icons {
+                    let no_ansi = strip_ansi(&value);
+                    let path = std::path::Path::new(&no_ansi);
+                    let icon = icon_for_file(path);
+                    let ls_colors_style = ls_colors.style_for_path(path);
+                    // eprintln!("ls_colors_style: {:?}", &ls_colors_style);
 
-                let icon_style = match ls_colors_style {
-                    Some(c) => c.to_crossterm_style(),
-                    None => crossterm::style::ContentStyle::default(),
-                };
-                // eprintln!("icon_style: {:?}", &icon_style);
+                    let icon_style = match ls_colors_style {
+                        Some(c) => c.to_crossterm_style(),
+                        None => crossterm::style::ContentStyle::default(),
+                    };
+                    // eprintln!("icon_style: {:?}", &icon_style);
 
-                let ansi_style = ls_colors_style
-                    .map(Style::to_crossterm_style)
-                    .unwrap_or_default();
-                // eprintln!("ansi_style: {:?}", &ansi_style);
+                    let ansi_style = ls_colors_style
+                        .map(Style::to_crossterm_style)
+                        .unwrap_or_default();
+                    // eprintln!("ansi_style: {:?}", &ansi_style);
 
-                let item = format!(
-                    "{} {}",
-                    icon_style.apply(icon).to_string(),
-                    ansi_style.apply(value).to_string()
-                );
+                    let item = format!(
+                        "{} {}",
+                        icon_style.apply(icon).to_string(),
+                        ansi_style.apply(value).to_string()
+                    );
 
-                let mut cell = Cell::from(item);
-                cell.alignment = Alignment::Left;
-                grid.add(cell);
+                    let mut cell = Cell::from(item);
+                    cell.alignment = Alignment::Left;
+                    grid.add(cell);
+                } else {
+                    let style = ls_colors.style_for_path(value.clone());
+                    let ansi_style = style.map(Style::to_crossterm_style).unwrap_or_default();
+                    let mut cell = Cell::from(ansi_style.apply(value).to_string());
+                    cell.alignment = Alignment::Left;
+                    grid.add(cell);
+                }
             } else {
                 let mut cell = Cell::from(value);
                 cell.alignment = Alignment::Left;
@@ -213,7 +226,7 @@ fn create_grid_output(
     .into_pipeline_data()
 }
 
-fn convert_to_list2(
+fn convert_to_list(
     iter: impl IntoIterator<Item = Value>,
     config: &Config,
 ) -> Option<Vec<(usize, String, String)>> {
