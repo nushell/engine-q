@@ -1,3 +1,5 @@
+mod all;
+mod any;
 mod append;
 mod collect;
 mod drop;
@@ -12,11 +14,14 @@ mod range;
 mod reverse;
 mod select;
 mod shuffle;
+mod skip;
 mod update;
 mod where_;
 mod wrap;
 mod zip;
 
+pub use all::All;
+pub use any::Any;
 pub use append::Append;
 pub use collect::Collect;
 pub use drop::*;
@@ -31,6 +36,7 @@ pub use range::Range;
 pub use reverse::Reverse;
 pub use select::Select;
 pub use shuffle::Shuffle;
+pub use skip::*;
 pub use update::Update;
 pub use where_::Where;
 pub use wrap::Wrap;

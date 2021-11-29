@@ -31,6 +31,7 @@ use crate::{ast::PathMember, Config, ShellError, Span, Value, ValueStream};
 /// * A balance of the two approaches is what we've landed on: Values are thread-safe to pass, and we can stream
 /// them into any sources. Streams are still available to model the infinite streams approach of original
 /// Nushell.
+#[derive(Debug)]
 pub enum PipelineData {
     Value(Value),
     Stream(ValueStream),
@@ -49,6 +50,16 @@ impl PipelineData {
                 span, // FIXME?
             },
         }
+    }
+
+    pub fn into_interruptible_iter(self, ctrlc: Option<Arc<AtomicBool>>) -> PipelineIterator {
+        let mut iter = self.into_iter();
+
+        if let PipelineIterator(PipelineData::Stream(s)) = &mut iter {
+            s.ctrlc = ctrlc;
+        }
+
+        iter
     }
 
     pub fn collect_string(self, separator: &str, config: &Config) -> String {
@@ -104,13 +115,10 @@ impl PipelineData {
             PipelineData::Value(Value::Range { val, .. }) => {
                 Ok(val.into_range_iter()?.map(f).into_pipeline_data(ctrlc))
             }
-            PipelineData::Value(v) => {
-                let output = f(v);
-                match output {
-                    Value::Error { error } => Err(error),
-                    v => Ok(v.into_pipeline_data()),
-                }
-            }
+            PipelineData::Value(v) => match f(v) {
+                Value::Error { error } => Err(error),
+                v => Ok(v.into_pipeline_data()),
+            },
         }
     }
 
@@ -153,10 +161,9 @@ impl PipelineData {
                 Ok(vals.into_iter().filter(f).into_pipeline_data(ctrlc))
             }
             PipelineData::Stream(stream) => Ok(stream.filter(f).into_pipeline_data(ctrlc)),
-            PipelineData::Value(Value::Range { val, .. }) => match val.into_range_iter() {
-                Ok(iter) => Ok(iter.filter(f).into_pipeline_data(ctrlc)),
-                Err(error) => Err(error),
-            },
+            PipelineData::Value(Value::Range { val, .. }) => {
+                Ok(val.into_range_iter()?.filter(f).into_pipeline_data(ctrlc))
+            }
             PipelineData::Value(v) => {
                 if f(&v) {
                     Ok(v.into_pipeline_data())
@@ -190,12 +197,12 @@ impl IntoIterator for PipelineData {
                 }))
             }
             PipelineData::Value(Value::Range { val, .. }) => match val.into_range_iter() {
-                Ok(val) => PipelineIterator(PipelineData::Stream(ValueStream {
-                    stream: Box::new(val),
+                Ok(iter) => PipelineIterator(PipelineData::Stream(ValueStream {
+                    stream: Box::new(iter),
                     ctrlc: None,
                 })),
-                Err(e) => PipelineIterator(PipelineData::Stream(ValueStream {
-                    stream: Box::new(vec![Value::Error { error: e }].into_iter()),
+                Err(error) => PipelineIterator(PipelineData::Stream(ValueStream {
+                    stream: Box::new(std::iter::once(Value::Error { error })),
                     ctrlc: None,
                 })),
             },
@@ -210,10 +217,7 @@ impl Iterator for PipelineIterator {
     fn next(&mut self) -> Option<Self::Item> {
         match &mut self.0 {
             PipelineData::Value(Value::Nothing { .. }) => None,
-            PipelineData::Value(v) => {
-                let prev = std::mem::take(v);
-                Some(prev)
-            }
+            PipelineData::Value(v) => Some(std::mem::take(v)),
             PipelineData::Stream(stream) => stream.next(),
         }
     }
@@ -223,9 +227,12 @@ pub trait IntoPipelineData {
     fn into_pipeline_data(self) -> PipelineData;
 }
 
-impl IntoPipelineData for Value {
+impl<V> IntoPipelineData for V
+where
+    V: Into<Value>,
+{
     fn into_pipeline_data(self) -> PipelineData {
-        PipelineData::Value(self)
+        PipelineData::Value(self.into())
     }
 }
 
@@ -233,13 +240,15 @@ pub trait IntoInterruptiblePipelineData {
     fn into_pipeline_data(self, ctrlc: Option<Arc<AtomicBool>>) -> PipelineData;
 }
 
-impl<T> IntoInterruptiblePipelineData for T
+impl<I> IntoInterruptiblePipelineData for I
 where
-    T: Iterator<Item = Value> + Send + 'static,
+    I: IntoIterator + Send + 'static,
+    I::IntoIter: Send + 'static,
+    <I::IntoIter as Iterator>::Item: Into<Value>,
 {
     fn into_pipeline_data(self, ctrlc: Option<Arc<AtomicBool>>) -> PipelineData {
         PipelineData::Stream(ValueStream {
-            stream: Box::new(self),
+            stream: Box::new(self.into_iter().map(Into::into)),
             ctrlc,
         })
     }
