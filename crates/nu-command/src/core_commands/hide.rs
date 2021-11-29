@@ -20,6 +20,10 @@ impl Command for Hide {
         "Hide definitions in the current scope"
     }
 
+    fn extra_usage(&self) -> &str {
+        "If there is a definition and an environment variable with the same name in the current scope, first the definition will be hidden, then the environment variable."
+    }
+
     fn run(
         &self,
         engine_state: &EngineState,
