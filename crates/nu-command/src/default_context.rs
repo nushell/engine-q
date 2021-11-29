@@ -55,6 +55,7 @@ pub fn create_default_context() -> EngineState {
             Each,
             First,
             Get,
+            KeepUntil,
             Last,
             Length,
             Lines,
