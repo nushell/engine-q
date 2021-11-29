@@ -1434,6 +1434,7 @@ dependencies = [
  "chrono",
  "chrono-humanize",
  "chrono-tz",
+ "crossterm",
  "csv",
  "dialoguer",
  "eml-parser",
@@ -1441,6 +1442,7 @@ dependencies = [
  "ical",
  "indexmap",
  "itertools",
+ "lazy_static",
  "lscolors",
  "meval",
  "nu-ansi-term 0.39.0",
@@ -1456,10 +1458,12 @@ dependencies = [
  "rand",
  "rayon",
  "regex",
+ "roxmltree",
  "serde",
  "serde_ini",
  "serde_urlencoded",
  "serde_yaml",
+ "strip-ansi-escapes",
  "sysinfo",
  "terminal_size",
  "thiserror",
@@ -2170,6 +2174,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "194d8e591e405d1eecf28819740abed6d719d1a2db87fc0bcdedee9a26d55560"
 
 [[package]]
+name = "roxmltree"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "921904a62e410e37e215c40381b7117f830d9d89ba60ab5236170541dd25646b"
+dependencies = [
+ "xmlparser",
+]
+
+[[package]]
 name = "rust-argon2"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2757,6 +2770,12 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
+
+[[package]]
+name = "xmlparser"
+version = "0.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "114ba2b24d2167ef6d67d7d04c8cc86522b87f490025f39f0303b7db5bf5e3d8"
 
 [[package]]
 name = "yaml-rust"
