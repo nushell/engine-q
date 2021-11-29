@@ -2,7 +2,8 @@ use nu_engine::CallExt;
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
-    Category, Example, IntoPipelineData, PipelineData, ShellError, Signature, Spanned, SyntaxShape, Value,
+    Category, Example, IntoPipelineData, PipelineData, ShellError, Signature, Spanned, SyntaxShape,
+    Value,
 };
 use std::process::{Command as CommandSys, Stdio};
 
@@ -54,43 +55,47 @@ impl Command for Kill {
         let force: bool = call.has_flag("force");
         let signal: Option<Spanned<i64>> = call.get_flag(engine_state, stack, "signal")?;
         let quiet: bool = call.has_flag("quiet");
-    
+
         let mut cmd = if cfg!(windows) {
             let mut cmd = CommandSys::new("taskkill");
-    
+
             if force {
                 cmd.arg("/F");
             }
-    
+
             cmd.arg("/PID");
             cmd.arg(pid.to_string());
-    
+
             // each pid must written as `/PID 0` otherwise
             // taskkill will act as `killall` unix command
             for id in &rest {
                 cmd.arg("/PID");
                 cmd.arg(id.to_string());
             }
-    
+
             cmd
         } else {
             let mut cmd = CommandSys::new("kill");
             if force {
-                if let Some(Spanned { item: _, span: signal_span}) = signal {
-                    return Err(ShellError::IncompatibleParameters{
+                if let Some(Spanned {
+                    item: _,
+                    span: signal_span,
+                }) = signal
+                {
+                    return Err(ShellError::IncompatibleParameters {
                         left_message: "force".to_string(),
-                        left_span: call.get_named_arg("force").unwrap().span.clone(),
+                        left_span: call.get_named_arg("force").unwrap().span,
                         right_message: "signal".to_string(),
-                        right_span: signal_span.clone(),
+                        right_span: signal_span,
                     });
                 }
                 cmd.arg("-9");
             } else if let Some(signal_value) = signal {
                 cmd.arg(format!("-{}", signal_value.item.to_string()));
             }
-    
+
             cmd.arg(pid.to_string());
-    
+
             cmd.args(rest.iter().map(move |id| id.to_string()));
 
             cmd
@@ -132,7 +137,6 @@ impl Command for Kill {
 #[cfg(test)]
 mod tests {
     use super::Kill;
-    use super::ShellError;
 
     #[test]
     fn examples_work_as_expected() {
