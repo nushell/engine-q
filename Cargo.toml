@@ -13,11 +13,6 @@ members = [
 	"crates/nu-command",
 	"crates/nu-protocol",
 	"crates/nu-plugin",
-<<<<<<< HEAD
-	"crates/nu-dataframe",
-	"crates/nu_plugin_example",
-=======
->>>>>>> 3916ac4165e787df7fc25188ca4c8d138b6c071c
 	"crates/nu_plugin_inc",
 ]
 
