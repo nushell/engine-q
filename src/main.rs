@@ -126,7 +126,7 @@ fn main() -> Result<()> {
         let mut stack = nu_protocol::engine::Stack::new();
 
         for (k, v) in std::env::vars() {
-            stack.env_vars.insert(k, v);
+            stack.add_env_var(k, v);
         }
 
         // Set up our initial config to start from
@@ -170,7 +170,7 @@ fn main() -> Result<()> {
         let mut stack = nu_protocol::engine::Stack::new();
 
         for (k, v) in std::env::vars() {
-            stack.env_vars.insert(k, v);
+            stack.add_env_var(k, v);
         }
 
         // Set up our initial config to start from
@@ -230,6 +230,17 @@ fn main() -> Result<()> {
             //Reset the ctrl-c handler
             ctrlc.store(false, Ordering::SeqCst);
 
+            const EQ_PROMPT_ANIMATE_DEFAULT: bool = true;
+            // Toggle prompt animation
+            let animate = match std::env::var("EQ_PROMPT_ANIMATE") {
+                Ok(ms_str) => match ms_str.as_str() {
+                    "ON" | "1" => true,
+                    "OFF" | "0" => false,
+                    _ => EQ_PROMPT_ANIMATE_DEFAULT,
+                },
+                _ => EQ_PROMPT_ANIMATE_DEFAULT,
+            };
+
             let line_editor = Reedline::create()
                 .into_diagnostic()?
                 .with_completion_action_handler(Box::new(FuzzyCompletion {
@@ -238,6 +249,7 @@ fn main() -> Result<()> {
                 .with_highlighter(Box::new(NuHighlighter {
                     engine_state: engine_state.clone(),
                 }))
+                .with_animation(animate)
                 // .with_completion_action_handler(Box::new(
                 //     ListCompletionHandler::default().with_completer(Box::new(completer)),
                 // ))
