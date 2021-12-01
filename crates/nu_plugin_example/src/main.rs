@@ -1,6 +1,4 @@
-use nu_plugin::call_trait::CallExtPlugin;
-use nu_plugin::{serve_plugin, Plugin};
-use nu_protocol::ast::Call;
+use nu_plugin::{serve_plugin, EvaluatedCall, Plugin};
 use nu_protocol::{Category, ShellError, Signature, SyntaxShape, Value};
 
 fn main() {
@@ -36,7 +34,12 @@ impl Plugin for Example {
         ]
     }
 
-    fn run(&mut self, name: &str, call: &Call, input: &Value) -> Result<Value, ShellError> {
+    fn run(
+        &mut self,
+        name: &str,
+        call: &EvaluatedCall,
+        input: &Value,
+    ) -> Result<Value, ShellError> {
         // You can use the name to identify what plugin signature was called
         match name {
             "test-1" => test1(call, input),
@@ -48,7 +51,7 @@ impl Plugin for Example {
     }
 }
 
-fn test1(call: &Call, input: &Value) -> Result<Value, ShellError> {
+fn test1(call: &EvaluatedCall, input: &Value) -> Result<Value, ShellError> {
     // Note. When debugging your plugin, you may want to print something to the console
     // Use the eprintln macro to print your messages. Trying to print to stdout will
     // cause a decoding error for your message
@@ -88,7 +91,7 @@ fn test1(call: &Call, input: &Value) -> Result<Value, ShellError> {
     Ok(Value::Nothing { span: call.head })
 }
 
-fn test2(call: &Call, input: &Value) -> Result<Value, ShellError> {
+fn test2(call: &EvaluatedCall, input: &Value) -> Result<Value, ShellError> {
     eprintln!("Calling test1 signature");
     eprintln!("value received {:?}", input);
 

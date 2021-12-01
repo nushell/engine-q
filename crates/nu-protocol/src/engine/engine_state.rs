@@ -228,7 +228,8 @@ impl EngineState {
             for decl in self.plugin_decls() {
                 // A successful plugin registration already includes the plugin filename
                 // No need to check the None option
-                let file_name = decl.is_plugin().expect("plugin should have file name");
+                let path = decl.is_plugin().expect("plugin should have file name");
+                let file_name = path.to_str().expect("path should be a str");
 
                 let line = serde_json::to_string_pretty(&decl.signature())
                     .map(|signature| format!("register {} {}\n", file_name, signature))
@@ -510,11 +511,13 @@ pub struct StateDelta {
     pub(crate) file_contents: Vec<(Vec<u8>, usize, usize)>,
     vars: Vec<Type>,              // indexed by VarId
     decls: Vec<Box<dyn Command>>, // indexed by DeclId
-    #[cfg(feature = "plugin")]
-    plugin_decls: Vec<Box<dyn Command>>, // indexed by DeclId
     blocks: Vec<Block>,           // indexed by BlockId
     overlays: Vec<Overlay>,       // indexed by OverlayId
     pub scope: Vec<ScopeFrame>,
+    #[cfg(feature = "plugin")]
+    pub plugin_signatures: Vec<(PathBuf, Option<Signature>)>,
+    #[cfg(feature = "plugin")]
+    plugin_decls: Vec<Box<dyn Command>>,
 }
 
 impl StateDelta {
@@ -551,11 +554,13 @@ impl<'a> StateWorkingSet<'a> {
                 file_contents: vec![],
                 vars: vec![],
                 decls: vec![],
-                #[cfg(feature = "plugin")]
-                plugin_decls: vec![],
                 blocks: vec![],
                 overlays: vec![],
                 scope: vec![ScopeFrame::new()],
+                #[cfg(feature = "plugin")]
+                plugin_signatures: vec![],
+                #[cfg(feature = "plugin")]
+                plugin_decls: vec![],
             },
             permanent_state,
         }
@@ -624,8 +629,20 @@ impl<'a> StateWorkingSet<'a> {
     }
 
     #[cfg(feature = "plugin")]
-    pub fn add_plugin_decl(&mut self, decl: Box<dyn Command>) {
-        self.delta.plugin_decls.push(decl);
+    pub fn add_plugin_decls(&mut self, decls: Vec<Box<dyn Command>>) {
+        for decl in decls {
+            self.delta.plugin_decls.push(decl);
+        }
+    }
+
+    #[cfg(feature = "plugin")]
+    pub fn add_plugin_signature(&mut self, path: PathBuf, signature: Option<Signature>) {
+        self.delta.plugin_signatures.push((path, signature));
+    }
+
+    #[cfg(feature = "plugin")]
+    pub fn get_signatures(&self) -> impl Iterator<Item = &(PathBuf, Option<Signature>)> {
+        self.delta.plugin_signatures.iter()
     }
 
     pub fn merge_predecl(&mut self, name: &[u8]) -> Option<DeclId> {

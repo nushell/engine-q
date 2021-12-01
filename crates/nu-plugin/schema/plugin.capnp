@@ -104,30 +104,17 @@ enum Shape {
 	boolean @5;
 }
 
-# The next structs define the call information sent to th plugin
-struct Expression {
-	union {
-		garbage @0 :Void;
-		int @1 :Int64;
-		float @2 :Float64;
-		string @3 :Text;
-		# The expression list can be exteded based on the user needs
-		# If a plugin requires something from the expression object, it
-		# will need to be added to this list
-	}
-}
-
-struct Call {
+struct EvaluatedCall {
 	head @0: Span;
-	positional @1 :List(Expression);
-	# The expression in the map can be optional
+	positional @1 :List(Value);
+	# The value in the map can be optional
 	# Check for existence when deserializing
-	named @2 :Map(Text, Expression);
+	named @2 :Map(Text, Value);
 }
 
 struct CallInfo {
 	name @0: Text;
-	call @1: Call;
+	call @1: EvaluatedCall;
 	input @2: Value;
 }
 

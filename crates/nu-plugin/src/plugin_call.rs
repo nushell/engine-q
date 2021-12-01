@@ -150,21 +150,9 @@ pub fn decode_response(reader: &mut impl std::io::BufRead) -> Result<PluginRespo
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::evaluated_call::EvaluatedCall;
     use crate::plugin::{PluginCall, PluginResponse};
-    use nu_protocol::{
-        ast::{Call, Expr, Expression},
-        Signature, Span, Spanned, SyntaxShape, Value,
-    };
-
-    fn compare_expressions(lhs: &Expression, rhs: &Expression) {
-        match (&lhs.expr, &rhs.expr) {
-            (Expr::Bool(a), Expr::Bool(b)) => assert_eq!(a, b),
-            (Expr::Int(a), Expr::Int(b)) => assert_eq!(a, b),
-            (Expr::Float(a), Expr::Float(b)) => assert!((a - b).abs() < f64::EPSILON),
-            (Expr::String(a), Expr::String(b)) => assert_eq!(a, b),
-            _ => panic!("not matching values"),
-        }
-    }
+    use nu_protocol::{Signature, Span, Spanned, SyntaxShape, Value};
 
     #[test]
     fn callinfo_round_trip_signature() {
@@ -189,21 +177,16 @@ mod tests {
             span: Span { start: 1, end: 20 },
         };
 
-        let call = Call {
-            decl_id: 1,
+        let call = EvaluatedCall {
             head: Span { start: 0, end: 10 },
             positional: vec![
-                Expression {
-                    expr: Expr::Float(1.0),
+                Value::Float {
+                    val: 1.0,
                     span: Span { start: 0, end: 10 },
-                    ty: nu_protocol::Type::Float,
-                    custom_completion: None,
                 },
-                Expression {
-                    expr: Expr::String("something".into()),
+                Value::String {
+                    val: "something".into(),
                     span: Span { start: 0, end: 10 },
-                    ty: nu_protocol::Type::Float,
-                    custom_completion: None,
                 },
             ],
             named: vec![(
@@ -211,11 +194,9 @@ mod tests {
                     item: "name".to_string(),
                     span: Span { start: 0, end: 10 },
                 },
-                Some(Expression {
-                    expr: Expr::Float(1.0),
+                Some(Value::Float {
+                    val: 1.0,
                     span: Span { start: 0, end: 10 },
-                    ty: nu_protocol::Type::Float,
-                    custom_completion: None,
                 }),
             )],
         };
@@ -241,7 +222,7 @@ mod tests {
                 call.positional
                     .iter()
                     .zip(call_info.call.positional.iter())
-                    .for_each(|(lhs, rhs)| compare_expressions(lhs, rhs));
+                    .for_each(|(lhs, rhs)| assert_eq!(lhs, rhs));
 
                 call.named
                     .iter()
@@ -252,7 +233,7 @@ mod tests {
 
                         match (&lhs.1, &rhs.1) {
                             (None, None) => {}
-                            (Some(a), Some(b)) => compare_expressions(a, b),
+                            (Some(a), Some(b)) => assert_eq!(a, b),
                             _ => panic!("not matching values"),
                         }
                     });

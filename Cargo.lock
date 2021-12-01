@@ -1503,7 +1503,6 @@ version = "0.1.0"
 dependencies = [
  "miette",
  "nu-path",
- "nu-plugin",
  "nu-protocol",
  "serde_json",
  "thiserror",
@@ -1523,6 +1522,7 @@ version = "0.1.0"
 dependencies = [
  "capnp",
  "capnpc",
+ "nu-engine",
  "nu-protocol",
 ]
 
@@ -1560,6 +1560,14 @@ version = "0.36.0"
 dependencies = [
  "strip-ansi-escapes",
  "unicode-width",
+]
+
+[[package]]
+name = "nu_plugin_example"
+version = "0.1.0"
+dependencies = [
+ "nu-plugin",
+ "nu-protocol",
 ]
 
 [[package]]

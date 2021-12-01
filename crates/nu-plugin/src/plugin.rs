@@ -1,18 +1,20 @@
 use crate::plugin_call::{self, decode_call, encode_response};
 use std::io::BufReader;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command as CommandSys, Stdio};
 
-use nu_protocol::engine::{Command, EngineState, Stack};
+use nu_protocol::engine::{Command, EngineState, Stack, StateWorkingSet};
 use nu_protocol::{ast::Call, Signature, Value};
-use nu_protocol::{PipelineData, ShellError, Span};
+use nu_protocol::{PipelineData, ShellError};
+
+use super::evaluated_call::EvaluatedCall;
 
 const OUTPUT_BUFFER_SIZE: usize = 8192;
 
 #[derive(Debug)]
 pub struct CallInfo {
     pub name: String,
-    pub call: Call,
+    pub call: EvaluatedCall,
     pub input: Value,
 }
 
@@ -31,15 +33,11 @@ pub enum PluginResponse {
     Value(Box<Value>),
 }
 
-pub fn get_signature(path: &Path, span: Span) -> Result<Vec<Signature>, ShellError> {
+pub fn get_signature(path: &Path) -> Result<Vec<Signature>, ShellError> {
     let mut plugin_cmd = create_command(path);
 
     let mut child = plugin_cmd.spawn().map_err(|err| {
-        ShellError::LabeledError(
-            "Error spawning child process".into(),
-            format!("{}", err),
-            span,
-        )
+        ShellError::InternalError(format!("Error spawning child process: {}", err))
     })?;
 
     // Create message to plugin to indicate that signature is required and
@@ -57,22 +55,15 @@ pub fn get_signature(path: &Path, span: Span) -> Result<Vec<Signature>, ShellErr
 
         match response {
             PluginResponse::Signature(sign) => Ok(sign),
-            PluginResponse::Error(msg) => Err(ShellError::LabeledError(
-                "Plugin response error".into(),
+            PluginResponse::Error(msg) => Err(ShellError::InternalError(format!(
+                "Plugin response error {}",
                 msg,
-                span,
-            )),
-            _ => Err(ShellError::LabeledError(
-                "Plugin missing signature".into(),
-                "signature not found".into(),
-                span,
-            )),
+            ))),
+            _ => Err(ShellError::InternalError("Plugin missing signature".into())),
         }
     } else {
-        Err(ShellError::LabeledError(
+        Err(ShellError::InternalError(
             "Plugin missing stdout reader".into(),
-            "missing stdour reader".into(),
-            span,
         ))
     }?;
 
@@ -105,11 +96,11 @@ fn create_command(path: &Path) -> CommandSys {
 pub struct PluginDeclaration {
     name: String,
     signature: Signature,
-    filename: String,
+    filename: PathBuf,
 }
 
 impl PluginDeclaration {
-    pub fn new(filename: String, signature: Signature) -> Self {
+    pub fn new(filename: PathBuf, signature: Signature) -> Self {
         Self {
             name: signature.name.clone(),
             signature,
@@ -134,7 +125,7 @@ impl Command for PluginDeclaration {
     fn run(
         &self,
         engine_state: &EngineState,
-        _stack: &mut Stack,
+        stack: &mut Stack,
         call: &Call,
         input: PipelineData,
     ) -> Result<PipelineData, ShellError> {
@@ -171,7 +162,7 @@ impl Command for PluginDeclaration {
             // PluginCall information
             let plugin_call = PluginCall::CallInfo(Box::new(CallInfo {
                 name: self.name.clone(),
-                call: call.clone(),
+                call: EvaluatedCall::try_from_call(call, engine_state, stack)?,
                 input,
             }));
 
@@ -226,15 +217,16 @@ impl Command for PluginDeclaration {
         Ok(pipeline_data)
     }
 
-    fn is_plugin(&self) -> Option<&str> {
-        Some(self.filename.as_str())
+    fn is_plugin(&self) -> Option<&PathBuf> {
+        Some(&self.filename)
     }
 }
 
 /// The `Plugin` trait defines the API which plugins use to "hook" into nushell.
 pub trait Plugin {
     fn signature(&self) -> Vec<Signature>;
-    fn run(&mut self, name: &str, call: &Call, input: &Value) -> Result<Value, ShellError>;
+    fn run(&mut self, name: &str, call: &EvaluatedCall, input: &Value)
+        -> Result<Value, ShellError>;
 }
 
 // Function used in the plugin definition for the communication protocol between
@@ -271,4 +263,38 @@ pub fn serve_plugin(plugin: &mut impl Plugin) {
             }
         }
     }
+}
+
+pub fn eval_plugin_signatures(working_set: &mut StateWorkingSet) -> Result<(), ShellError> {
+    let decls = working_set
+        .get_signatures()
+        .map(|(path, signature)| match signature {
+            Some(signature) => {
+                let plugin_decl = PluginDeclaration::new(path.clone(), signature.clone());
+                let plugin_decl: Box<dyn Command> = Box::new(plugin_decl);
+                Ok(vec![plugin_decl])
+            }
+            None => match get_signature(path.as_path()) {
+                Ok(signatures) => Ok(signatures
+                    .into_iter()
+                    .map(|signature| {
+                        let plugin_decl = PluginDeclaration::new(path.clone(), signature);
+                        let plugin_decl: Box<dyn Command> = Box::new(plugin_decl);
+                        plugin_decl
+                    })
+                    .collect::<Vec<Box<dyn Command>>>()),
+                Err(err) => Err(ShellError::InternalError(format!("{}", err))),
+            },
+        })
+        // Need to collect the vector in order to check the error from getting the signature
+        .collect::<Result<Vec<Vec<Box<dyn Command>>>, ShellError>>()?;
+
+    let decls = decls
+        .into_iter()
+        .flatten()
+        .collect::<Vec<Box<dyn Command>>>();
+
+    working_set.add_plugin_decls(decls);
+
+    Ok(())
 }

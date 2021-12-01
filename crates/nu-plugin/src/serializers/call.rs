@@ -1,10 +1,11 @@
-use crate::plugin_capnp::{call, expression};
-use nu_protocol::{
-    ast::{Call, Expr, Expression},
-    ShellError, Span, Spanned, Type,
-};
+use super::value;
+use crate::{evaluated_call::EvaluatedCall, plugin_capnp::evaluated_call};
+use nu_protocol::{ShellError, Span, Spanned, Value};
 
-pub(crate) fn serialize_call(call: &Call, mut builder: call::Builder) -> Result<(), ShellError> {
+pub(crate) fn serialize_call(
+    call: &EvaluatedCall,
+    mut builder: evaluated_call::Builder,
+) -> Result<(), ShellError> {
     let mut head = builder.reborrow().init_head();
     head.set_start(call.head.start as u64);
     head.set_end(call.head.end as u64);
@@ -15,17 +16,17 @@ pub(crate) fn serialize_call(call: &Call, mut builder: call::Builder) -> Result<
     Ok(())
 }
 
-fn serialize_positional(positional: &[Expression], mut builder: call::Builder) {
+fn serialize_positional(positional: &[Value], mut builder: evaluated_call::Builder) {
     let mut positional_builder = builder.reborrow().init_positional(positional.len() as u32);
 
-    for (index, expression) in positional.iter().enumerate() {
-        serialize_expression(expression, positional_builder.reborrow().get(index as u32))
+    for (index, value) in positional.iter().enumerate() {
+        value::serialize_value(value, positional_builder.reborrow().get(index as u32))
     }
 }
 
 fn serialize_named(
-    named: &[(Spanned<String>, Option<Expression>)],
-    mut builder: call::Builder,
+    named: &[(Spanned<String>, Option<Value>)],
+    mut builder: evaluated_call::Builder,
 ) -> Result<(), ShellError> {
     let mut named_builder = builder
         .reborrow()
@@ -39,29 +40,18 @@ fn serialize_named(
             .set_key(key.item.as_str())
             .map_err(|e| ShellError::InternalError(e.to_string()))?;
 
-        if let Some(expr) = expression {
+        if let Some(value) = expression {
             let value_builder = entry_builder.init_value();
-            serialize_expression(expr, value_builder);
+            value::serialize_value(value, value_builder);
         }
     }
 
     Ok(())
 }
 
-fn serialize_expression(expression: &Expression, mut builder: expression::Builder) {
-    match &expression.expr {
-        Expr::Garbage => builder.set_garbage(()),
-        Expr::Int(val) => builder.set_int(*val),
-        Expr::Float(val) => builder.set_float(*val),
-        Expr::String(val) => builder.set_string(val),
-        _ => {
-            // If there is the need to pass other type of argument to the plugin
-            // we have to define the encoding for that parameter in this match
-        }
-    }
-}
-
-pub(crate) fn deserialize_call(reader: call::Reader) -> Result<Call, ShellError> {
+pub(crate) fn deserialize_call(
+    reader: evaluated_call::Reader,
+) -> Result<EvaluatedCall, ShellError> {
     let head_reader = reader
         .get_head()
         .map_err(|e| ShellError::InternalError(e.to_string()))?;
@@ -74,8 +64,7 @@ pub(crate) fn deserialize_call(reader: call::Reader) -> Result<Call, ShellError>
     let positional = deserialize_positionals(head, reader)?;
     let named = deserialize_named(head, reader)?;
 
-    Ok(Call {
-        decl_id: 0,
+    Ok(EvaluatedCall {
         head,
         positional,
         named,
@@ -83,22 +72,22 @@ pub(crate) fn deserialize_call(reader: call::Reader) -> Result<Call, ShellError>
 }
 
 fn deserialize_positionals(
-    span: Span,
-    reader: call::Reader,
-) -> Result<Vec<Expression>, ShellError> {
+    _span: Span,
+    reader: evaluated_call::Reader,
+) -> Result<Vec<Value>, ShellError> {
     let positional_reader = reader
         .get_positional()
         .map_err(|e| ShellError::InternalError(e.to_string()))?;
 
     positional_reader
         .iter()
-        .map(|expression_reader| deserialize_expression(span, expression_reader))
+        .map(value::deserialize_value)
         .collect()
 }
 
-type NamedList = Vec<(Spanned<String>, Option<Expression>)>;
+type NamedList = Vec<(Spanned<String>, Option<Value>)>;
 
-fn deserialize_named(span: Span, reader: call::Reader) -> Result<NamedList, ShellError> {
+fn deserialize_named(span: Span, reader: evaluated_call::Reader) -> Result<NamedList, ShellError> {
     let named_reader = reader
         .get_named()
         .map_err(|e| ShellError::InternalError(e.to_string()))?;
@@ -107,7 +96,7 @@ fn deserialize_named(span: Span, reader: call::Reader) -> Result<NamedList, Shel
         .get_entries()
         .map_err(|e| ShellError::InternalError(e.to_string()))?;
 
-    let mut entries: Vec<(Spanned<String>, Option<Expression>)> =
+    let mut entries: Vec<(Spanned<String>, Option<Value>)> =
         Vec::with_capacity(entries_list.len() as usize);
 
     for entry_reader in entries_list {
@@ -121,10 +110,10 @@ fn deserialize_named(span: Span, reader: call::Reader) -> Result<NamedList, Shel
                 .get_value()
                 .map_err(|e| ShellError::InternalError(e.to_string()))?;
 
-            let expression = deserialize_expression(span, value_reader)
+            let value = value::deserialize_value(value_reader)
                 .map_err(|e| ShellError::InternalError(e.to_string()))?;
 
-            Some(expression)
+            Some(value)
         } else {
             None
         };
@@ -137,91 +126,50 @@ fn deserialize_named(span: Span, reader: call::Reader) -> Result<NamedList, Shel
     Ok(entries)
 }
 
-fn deserialize_expression(
-    span: Span,
-    reader: expression::Reader,
-) -> Result<Expression, ShellError> {
-    let expr = match reader.which() {
-        Ok(expression::Garbage(())) => Expr::Garbage,
-        Ok(expression::Int(val)) => Expr::Int(val),
-        Ok(expression::Float(val)) => Expr::Float(val),
-        Ok(expression::String(val)) => {
-            let string = val
-                .map_err(|e| ShellError::InternalError(e.to_string()))?
-                .to_string();
-
-            Expr::String(string)
-        }
-        Err(capnp::NotInSchema(_)) => Expr::Garbage,
-    };
-
-    Ok(Expression {
-        expr,
-        span,
-        ty: Type::Unknown,
-        custom_completion: None,
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use capnp::serialize;
     use core::panic;
 
     use super::*;
-    use nu_protocol::{
-        ast::{Call, Expr, Expression},
-        Span, Spanned,
-    };
+    use nu_protocol::{Span, Spanned, Value};
 
-    fn write_buffer(call: &Call, writer: &mut impl std::io::Write) -> Result<(), ShellError> {
+    fn write_buffer(
+        call: &EvaluatedCall,
+        writer: &mut impl std::io::Write,
+    ) -> Result<(), ShellError> {
         let mut message = ::capnp::message::Builder::new_default();
 
-        let builder = message.init_root::<call::Builder>();
+        let builder = message.init_root::<evaluated_call::Builder>();
         serialize_call(call, builder)?;
 
         serialize::write_message(writer, &message)
             .map_err(|e| ShellError::InternalError(e.to_string()))
     }
 
-    fn read_buffer(reader: &mut impl std::io::BufRead) -> Result<Call, ShellError> {
+    fn read_buffer(reader: &mut impl std::io::BufRead) -> Result<EvaluatedCall, ShellError> {
         let message_reader =
             serialize::read_message(reader, ::capnp::message::ReaderOptions::new()).unwrap();
 
         let reader = message_reader
-            .get_root::<call::Reader>()
+            .get_root::<evaluated_call::Reader>()
             .map_err(|e| ShellError::InternalError(e.to_string()))?;
 
         deserialize_call(reader)
     }
 
-    fn compare_expressions(lhs: &Expression, rhs: &Expression) {
-        match (&lhs.expr, &rhs.expr) {
-            (Expr::Bool(a), Expr::Bool(b)) => assert_eq!(a, b),
-            (Expr::Int(a), Expr::Int(b)) => assert_eq!(a, b),
-            (Expr::Float(a), Expr::Float(b)) => assert!((a - b).abs() < f64::EPSILON),
-            (Expr::String(a), Expr::String(b)) => assert_eq!(a, b),
-            _ => panic!("not matching values"),
-        }
-    }
-
     #[test]
     fn call_round_trip() {
-        let call = Call {
-            decl_id: 1,
+        let call = EvaluatedCall {
             head: Span { start: 0, end: 10 },
             positional: vec![
-                Expression {
-                    expr: Expr::Float(1.0),
+                Value::Float {
+                    val: 1.0,
                     span: Span { start: 0, end: 10 },
-                    ty: nu_protocol::Type::Float,
-                    custom_completion: None,
                 },
-                Expression {
-                    expr: Expr::String("something".into()),
+                Value::String {
+                    val: "something".into(),
                     span: Span { start: 0, end: 10 },
-                    ty: nu_protocol::Type::Float,
-                    custom_completion: None,
                 },
             ],
             named: vec![
@@ -230,11 +178,9 @@ mod tests {
                         item: "name".to_string(),
                         span: Span { start: 0, end: 10 },
                     },
-                    Some(Expression {
-                        expr: Expr::Float(1.0),
+                    Some(Value::Float {
+                        val: 1.0,
                         span: Span { start: 0, end: 10 },
-                        ty: nu_protocol::Type::Float,
-                        custom_completion: None,
                     }),
                 ),
                 (
@@ -257,7 +203,7 @@ mod tests {
         call.positional
             .iter()
             .zip(returned_call.positional.iter())
-            .for_each(|(lhs, rhs)| compare_expressions(lhs, rhs));
+            .for_each(|(lhs, rhs)| assert_eq!(lhs, rhs));
 
         call.named
             .iter()
@@ -268,7 +214,7 @@ mod tests {
 
                 match (&lhs.1, &rhs.1) {
                     (None, None) => {}
-                    (Some(a), Some(b)) => compare_expressions(a, b),
+                    (Some(a), Some(b)) => assert_eq!(a, b),
                     _ => panic!("not matching values"),
                 }
             });

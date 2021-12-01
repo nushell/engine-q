@@ -1,7 +1,6 @@
 use crate::inc::SemVerAction;
 use crate::Inc;
-use nu_plugin::Plugin;
-use nu_protocol::ast::Call;
+use nu_plugin::{EvaluatedCall, Plugin};
 use nu_protocol::{ShellError, Signature, Span, Value};
 
 impl Plugin for Inc {
@@ -25,7 +24,12 @@ impl Plugin for Inc {
             )]
     }
 
-    fn run(&mut self, name: &str, call: &Call, input: &Value) -> Result<Value, ShellError> {
+    fn run(
+        &mut self,
+        name: &str,
+        call: &EvaluatedCall,
+        input: &Value,
+    ) -> Result<Value, ShellError> {
         if name != "inc" {
             return Ok(Value::Nothing {
                 span: Span::unknown(),
