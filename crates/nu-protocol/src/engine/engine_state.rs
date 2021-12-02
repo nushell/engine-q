@@ -11,6 +11,7 @@ use std::{
 
 #[cfg(feature = "plugin")]
 use std::path::PathBuf;
+
 // Tells whether a decl etc. is visible or not
 #[derive(Debug, Clone)]
 struct Visibility {
@@ -197,17 +198,14 @@ impl EngineState {
             last.visibility.merge_with(first.visibility);
 
             #[cfg(feature = "plugin")]
-            if !delta.plugin_decls.is_empty() {
-                for decl in delta.plugin_decls {
-                    let name = decl.name().as_bytes().to_vec();
-                    self.decls.push_back(decl);
-                    let decl_id = self.decls.len() - 1;
+            if delta.plugins_changed {
+                let result = self.update_plugin_file();
 
-                    last.decls.insert(name, decl_id);
-                    last.visibility.use_decl_id(&decl_id);
+                if result.is_ok() {
+                    delta.plugins_changed = false;
                 }
 
-                return self.update_plugin_file();
+                return result;
             }
         }
 
@@ -231,7 +229,7 @@ impl EngineState {
                 let file_name = decl.is_plugin().expect("plugin should have file name");
 
                 let line = serde_json::to_string_pretty(&decl.signature())
-                    .map(|signature| format!("register {} {}\n", file_name, signature))
+                    .map(|signature| format!("register {} {}\n\n", file_name, signature))
                     .map_err(|err| ShellError::PluginError(err.to_string()))?;
 
                 plugin_file
@@ -307,7 +305,19 @@ impl EngineState {
     }
 
     pub fn plugin_decls(&self) -> impl Iterator<Item = &Box<dyn Command + 'static>> {
-        self.decls.iter().filter(|decl| decl.is_plugin().is_some())
+        let mut unique_plugin_decls = HashMap::new();
+
+        // Make sure there are no duplicate decls: Newer one overwrites the older one
+        for decl in self.decls.iter().filter(|d| d.is_plugin().is_some()) {
+            unique_plugin_decls.insert(decl.name(), decl);
+        }
+
+        let mut plugin_decls: Vec<(&str, &Box<dyn Command>)> =
+            unique_plugin_decls.into_iter().collect();
+
+        // Sort the plugins by name so we don't end up with a random plugin file each time
+        plugin_decls.sort_by(|a, b| a.0.cmp(b.0));
+        plugin_decls.into_iter().map(|(_, decl)| decl)
     }
 
     pub fn find_overlay(&self, name: &[u8]) -> Option<OverlayId> {
@@ -510,11 +520,11 @@ pub struct StateDelta {
     pub(crate) file_contents: Vec<(Vec<u8>, usize, usize)>,
     vars: Vec<Type>,              // indexed by VarId
     decls: Vec<Box<dyn Command>>, // indexed by DeclId
-    #[cfg(feature = "plugin")]
-    plugin_decls: Vec<Box<dyn Command>>, // indexed by DeclId
     blocks: Vec<Block>,           // indexed by BlockId
     overlays: Vec<Overlay>,       // indexed by OverlayId
     pub scope: Vec<ScopeFrame>,
+    #[cfg(feature = "plugin")]
+    plugins_changed: bool, // marks whether plugin file should be updated
 }
 
 impl StateDelta {
@@ -551,11 +561,11 @@ impl<'a> StateWorkingSet<'a> {
                 file_contents: vec![],
                 vars: vec![],
                 decls: vec![],
-                #[cfg(feature = "plugin")]
-                plugin_decls: vec![],
                 blocks: vec![],
                 overlays: vec![],
                 scope: vec![ScopeFrame::new()],
+                #[cfg(feature = "plugin")]
+                plugins_changed: false,
             },
             permanent_state,
         }
@@ -624,8 +634,8 @@ impl<'a> StateWorkingSet<'a> {
     }
 
     #[cfg(feature = "plugin")]
-    pub fn add_plugin_decl(&mut self, decl: Box<dyn Command>) {
-        self.delta.plugin_decls.push(decl);
+    pub fn mark_plugins_file_dirty(&mut self) {
+        self.delta.plugins_changed = true;
     }
 
     pub fn merge_predecl(&mut self, name: &[u8]) -> Option<DeclId> {
