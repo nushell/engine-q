@@ -1,11 +1,13 @@
 mod custom_value;
 mod from;
+mod from_value;
 mod range;
 mod stream;
 mod unit;
 
 use chrono::{DateTime, FixedOffset};
 use chrono_humanize::HumanTime;
+pub use from_value::FromValue;
 use indexmap::map::IndexMap;
 pub use range::*;
 use serde::{Deserialize, Serialize};
@@ -201,6 +203,17 @@ impl Value {
         }
     }
 
+    pub fn as_float(&self) -> Result<f64, ShellError> {
+        match self {
+            Value::Float { val, .. } => Ok(*val),
+            x => Err(ShellError::CantConvert(
+                "float".into(),
+                x.get_type().to_string(),
+                self.span()?,
+            )),
+        }
+    }
+
     /// Get the span for the current value
     pub fn span(&self) -> Result<Span, ShellError> {
         match self {
@@ -313,6 +326,11 @@ impl Value {
             Value::CellPath { val, .. } => val.into_string(),
             Value::CustomValue { val, .. } => val.value_string(),
         }
+    }
+
+    /// Convert Value into a debug string
+    pub fn debug_value(self) -> String {
+        format!("{:#?}", self)
     }
 
     /// Convert Value into string. Note that Streams will be consumed.
@@ -556,6 +574,10 @@ impl Value {
 
     pub fn int(val: i64, span: Span) -> Value {
         Value::Int { val, span }
+    }
+
+    pub fn float(val: f64, span: Span) -> Value {
+        Value::Float { val, span }
     }
 
     // Only use these for test data. Span::unknown() should not be used in user data
