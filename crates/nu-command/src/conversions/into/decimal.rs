@@ -95,20 +95,30 @@ fn operate(
 
 fn action(input: &Value, head: Span) -> Value {
     match input {
-        Value::String { val: s, .. } => {
+        Value::String { val: s, span } => {
             let other = s.trim();
 
             match other.parse::<f64>() {
                 Ok(x) => Value::Float { val: x, span: head },
                 Err(reason) => Value::Error {
-                    error: ShellError::CantConvert("".to_string(), reason.to_string(), head),
+                    error: ShellError::CantConvert("float".to_string(), reason.to_string(), *span),
                 },
             }
         }
+        Value::Int { val: v, span } => Value::Float {
+            val: *v as f64,
+            span: *span,
+        },
         other => {
-            let got = format!("Expected a string, got {}", other.get_type());
-            Value::Error {
-                error: ShellError::UnsupportedInput(got, head),
+            let span = other.span();
+            match span {
+                Ok(s) => {
+                    let got = format!("Expected a string, got {} instead", other.get_type());
+                    Value::Error {
+                        error: ShellError::UnsupportedInput(got, s),
+                    }
+                }
+                Err(e) => Value::Error { error: e },
             }
         }
     }
@@ -128,7 +138,7 @@ mod tests {
 
     #[test]
     #[allow(clippy::approx_constant)]
-    fn turns_to_integer() {
+    fn string_to_decimal() {
         let word = Value::test_string("3.1415");
         let expected = Value::test_float(3.1415);
 
@@ -143,5 +153,14 @@ mod tests {
         let actual = action(&decimal_str, Span::unknown());
 
         assert_eq!(actual.get_type(), Error);
+    }
+
+    #[test]
+    fn int_to_decimal() {
+        let decimal_str = Value::test_int(10);
+        let expected = Value::test_float(10.0);
+        let actual = action(&decimal_str, Span::unknown());
+
+        assert_eq!(actual, expected);
     }
 }
