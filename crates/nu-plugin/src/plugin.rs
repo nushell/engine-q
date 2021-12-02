@@ -164,8 +164,8 @@ impl Command for PluginDeclaration {
             .map_err(|err| ShellError::PluginError(format!("{}", err)))?;
 
         let input = match input {
-            PipelineData::Value(value) => value,
-            PipelineData::Stream(stream) => {
+            PipelineData::Value(value, ..) => value,
+            PipelineData::Stream(stream, ..) => {
                 let values = stream.collect::<Vec<Value>>();
 
                 Value::List {
@@ -199,7 +199,9 @@ impl Command for PluginDeclaration {
                 .map_err(|err| ShellError::PluginError(err.to_string()))?;
 
             match response {
-                PluginResponse::Value(value) => Ok(PipelineData::Value(value.as_ref().clone())),
+                PluginResponse::Value(value) => {
+                    Ok(PipelineData::Value(value.as_ref().clone(), None))
+                }
                 PluginResponse::Error(msg) => Err(PluginError::DecodingError(msg)),
                 _ => Err(PluginError::DecodingError(
                     "result value from plugin not found".into(),
