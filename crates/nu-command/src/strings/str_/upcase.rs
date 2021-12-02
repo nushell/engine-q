@@ -74,7 +74,7 @@ fn operate(
 fn action(input: &Value, head: Span) -> Value {
     match input {
         Value::String { val: s, .. } => Value::String {
-            val: s.to_ascii_uppercase(),
+            val: s.to_uppercase(),
             span: head,
         },
         other => {
