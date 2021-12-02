@@ -1,7 +1,7 @@
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
-    Example, Category, PipelineData, IntoPipelineData, ShellError, Signature, Value, Span
+    Category, Example, IntoPipelineData, PipelineData, ShellError, Signature, Span, Value,
 };
 
 #[derive(Clone)]
@@ -22,8 +22,7 @@ impl Command for ToUrl {
 
     fn examples(&self) -> Vec<Example> {
         vec![Example {
-            description:
-                "Outputs an URL string representing the contents of this table",
+            description: "Outputs an URL string representing the contents of this table",
             example: r#"[[foo bar]; ["1" "2"]] | to url"#,
             result: Some(Value::test_string("foo=1&bar=2")),
         }]
@@ -46,9 +45,7 @@ fn to_url(input: PipelineData, head: Span) -> Result<PipelineData, ShellError> {
         .into_iter()
         .map(move |value| match value {
             Value::Record {
-                ref cols,
-                ref vals,
-                ..
+                ref cols, ref vals, ..
             } => {
                 let mut row_vec = vec![];
                 for (k, v) in cols.iter().zip(vals.iter()) {
@@ -67,13 +64,19 @@ fn to_url(input: PipelineData, head: Span) -> Result<PipelineData, ShellError> {
 
                 match serde_urlencoded::to_string(row_vec) {
                     Ok(s) => Ok(s),
-                    _ => Err(ShellError::CantConvert("URL".into(), value.get_type().to_string(), head) ),
+                    _ => Err(ShellError::CantConvert(
+                        "URL".into(),
+                        value.get_type().to_string(),
+                        head,
+                    )),
                 }
             }
             other => Err(ShellError::UnsupportedInput(
                 "Expected a table from pipeline".to_string(),
-                other.span().unwrap_or_else(|_| Span::unknown())) )
-        }).collect();
+                other.span().unwrap_or_else(|_| Span::unknown()),
+            )),
+        })
+        .collect();
 
     Ok(Value::string(output?, head).into_pipeline_data())
 }

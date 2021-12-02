@@ -1,7 +1,7 @@
 use nu_protocol::ast::{Call, PathMember};
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
-    Category, Example, IntoPipelineData, Span, PipelineData, ShellError, Signature, Value, Type
+    Category, Example, IntoPipelineData, PipelineData, ShellError, Signature, Span, Type, Value,
 };
 
 #[derive(Clone)]
@@ -22,8 +22,7 @@ impl Command for ToToml {
 
     fn examples(&self) -> Vec<Example> {
         vec![Example {
-            description:
-                "Outputs an TOML string representing the contents of this table",
+            description: "Outputs an TOML string representing the contents of this table",
             example: r#"[[foo bar]; ["1" "2"]] | to toml"#,
             result: Some(Value::test_string("bar = \"2\"\nfoo = \"1\"\n")),
         }]
@@ -59,14 +58,16 @@ fn helper(v: &Value) -> Result<toml::Value, ShellError> {
                 m.insert(k.clone(), helper(v)?);
             }
             toml::Value::Table(m)
-        },
+        }
         Value::List { vals, .. } => toml::Value::Array(toml_list(vals)?),
         Value::Block { .. } => toml::Value::String("<Block>".to_string()),
         Value::Nothing { .. } => toml::Value::String("<Nothing>".to_string()),
         Value::Error { error } => return Err(error.clone()),
-        Value::Binary { val, .. } => {
-            toml::Value::Array(val.iter().map(|x| toml::Value::Integer(*x as i64)).collect())
-        }
+        Value::Binary { val, .. } => toml::Value::Array(
+            val.iter()
+                .map(|x| toml::Value::Integer(*x as i64))
+                .collect(),
+        ),
         Value::CellPath { val, .. } => toml::Value::Array(
             val.members
                 .iter()
@@ -76,7 +77,7 @@ fn helper(v: &Value) -> Result<toml::Value, ShellError> {
                 })
                 .collect::<Result<Vec<toml::Value>, ShellError>>()?,
         ),
-        Value::CustomValue { .. } => toml::Value::String("<Custom Value>".to_string())
+        Value::CustomValue { .. } => toml::Value::String("<Custom Value>".to_string()),
     })
 }
 
@@ -90,7 +91,11 @@ fn toml_list(input: &[Value]) -> Result<Vec<toml::Value>, ShellError> {
     Ok(out)
 }
 
-fn toml_into_pipeline_data(toml_value: &toml::Value, value_type: Type, span: Span) -> Result<PipelineData, ShellError> {
+fn toml_into_pipeline_data(
+    toml_value: &toml::Value,
+    value_type: Type,
+    span: Span,
+) -> Result<PipelineData, ShellError> {
     match toml::to_string(&toml_value) {
         Ok(serde_toml_string) => Ok(Value::String {
             val: serde_toml_string,
@@ -112,35 +117,38 @@ fn value_to_toml_value(v: &Value) -> Result<toml::Value, ShellError> {
             _ => Err(ShellError::UnsupportedInput(
                 "Expected a table with TOML-compatible structure from pipeline".to_string(),
                 *span,
-        ))
+            )),
         },
         Value::String { val, span } => {
             // Attempt to de-serialize the String
-            toml::de::from_str(&val).map_err(|_| {
+            toml::de::from_str(val).map_err(|_| {
                 ShellError::UnsupportedInput(
                     format!("{:?} unable to de-serialize string to TOML", val),
                     *span,
                 )
             })
-        },
+        }
         _ => Err(ShellError::UnsupportedInput(
             format!("{:?} is not a valid top-level TOML", v.get_type()),
             v.span().unwrap_or_else(|_| Span::unknown()),
-        ))
+        )),
     }
 }
 
 fn to_toml(input: PipelineData, span: Span) -> Result<PipelineData, ShellError> {
     let value = input.into_value(span);
 
-
     let toml_value = value_to_toml_value(&value)?;
     match toml_value {
         toml::Value::Array(ref vec) => match vec[..] {
-            [toml::Value::Table(_)] => toml_into_pipeline_data(&vec.into_iter().next().expect("this should never trigger"), value.get_type(), span),
-            _ => toml_into_pipeline_data(&toml_value, value.get_type(), span)
+            [toml::Value::Table(_)] => toml_into_pipeline_data(
+                vec.iter().next().expect("this should never trigger"),
+                value.get_type(),
+                span,
+            ),
+            _ => toml_into_pipeline_data(&toml_value, value.get_type(), span),
         },
-        _ => toml_into_pipeline_data(&toml_value, value.get_type(), span)
+        _ => toml_into_pipeline_data(&toml_value, value.get_type(), span),
     }
 }
 
@@ -167,12 +175,16 @@ mod tests {
         m.insert("is".to_owned(), Value::nothing(Span::unknown()));
         m.insert(
             "features".to_owned(),
-            Value::List { vals: vec![
-                Value::test_string("hello"),
-                Value::test_string("array")], span: Span::unknown() }
+            Value::List {
+                vals: vec![Value::test_string("hello"), Value::test_string("array")],
+                span: Span::unknown(),
+            },
         );
-        let tv = value_to_toml_value(&Value::from(Spanned { item: m, span: Span::unknown() }))
-            .expect("Expected Ok from valid TOML dictionary");
+        let tv = value_to_toml_value(&Value::from(Spanned {
+            item: m,
+            span: Span::unknown(),
+        }))
+        .expect("Expected Ok from valid TOML dictionary");
         assert_eq!(
             tv.get("features"),
             Some(&toml::Value::Array(vec![
@@ -205,7 +217,10 @@ mod tests {
         //
         value_to_toml_value(&Value::test_string("not_valid"))
             .expect_err("Expected non-valid toml (String) to cause error!");
-        value_to_toml_value(&Value::List { vals: vec![Value::test_string("1")], span: Span::unknown()})
-            .expect_err("Expected non-valid toml (Table) to cause error!");
+        value_to_toml_value(&Value::List {
+            vals: vec![Value::test_string("1")],
+            span: Span::unknown(),
+        })
+        .expect_err("Expected non-valid toml (Table) to cause error!");
     }
 }
