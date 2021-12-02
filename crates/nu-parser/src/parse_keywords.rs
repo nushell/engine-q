@@ -6,11 +6,8 @@ use nu_protocol::{
     engine::StateWorkingSet,
     span, Exportable, Overlay, Span, SyntaxShape, Type, CONFIG_VARIABLE_ID,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
-
-#[cfg(feature = "plugin")]
-use nu_plugin::plugin::{get_signature, PluginDeclaration};
 
 use crate::{
     lex, lite_parse,
@@ -711,6 +708,7 @@ pub fn parse_use(
                                     span: spans[1],
                                 },
                                 members: import_pattern.members,
+                                hidden: HashSet::new(),
                             },
                             overlay,
                         )
@@ -762,7 +760,7 @@ pub fn parse_use(
         };
 
         // Extend the current scope with the module's overlay
-        working_set.add_decls(decls_to_use);
+        working_set.use_decls(decls_to_use);
 
         // Create the Use command call
         let use_decl_id = working_set
@@ -836,11 +834,14 @@ pub fn parse_hide(
                         },
                     )
                 } else {
-                    // TODO: Or it could be an env var
-                    return (
-                        garbage_statement(spans),
-                        Some(ParseError::ModuleNotFound(spans[1])),
-                    );
+                    // Or it could be an env var
+                    (
+                        false,
+                        Overlay {
+                            decls: HashMap::new(),
+                            env_vars: HashMap::new(),
+                        },
+                    )
                 }
             } else {
                 return (
@@ -893,6 +894,8 @@ pub fn parse_hide(
         // TODO: `use spam; use spam foo; hide foo` will hide both `foo` and `spam foo` since
         // they point to the same DeclId. Do we want to keep it that way?
         working_set.hide_decls(&decls_to_hide);
+        let import_pattern = import_pattern
+            .with_hidden(decls_to_hide.iter().map(|(name, _)| name.clone()).collect());
 
         // Create the Hide command call
         let hide_decl_id = working_set
@@ -1085,6 +1088,9 @@ pub fn parse_plugin(
     working_set: &mut StateWorkingSet,
     spans: &[Span],
 ) -> (Statement, Option<ParseError>) {
+    use std::{path::PathBuf, str::FromStr};
+
+    use nu_path::canonicalize;
     use nu_protocol::Signature;
 
     let name = working_set.get_span_contents(spans[0]);
@@ -1111,51 +1117,55 @@ pub fn parse_plugin(
                 )),
                 2 => {
                     let name_expr = working_set.get_span_contents(spans[1]);
-                    if let Ok(filename) = String::from_utf8(name_expr.to_vec()) {
-                        let source_file = Path::new(&filename);
-
-                        if source_file.exists() & source_file.is_file() {
-                            // get signature from plugin
-                            match get_signature(source_file) {
-                                Err(err) => Some(ParseError::PluginError(format!("{}", err))),
-                                Ok(signatures) => {
-                                    for signature in signatures {
-                                        // create plugin command declaration (need struct impl Command)
-                                        // store declaration in working set
-                                        let plugin_decl =
-                                            PluginDeclaration::new(filename.clone(), signature);
-
-                                        working_set.add_plugin_decl(Box::new(plugin_decl));
-                                    }
-
-                                    None
-                                }
+                    String::from_utf8(name_expr.to_vec())
+                        .map_err(|_| ParseError::NonUtf8(spans[1]))
+                        .and_then(|name| {
+                            canonicalize(&name).map_err(|e| ParseError::FileNotFound(e.to_string()))
+                        })
+                        .and_then(|path| {
+                            if path.exists() & path.is_file() {
+                                working_set.add_plugin_signature(path, None);
+                                Ok(())
+                            } else {
+                                Err(ParseError::FileNotFound(format!("{:?}", path)))
                             }
-                        } else {
-                            Some(ParseError::FileNotFound(filename))
-                        }
-                    } else {
-                        Some(ParseError::NonUtf8(spans[1]))
-                    }
+                        })
+                        .err()
                 }
                 3 => {
-                    let filename = working_set.get_span_contents(spans[1]);
+                    let filename_slice = working_set.get_span_contents(spans[1]);
                     let signature = working_set.get_span_contents(spans[2]);
+                    let mut path = PathBuf::new();
 
-                    if let Ok(filename) = String::from_utf8(filename.to_vec()) {
-                        if let Ok(signature) = serde_json::from_slice::<Signature>(signature) {
-                            let plugin_decl = PluginDeclaration::new(filename, signature);
-                            working_set.add_plugin_decl(Box::new(plugin_decl));
-
-                            None
-                        } else {
-                            Some(ParseError::PluginError(
-                                "unable to deserialize signature".into(),
-                            ))
-                        }
-                    } else {
-                        Some(ParseError::NonUtf8(spans[1]))
-                    }
+                    String::from_utf8(filename_slice.to_vec())
+                        .map_err(|_| ParseError::NonUtf8(spans[1]))
+                        .and_then(|name| {
+                            PathBuf::from_str(name.as_str()).map_err(|_| {
+                                ParseError::InternalError(
+                                    format!("Unable to create path from string {}", name),
+                                    spans[0],
+                                )
+                            })
+                        })
+                        .and_then(|path_inner| {
+                            path = path_inner;
+                            serde_json::from_slice::<Signature>(signature).map_err(|_| {
+                                ParseError::LabeledError(
+                                    "Signature deserialization error".into(),
+                                    "unable to deserialize signature".into(),
+                                    spans[0],
+                                )
+                            })
+                        })
+                        .and_then(|signature| {
+                            if path.exists() & path.is_file() {
+                                working_set.add_plugin_signature(path, Some(signature));
+                                Ok(())
+                            } else {
+                                Err(ParseError::FileNotFound(format!("{:?}", path)))
+                            }
+                        })
+                        .err()
                 }
                 _ => {
                     let span = spans[3..].iter().fold(spans[3], |acc, next| Span {

@@ -19,9 +19,12 @@ use nu_parser::parse;
 use nu_protocol::{
     ast::Call,
     engine::{EngineState, Stack, StateWorkingSet},
-    IntoPipelineData, PipelineData, ShellError, Span, Value, CONFIG_VARIABLE_ID,
+    PipelineData, ShellError, Span, Value, CONFIG_VARIABLE_ID,
 };
 use reedline::{Completer, CompletionActionHandler, DefaultPrompt, LineBuffer, Prompt};
+
+#[cfg(feature = "plugin")]
+use nu_plugin::plugin::eval_plugin_signatures;
 
 #[cfg(test)]
 mod tests;
@@ -126,7 +129,7 @@ fn main() -> Result<()> {
         let mut stack = nu_protocol::engine::Stack::new();
 
         for (k, v) in std::env::vars() {
-            stack.env_vars.insert(k, v);
+            stack.add_env_var(k, v);
         }
 
         // Set up our initial config to start from
@@ -170,7 +173,7 @@ fn main() -> Result<()> {
         let mut stack = nu_protocol::engine::Stack::new();
 
         for (k, v) in std::env::vars() {
-            stack.env_vars.insert(k, v);
+            stack.add_env_var(k, v);
         }
 
         // Set up our initial config to start from
@@ -227,6 +230,8 @@ fn main() -> Result<()> {
         }
 
         loop {
+            let config = stack.get_config()?;
+
             //Reset the ctrl-c handler
             ctrlc.store(false, Ordering::SeqCst);
 
@@ -238,6 +243,7 @@ fn main() -> Result<()> {
                 .with_highlighter(Box::new(NuHighlighter {
                     engine_state: engine_state.clone(),
                 }))
+                .with_animation(config.animate_prompt)
                 // .with_completion_action_handler(Box::new(
                 //     ListCompletionHandler::default().with_completer(Box::new(completer)),
                 // ))
@@ -298,8 +304,8 @@ fn main() -> Result<()> {
     }
 }
 
-fn print_value(
-    value: Value,
+fn print_pipeline_data(
+    input: PipelineData,
     engine_state: &EngineState,
     stack: &mut Stack,
 ) -> Result<(), ShellError> {
@@ -310,15 +316,13 @@ fn print_value(
 
     let output = match engine_state.find_decl("table".as_bytes()) {
         Some(decl_id) => {
-            let table = engine_state.get_decl(decl_id).run(
-                engine_state,
-                stack,
-                &Call::new(),
-                value.into_pipeline_data(),
-            )?;
+            let table =
+                engine_state
+                    .get_decl(decl_id)
+                    .run(engine_state, stack, &Call::new(), input)?;
             table.collect_string("\n", &config)
         }
-        None => value.into_string(", ", &config),
+        None => input.collect_string(", ", &config),
     };
     let stdout = std::io::stdout();
 
@@ -400,6 +404,12 @@ fn eval_source(
             report_error(&working_set, &err);
             return false;
         }
+
+        #[cfg(feature = "plugin")]
+        if let Err(err) = eval_plugin_signatures(&mut working_set) {
+            report_error(&working_set, &err);
+        }
+
         (output, working_set.render())
     };
 
@@ -415,11 +425,7 @@ fn eval_source(
         PipelineData::new(Span::unknown()),
     ) {
         Ok(pipeline_data) => {
-            if let Err(err) = print_value(
-                pipeline_data.into_value(Span::unknown()),
-                engine_state,
-                stack,
-            ) {
+            if let Err(err) = print_pipeline_data(pipeline_data, engine_state, stack) {
                 let working_set = StateWorkingSet::new(engine_state);
 
                 report_error(&working_set, &err);

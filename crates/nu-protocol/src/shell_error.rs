@@ -76,6 +76,10 @@ pub enum ShellError {
     #[diagnostic(code(nu::shell::external_commands), url(docsrs))]
     ExternalNotSupported(#[label = "external not supported"] Span),
 
+    #[error("Invalid Probability.")]
+    #[diagnostic(code(nu::shell::invalid_probability), url(docsrs))]
+    InvalidProbability(#[label = "invalid probability"] Span),
+
     #[error("Internal error: {0}.")]
     #[diagnostic(code(nu::shell::internal_error), url(docsrs))]
     InternalError(String),
@@ -196,9 +200,6 @@ pub enum ShellError {
     #[error("No file to be copied")]
     NoFileToBeCopied(),
 
-    #[error("Plugin error")]
-    PluginError(String),
-
     #[error("Name not found")]
     #[diagnostic(code(nu::shell::name_not_found), url(docsrs))]
     DidYouMean(String, #[label("did you mean '{0}'?")] Span),
@@ -210,6 +211,10 @@ pub enum ShellError {
     #[error("Casting error")]
     #[diagnostic(code(nu::parser::downcast_not_possible), url(docsrs))]
     DowncastNotPossible(String, #[label("{0}")] Span),
+
+    #[error("{0}")]
+    #[diagnostic()]
+    LabeledError(String, String, #[label("{1}")] Span),
 }
 
 impl From<std::io::Error> for ShellError {

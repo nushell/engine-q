@@ -13,9 +13,9 @@ members = [
 	"crates/nu-command",
 	"crates/nu-protocol",
 	"crates/nu-plugin",
-	"crates/nu-dataframe",
 	"crates/nu_plugin_inc",
 	"crates/nu_plugin_gstat",
+	"crates/nu_plugin_example",
 ]
 
 [dependencies]
@@ -38,10 +38,9 @@ ctrlc = "3.2.1"
 # mimalloc = { version = "*", default-features = false }
 
 [features]
-plugin = ["nu-plugin", "nu-parser/plugin", "nu-command/plugin", "nu-protocol/plugin"]
-custom = ["nu-command/custom", "nu-protocol/custom"]
-dataframe = ["custom", "nu-command/dataframe"]
-default = ["plugin", "custom"]
+plugin = ["nu-plugin", "nu-parser/plugin", "nu-command/plugin", "nu-protocol/plugin", "nu-engine/plugin"]
+dataframe = ["nu-command/dataframe"]
+default = ["plugin"]
 
 [dev-dependencies]
 tempfile = "3.2.0"

@@ -17,13 +17,23 @@ pub fn create_default_context() -> EngineState {
             };
         }
 
+        // If there are commands that have the same name as default declarations,
+        // they have to be registered before the main declarations. This helps to make
+        // them only accessible if the correct input value category is used with the
+        // declaration
+        #[cfg(feature = "dataframe")]
+        bind_command!(DataTypes, DescribeDF, OpenDataFrame, ToDataFrame);
+
         // TODO: sort default context items categorically
         bind_command!(
             Alias,
+            All,
+            Any,
             Append,
             Benchmark,
             BuildString,
             Cd,
+            Clear,
             Collect,
             Cp,
             Date,
@@ -61,6 +71,8 @@ pub fn create_default_context() -> EngineState {
             FromIcs,
             FromIni,
             FromVcf,
+            FromSsv,
+            FromXml,
             FromXlsx,
             Get,
             Griddle,
@@ -72,6 +84,7 @@ pub fn create_default_context() -> EngineState {
             IntoFilesize,
             IntoInt,
             IntoString,
+            Kill,
             Last,
             Length,
             Let,
@@ -101,11 +114,16 @@ pub fn create_default_context() -> EngineState {
             Parse,
             Ps,
             Range,
+            Random,
             Reverse,
             Rm,
             Select,
             Shuffle,
             Size,
+            Skip,
+            SkipUntil,
+            SkipWhile,
+            Sleep,
             Source,
             Split,
             SplitChars,
@@ -129,10 +147,14 @@ pub fn create_default_context() -> EngineState {
             StrRpad,
             StrStartsWith,
             StrReverse,
+            StrSubstring,
+            StrTrim,
             Sys,
             Table,
             To,
             ToJson,
+            ToUrl,
+            ToToml,
             Touch,
             Use,
             Update,
@@ -144,9 +166,6 @@ pub fn create_default_context() -> EngineState {
 
         #[cfg(feature = "plugin")]
         bind_command!(Register);
-
-        #[cfg(feature = "dataframe")]
-        bind_command!(OpenDataFrame, ToDataFrame);
 
         // This is a WIP proof of concept
         // bind_command!(ListGitBranches, Git, GitCheckout, Source);

@@ -1,5 +1,23 @@
 use crate::{ShellError, Span, Value};
 
+impl From<String> for Value {
+    fn from(val: String) -> Self {
+        Value::String {
+            val,
+            span: Span::unknown(),
+        }
+    }
+}
+
+impl From<bool> for Value {
+    fn from(val: bool) -> Self {
+        Value::Bool {
+            val,
+            span: Span::unknown(),
+        }
+    }
+}
+
 impl From<u8> for Value {
     fn from(val: u8) -> Self {
         Value::Int {

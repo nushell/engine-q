@@ -1,5 +1,3 @@
-mod open;
-mod to_df;
+mod nu_dataframe;
 
-pub use open::OpenDataFrame;
-pub use to_df::ToDataFrame;
+pub use nu_dataframe::commands::{DataTypes, DescribeDF, OpenDataFrame, ToDataFrame};

@@ -188,10 +188,10 @@ pub enum ParseError {
     ExportNotFound(#[label = "could not find imports"] Span),
 
     #[error("File not found")]
-    #[diagnostic(code(nu::parser::export_not_found), url(docsrs))]
+    #[diagnostic(code(nu::parser::file_not_found), url(docsrs))]
     FileNotFound(String),
 
-    #[error("Plugin error")]
-    #[diagnostic(code(nu::parser::plugin_error), url(docsrs))]
-    PluginError(String),
+    #[error("{0}")]
+    #[diagnostic()]
+    LabeledError(String, String, #[label("{1}")] Span),
 }

@@ -11,6 +11,8 @@ mod lpad;
 mod reverse;
 mod rpad;
 mod starts_with;
+mod substring;
+mod trim;
 
 pub use capitalize::SubCommand as StrCapitalize;
 pub use case::*;
@@ -25,3 +27,5 @@ pub use lpad::SubCommand as StrLpad;
 pub use reverse::SubCommand as StrReverse;
 pub use rpad::SubCommand as StrRpad;
 pub use starts_with::SubCommand as StrStartsWith;
+pub use substring::SubCommand as StrSubstring;
+pub use trim::Trim as StrTrim;

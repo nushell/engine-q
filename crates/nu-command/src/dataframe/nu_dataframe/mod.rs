@@ -1,15 +1,17 @@
+pub mod commands;
+
 mod between_values;
 mod conversion;
 mod custom_value;
 mod operations;
 
-use std::{cmp::Ordering, fmt::Display, hash::Hasher};
-
 use conversion::{Column, ColumnMap};
+
 use indexmap::map::IndexMap;
-use nu_protocol::{did_you_mean, ShellError, Span, Value};
-use polars::prelude::{DataFrame, PolarsObject, Series};
+use nu_protocol::{did_you_mean, PipelineData, ShellError, Span, Value};
+use polars::prelude::{DataFrame, DataType, PolarsObject, Series};
 use serde::{Deserialize, Serialize};
+use std::{cmp::Ordering, fmt::Display, hash::Hasher};
 
 // DataFrameValue is an encapsulation of Nushell Value that can be used
 // to define the PolarsObject Trait. The polars object trait allows to
@@ -62,12 +64,24 @@ impl std::hash::Hash for DataFrameValue {
 
 impl PolarsObject for DataFrameValue {
     fn type_name() -> &'static str {
-        "value"
+        "object"
     }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NuDataFrame(DataFrame);
+
+impl AsRef<DataFrame> for NuDataFrame {
+    fn as_ref(&self) -> &polars::prelude::DataFrame {
+        &self.0
+    }
+}
+
+impl AsMut<DataFrame> for NuDataFrame {
+    fn as_mut(&mut self) -> &mut polars::prelude::DataFrame {
+        &mut self.0
+    }
+}
 
 impl NuDataFrame {
     pub fn new(dataframe: DataFrame) -> Self {
@@ -86,7 +100,7 @@ impl NuDataFrame {
         }
     }
 
-    pub fn to_value(self, span: Span) -> Value {
+    pub fn into_value(self, span: Span) -> Value {
         Value::CustomValue {
             val: Box::new(self),
             span,
@@ -131,12 +145,12 @@ impl NuDataFrame {
         conversion::from_parsed_columns(column_values)
     }
 
-    pub fn try_from_series(columns: Vec<Series>) -> Result<Self, ShellError> {
-        let dataframe = DataFrame::new(columns)
-            .map_err(|e| ShellError::InternalError(format!("Unable to create DataFrame: {}", e)))?;
+    //pub fn try_from_series(columns: Vec<Series>) -> Result<Self, ShellError> {
+    //    let dataframe = DataFrame::new(columns)
+    //        .map_err(|e| ShellError::InternalError(format!("Unable to create DataFrame: {}", e)))?;
 
-        Ok(Self::new(dataframe))
-    }
+    //    Ok(Self::new(dataframe))
+    //}
 
     pub fn try_from_columns(columns: Vec<Column>) -> Result<Self, ShellError> {
         let mut column_values: ColumnMap = IndexMap::new();
@@ -149,6 +163,24 @@ impl NuDataFrame {
         }
 
         conversion::from_parsed_columns(column_values)
+    }
+
+    pub fn try_from_pipeline(input: PipelineData, span: Span) -> Result<Self, ShellError> {
+        match input.into_value(span) {
+            Value::CustomValue { val, span } => match val.as_any().downcast_ref::<NuDataFrame>() {
+                Some(df) => Ok(NuDataFrame(df.0.clone())),
+                None => Err(ShellError::CantConvert(
+                    "Dataframe not found".into(),
+                    "value is not a dataframe".into(),
+                    span,
+                )),
+            },
+            _ => Err(ShellError::CantConvert(
+                "Dataframe not found".into(),
+                "value is not a dataframe".into(),
+                span,
+            )),
+        }
     }
 
     pub fn column(&self, column: &str, span: Span) -> Result<Self, ShellError> {
@@ -294,5 +326,65 @@ impl NuDataFrame {
             .collect::<Vec<Value>>();
 
         Ok(values)
+    }
+
+    // Dataframes are considered equal if they have the same shape, column name and values
+    pub fn is_equal(&self, other: &Self) -> Option<Ordering> {
+        if self.as_ref().width() == 0 {
+            // checking for empty dataframe
+            return None;
+        }
+
+        if self.as_ref().get_column_names() != other.as_ref().get_column_names() {
+            // checking both dataframes share the same names
+            return None;
+        }
+
+        if self.as_ref().height() != other.as_ref().height() {
+            // checking both dataframes have the same row size
+            return None;
+        }
+
+        // sorting dataframe by the first column
+        let column_names = self.as_ref().get_column_names();
+        let first_col = column_names
+            .get(0)
+            .expect("already checked that dataframe is different than 0");
+
+        // if unable to sort, then unable to compare
+        let lhs = match self.as_ref().sort(*first_col, false) {
+            Ok(df) => df,
+            Err(_) => return None,
+        };
+
+        let rhs = match other.as_ref().sort(*first_col, false) {
+            Ok(df) => df,
+            Err(_) => return None,
+        };
+
+        for name in self.as_ref().get_column_names() {
+            let self_series = lhs.column(name).expect("name from dataframe names");
+
+            let other_series = rhs
+                .column(name)
+                .expect("already checked that name in other");
+
+            let self_series = match self_series.dtype() {
+                // Casting needed to compare other numeric types with nushell numeric type.
+                // In nushell we only have i64 integer numeric types and any array created
+                // with nushell untagged primitives will be of type i64
+                DataType::UInt32 => match self_series.cast(&DataType::Int64) {
+                    Ok(series) => series,
+                    Err(_) => return None,
+                },
+                _ => self_series.clone(),
+            };
+
+            if !self_series.series_equal(other_series) {
+                return None;
+            }
+        }
+
+        Some(Ordering::Equal)
     }
 }
