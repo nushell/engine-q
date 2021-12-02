@@ -1,8 +1,8 @@
 use git2::{Branch, BranchType, Repository};
-use nu_plugin::plugin::PluginError;
-use nu_protocol::{Span, Value};
+use nu_protocol::{ShellError, Span, Value};
 use std::fmt::Write;
 use std::ops::BitAnd;
+use std::path::PathBuf;
 
 // git status
 // https://github.com/git/git/blob/9875c515535860450bafd1a177f64f0a478900fa/Documentation/git-status.txt
@@ -10,69 +10,69 @@ use std::ops::BitAnd;
 // git status borrowed from here and tweaked
 // https://github.com/glfmn/glitter/blob/master/lib/git.rs
 
-#[derive(Debug, Eq, PartialEq)]
-pub enum Action {
-    Default,
-}
-
 #[derive(Default)]
-pub struct GStat {
-    pub error: Option<String>,
-    pub action: Option<Action>,
-}
+pub struct GStat;
+// pub struct GStat {
+//     pub error: Option<String>,
+// }
 
 impl GStat {
     pub fn new() -> Self {
         Default::default()
     }
 
-    // fn apply(&self, input: &Value, path: Option<String>) -> Value {
-    //     eprintln!("apply");
-    //     Value::String {
-    //         val: match input.as_string() {
-    //             Ok(s) => s,
-    //             _ => "no_string".to_string(),
-    //         },
-    //         span: Span::unknown(),
-    //     }
-    // }
-
-    // fn log_error(&mut self, message: &str) {
-    //     eprintln!("log_error");
-    //     self.error = Some(message.to_string());
-    // }
-
     pub fn usage() -> &'static str {
         "Usage: gstat"
     }
 
-    pub fn gstat(&self, value: &Value, path: Option<String>) -> Result<Value, PluginError> {
-        // eprintln!("gstat: value: {:?} path: {:?}", &value, &path);
-        // match value {
-        //     Value::Int { val, span } => Ok(Value::Int {
-        //         val: val + 1,
-        //         span: *span,
-        //     }),
-        //     Value::String { val, .. } => Ok(self.apply(val)),
-        //     _ => Err(PluginError::RunTimeError("incrementable value".to_string())),
+    pub fn gstat(
+        &self,
+        value: &Value,
+        path: Option<String>,
+        span: &Span,
+    ) -> Result<Value, ShellError> {
+        // let's get the input value as a string
+        let piped_value = match value.as_string() {
+            Ok(s) => s,
+            _ => String::new(),
+        };
+        // now let's get the path string
+        let mut a_path = match path {
+            Some(p) => p,
+            None => ".".to_string(),
+        };
+        // If there was no path specified and there is a piped in value, let's use the piped in value
+        if a_path == "." && &piped_value.chars().count() > &0 {
+            // eprintln!("Using piped variable: {:?}", &piped_value);
+            a_path = piped_value;
+        }
+        // else {
+        //     eprintln!("Using supplied or default value: {:?}", &a_path);
         // }
 
-        // Get a format and stats from the git repository or exit early with an error
-        let apath = ".";
-        let stats = Repository::discover(apath.clone()).map(|mut repo| (Stats::new(&mut repo)));
-
+        let repo_path = PathBuf::from(a_path).canonicalize()?;
+        // eprintln!("repo_path: {:?}", &repo_path);
+        // let stats = Repository::discover(a_path.clone()).map(|mut repo| (Stats::new(&mut repo)));
+        let stats = Repository::discover(repo_path).map(|mut repo| (Stats::new(&mut repo)));
         let stats = match stats {
             Ok(s) => s,
             Err(e) => {
-                return Err(PluginError::RunTimeError(format!(
-                    "Error getting stats {}",
-                    e.message()
-                )))
+                // return Err(ShellError::InternalError(format!(
+                //     "Error getting git stats: {}",
+                //     e.message()
+                // )));
+                // return Err(ShellError::LabeledError(
+                //     e.message().to_string(),
+                //     "git status".to_string(),
+                //     *span,
+                // ));
+                return Err(ShellError::LabeledError(
+                    "git status".to_string(),
+                    e.message().to_string(),
+                    *span,
+                ));
             }
         };
-
-        // let git_status = Stats::new();
-        // eprintln!("git_stats: {:#?}", stats);
 
         let mut cols = vec![];
         let mut vals = vec![];
@@ -80,134 +80,103 @@ impl GStat {
         cols.push("idx_added_staged".into());
         vals.push(Value::Int {
             val: stats.idx_added_staged as i64,
-            span: Span::unknown(),
+            span: *span,
         });
         cols.push("idx_modified_staged".into());
         vals.push(Value::Int {
             val: stats.idx_modified_staged as i64,
-            span: Span::unknown(),
+            span: *span,
         });
         cols.push("idx_deleted_staged".into());
         vals.push(Value::Int {
             val: stats.idx_deleted_staged as i64,
-            span: Span::unknown(),
+            span: *span,
         });
         cols.push("idx_renamed".into());
         vals.push(Value::Int {
             val: stats.idx_renamed as i64,
-            span: Span::unknown(),
+            span: *span,
         });
         cols.push("idx_type_changed".into());
         vals.push(Value::Int {
             val: stats.idx_type_changed as i64,
-            span: Span::unknown(),
+            span: *span,
         });
         cols.push("wt_untracked".into());
         vals.push(Value::Int {
             val: stats.wt_untracked as i64,
-            span: Span::unknown(),
+            span: *span,
         });
         cols.push("wt_modified".into());
         vals.push(Value::Int {
             val: stats.wt_modified as i64,
-            span: Span::unknown(),
+            span: *span,
         });
         cols.push("wt_deleted".into());
         vals.push(Value::Int {
             val: stats.wt_deleted as i64,
-            span: Span::unknown(),
+            span: *span,
         });
         cols.push("wt_type_changed".into());
         vals.push(Value::Int {
             val: stats.wt_type_changed as i64,
-            span: Span::unknown(),
+            span: *span,
         });
         cols.push("wt_renamed".into());
         vals.push(Value::Int {
             val: stats.wt_renamed as i64,
-            span: Span::unknown(),
+            span: *span,
         });
         cols.push("ignored".into());
         vals.push(Value::Int {
             val: stats.ignored as i64,
-            span: Span::unknown(),
+            span: *span,
         });
         cols.push("conflicts".into());
         vals.push(Value::Int {
             val: stats.conflicts as i64,
-            span: Span::unknown(),
+            span: *span,
         });
         cols.push("ahead".into());
         vals.push(Value::Int {
             val: stats.ahead as i64,
-            span: Span::unknown(),
+            span: *span,
         });
         cols.push("behind".into());
         vals.push(Value::Int {
             val: stats.behind as i64,
-            span: Span::unknown(),
+            span: *span,
         });
         cols.push("stashes".into());
         vals.push(Value::Int {
             val: stats.stashes as i64,
-            span: Span::unknown(),
+            span: *span,
         });
         cols.push("branch".into());
         vals.push(Value::String {
             val: stats.branch,
-            span: Span::unknown(),
+            span: *span,
         });
         cols.push("remote".into());
         vals.push(Value::String {
             val: stats.remote,
-            span: Span::unknown(),
+            span: *span,
         });
 
-        // let mut found_cmds_vec = Vec::new();
-        // found_cmds_vec.push(Value::Record {
-        //     cols,
-        //     vals,
-        //     span: head,
-        // });
-
-        // let record = Value::Record {
-        //     cols,
-        //     vals,
-        //     span: Span::unknown(),
-        // };
-
-        // eprintln!("Record {:#?}", &record);
-
-        // Ok(record)
+        // Ok(Value::List {
+        //     vals: vec![Value::Record {
+        //         cols,
+        //         vals,
+        //         span: *span,
+        //     }],
+        //     span: *span,
+        // })
 
         Ok(Value::Record {
             cols,
             vals,
-            span: Span::unknown(),
+            span: *span,
         })
-        // git_stats: Ok(
-        //     Stats {
-        //         idx_added_staged: 0,
-        //         idx_modified_staged: 0,
-        //         idx_deleted_staged: 0,
-        //         idx_renamed: 0,
-        //         idx_type_changed: 0,
-        //         wt_untracked: 5,
-        //         wt_modified: 2,
-        //         wt_deleted: 0,
-        //         wt_type_changed: 0,
-        //         wt_renamed: 0,
-        //         ignored: 0,
-        //         conflicts: 0,
-        //         ahead: 0,
-        //         behind: 0,
-        //         stashes: 0,
-        //         branch: "gstat",
-        //         remote: "",
-        //     },
-        // )
-
-        // Ok(self.apply(value, path))
     }
 }
 
