@@ -55,11 +55,12 @@ fn fail_test(input: &str, expected: &str) -> TestResult {
 }
 
 fn not_found_msg() -> &'static str {
-    if cfg!(windows) {
-        "not recognized"
-    } else {
-        "not found"
-    }
+    // if cfg!(windows) {
+    //     "not recognized"
+    // } else {
+    //     "not found"
+    // }
+    "No such"
 }
 
 #[test]
