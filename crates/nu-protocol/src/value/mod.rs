@@ -203,6 +203,17 @@ impl Value {
         }
     }
 
+    pub fn as_float(&self) -> Result<f64, ShellError> {
+        match self {
+            Value::Float { val, .. } => Ok(*val),
+            x => Err(ShellError::CantConvert(
+                "float".into(),
+                x.get_type().to_string(),
+                self.span()?,
+            )),
+        }
+    }
+
     /// Get the span for the current value
     pub fn span(&self) -> Result<Span, ShellError> {
         match self {
@@ -307,6 +318,42 @@ impl Value {
                     .map(|(x, y)| format!("{}: {}", x, y.clone().into_string(", ", config)))
                     .collect::<Vec<_>>()
                     .join(separator)
+            ),
+            Value::Block { val, .. } => format!("<Block {}>", val),
+            Value::Nothing { .. } => String::new(),
+            Value::Error { error } => format!("{:?}", error),
+            Value::Binary { val, .. } => format!("{:?}", val),
+            Value::CellPath { val, .. } => val.into_string(),
+            Value::CustomValue { val, .. } => val.value_string(),
+        }
+    }
+
+    /// Convert Value into string. Note that Streams will be consumed.
+    pub fn into_abbreviated_string(self, config: &Config) -> String {
+        match self {
+            Value::Bool { val, .. } => val.to_string(),
+            Value::Int { val, .. } => val.to_string(),
+            Value::Float { val, .. } => val.to_string(),
+            Value::Filesize { val, .. } => format_filesize(val, config),
+            Value::Duration { val, .. } => format_duration(val),
+            Value::Date { val, .. } => HumanTime::from(val).to_string(),
+            Value::Range { val, .. } => {
+                format!(
+                    "{}..{}",
+                    val.from.into_string(", ", config),
+                    val.to.into_string(", ", config)
+                )
+            }
+            Value::String { val, .. } => val,
+            Value::List { vals: val, .. } => format!(
+                "[list {} item{}]",
+                val.len(),
+                if val.len() == 1 { "" } else { "s" }
+            ),
+            Value::Record { cols, .. } => format!(
+                "{{record {} field{}}}",
+                cols.len(),
+                if cols.len() == 1 { "" } else { "s" }
             ),
             Value::Block { val, .. } => format!("<Block {}>", val),
             Value::Nothing { .. } => String::new(),
@@ -563,6 +610,10 @@ impl Value {
 
     pub fn int(val: i64, span: Span) -> Value {
         Value::Int { val, span }
+    }
+
+    pub fn float(val: f64, span: Span) -> Value {
+        Value::Float { val, span }
     }
 
     // Only use these for test data. Span::unknown() should not be used in user data
