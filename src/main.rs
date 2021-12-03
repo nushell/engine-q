@@ -1,3 +1,5 @@
+#[cfg(windows)]
+#[cfg(windows)]
 use crossterm_winapi::{ConsoleMode, Handle};
 use dialoguer::{
     console::{Style, Term},
@@ -496,6 +498,7 @@ fn eval_source(
     true
 }
 
+#[cfg(windows)]
 fn enable_vt_processing() -> Result<(), ShellError> {
     pub const ENABLE_PROCESSED_OUTPUT: u32 = 0x0001;
     pub const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 0x0004;
