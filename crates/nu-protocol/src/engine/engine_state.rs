@@ -11,6 +11,7 @@ use std::{
 
 #[cfg(feature = "plugin")]
 use std::path::PathBuf;
+
 // Tells whether a decl etc. is visible or not
 #[derive(Debug, Clone)]
 struct Visibility {
@@ -197,8 +198,14 @@ impl EngineState {
             last.visibility.merge_with(first.visibility);
 
             #[cfg(feature = "plugin")]
-            if !delta.plugin_signatures.is_empty() {
-                return self.update_plugin_file();
+            if delta.plugins_changed {
+                let result = self.update_plugin_file();
+
+                if result.is_ok() {
+                    delta.plugins_changed = false;
+                }
+
+                return result;
             }
         }
 
@@ -214,18 +221,14 @@ impl EngineState {
             // Always create the file, which will erase previous signatures
             if let Ok(mut plugin_file) = std::fs::File::create(plugin_path.as_path()) {
                 // Plugin definitions with parsed signature
-                let mut decls = self.plugin_decls().collect::<Vec<&Box<dyn Command>>>();
-                decls.sort_by(|a, b| a.name().cmp(b.name()));
-                decls.dedup_by(|a, b| a.name().cmp(b.name()).is_eq());
-
-                for decl in decls {
+                for decl in self.plugin_decls() {
                     // A successful plugin registration already includes the plugin filename
                     // No need to check the None option
                     let path = decl.is_plugin().expect("plugin should have file name");
                     let file_name = path.to_str().expect("path should be a str");
 
                     let line = serde_json::to_string_pretty(&decl.signature())
-                        .map(|signature| format!("register {} {}\n", file_name, signature))
+                        .map(|signature| format!("register {} {}\n\n", file_name, signature))
                         .map_err(|err| ShellError::PluginFailedToLoad(err.to_string()))?;
 
                     plugin_file
@@ -238,6 +241,40 @@ impl EngineState {
                     "Plugin file not found".into(),
                 ))
             }
+        } else {
+            Err(ShellError::PluginFailedToLoad(
+                "Plugin file not found".into(),
+            ))
+        }
+    }
+
+    #[cfg(feature = "plugin")]
+    pub fn update_plugin_file_1(&self) -> Result<(), ShellError> {
+        use std::io::Write;
+
+        // Updating the signatures plugin file with the added signatures
+        if let Some(plugin_path) = &self.plugin_signatures {
+            // Always creating the file which will erase previous signatures
+            let mut plugin_file = std::fs::File::create(plugin_path.as_path())
+                .map_err(|err| ShellError::PluginFailedToLoad(err.to_string()))?;
+
+            // Plugin definitions with parsed signature
+            for decl in self.plugin_decls() {
+                // A successful plugin registration already includes the plugin filename
+                // No need to check the None option
+                let path = decl.is_plugin().expect("plugin should have file name");
+                let file_name = path.to_str().expect("path should be a str");
+
+                let line = serde_json::to_string_pretty(&decl.signature())
+                    .map(|signature| format!("register {} {}\n\n", file_name, signature))
+                    .map_err(|err| ShellError::PluginFailedToLoad(err.to_string()))?;
+
+                plugin_file
+                    .write_all(line.as_bytes())
+                    .map_err(|err| ShellError::PluginFailedToLoad(err.to_string()))?;
+            }
+
+            Ok(())
         } else {
             Err(ShellError::PluginFailedToLoad(
                 "Plugin file not found".into(),
@@ -308,7 +345,19 @@ impl EngineState {
 
     #[cfg(feature = "plugin")]
     pub fn plugin_decls(&self) -> impl Iterator<Item = &Box<dyn Command + 'static>> {
-        self.decls.iter().filter(|decl| decl.is_plugin().is_some())
+        let mut unique_plugin_decls = HashMap::new();
+
+        // Make sure there are no duplicate decls: Newer one overwrites the older one
+        for decl in self.decls.iter().filter(|d| d.is_plugin().is_some()) {
+            unique_plugin_decls.insert(decl.name(), decl);
+        }
+
+        let mut plugin_decls: Vec<(&str, &Box<dyn Command>)> =
+            unique_plugin_decls.into_iter().collect();
+
+        // Sort the plugins by name so we don't end up with a random plugin file each time
+        plugin_decls.sort_by(|a, b| a.0.cmp(b.0));
+        plugin_decls.into_iter().map(|(_, decl)| decl)
     }
 
     pub fn find_overlay(&self, name: &[u8]) -> Option<OverlayId> {
@@ -517,7 +566,7 @@ pub struct StateDelta {
     overlays: Vec<Overlay>,       // indexed by OverlayId
     pub scope: Vec<ScopeFrame>,
     #[cfg(feature = "plugin")]
-    pub plugin_signatures: Vec<(PathBuf, Option<Signature>)>,
+    plugins_changed: bool, // marks whether plugin file should be updated
 }
 
 impl StateDelta {
@@ -558,7 +607,7 @@ impl<'a> StateWorkingSet<'a> {
                 overlays: vec![],
                 scope: vec![ScopeFrame::new()],
                 #[cfg(feature = "plugin")]
-                plugin_signatures: vec![],
+                plugins_changed: false,
             },
             permanent_state,
         }
@@ -627,13 +676,8 @@ impl<'a> StateWorkingSet<'a> {
     }
 
     #[cfg(feature = "plugin")]
-    pub fn add_plugin_signature(&mut self, path: PathBuf, signature: Option<Signature>) {
-        self.delta.plugin_signatures.push((path, signature));
-    }
-
-    #[cfg(feature = "plugin")]
-    pub fn get_signatures(&self) -> impl Iterator<Item = &(PathBuf, Option<Signature>)> {
-        self.delta.plugin_signatures.iter()
+    pub fn mark_plugins_file_dirty(&mut self) {
+        self.delta.plugins_changed = true;
     }
 
     pub fn merge_predecl(&mut self, name: &[u8]) -> Option<DeclId> {
