@@ -1,5 +1,4 @@
 #[cfg(windows)]
-#[cfg(windows)]
 use crossterm_winapi::{ConsoleMode, Handle};
 use dialoguer::{
     console::{Style, Term},
