@@ -466,10 +466,6 @@ impl EngineState {
     }
 
     /// Get signatures of all commands within scope.
-    ///
-    /// In addition to signatures, it returns whether each command is:
-    ///     a) a plugin
-    ///     b) custom
     pub fn get_signatures(&self, include_hidden: bool) -> Vec<Signature> {
         self.get_decl_ids_sorted(include_hidden)
             .map(|id| {
