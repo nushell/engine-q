@@ -293,12 +293,9 @@ pub fn eval_plugin_signatures(working_set: &mut StateWorkingSet) -> Result<(), S
         // Need to collect the vector in order to check the error from getting the signature
         .collect::<Result<Vec<Vec<Box<dyn Command>>>, ShellError>>()?;
 
-    let decls = decls
-        .into_iter()
-        .flatten()
-        .collect::<Vec<Box<dyn Command>>>();
-
-    working_set.add_plugin_decls(decls);
+    for decl in decls.into_iter().flatten() {
+        working_set.add_decl(decl);
+    }
 
     Ok(())
 }

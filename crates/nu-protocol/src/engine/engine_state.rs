@@ -197,16 +197,7 @@ impl EngineState {
             last.visibility.merge_with(first.visibility);
 
             #[cfg(feature = "plugin")]
-            if !delta.plugin_decls.is_empty() {
-                for decl in delta.plugin_decls {
-                    let name = decl.name().as_bytes().to_vec();
-                    self.decls.push_back(decl);
-                    let decl_id = self.decls.len() - 1;
-
-                    last.decls.insert(name, decl_id);
-                    last.visibility.use_decl_id(&decl_id);
-                }
-
+            if !delta.plugin_signatures.is_empty() {
                 return self.update_plugin_file();
             }
         }
@@ -223,7 +214,11 @@ impl EngineState {
             // Always create the file, which will erase previous signatures
             if let Ok(mut plugin_file) = std::fs::File::create(plugin_path.as_path()) {
                 // Plugin definitions with parsed signature
-                for decl in self.plugin_decls() {
+                let mut decls = self.plugin_decls().collect::<Vec<&Box<dyn Command>>>();
+                decls.sort_by(|a, b| a.name().cmp(b.name()));
+                decls.dedup_by(|a, b| a.name().cmp(b.name()).is_eq());
+
+                for decl in decls {
                     // A successful plugin registration already includes the plugin filename
                     // No need to check the None option
                     let path = decl.is_plugin().expect("plugin should have file name");
@@ -311,6 +306,7 @@ impl EngineState {
         None
     }
 
+    #[cfg(feature = "plugin")]
     pub fn plugin_decls(&self) -> impl Iterator<Item = &Box<dyn Command + 'static>> {
         self.decls.iter().filter(|decl| decl.is_plugin().is_some())
     }
@@ -423,6 +419,8 @@ impl EngineState {
         }
 
         output.sort_by(|a, b| a.0.name.cmp(&b.0.name));
+        output.dedup_by(|a, b| a.0.name.cmp(&b.0.name).is_eq());
+
         output
     }
 
@@ -520,8 +518,6 @@ pub struct StateDelta {
     pub scope: Vec<ScopeFrame>,
     #[cfg(feature = "plugin")]
     pub plugin_signatures: Vec<(PathBuf, Option<Signature>)>,
-    #[cfg(feature = "plugin")]
-    plugin_decls: Vec<Box<dyn Command>>,
 }
 
 impl StateDelta {
@@ -563,8 +559,6 @@ impl<'a> StateWorkingSet<'a> {
                 scope: vec![ScopeFrame::new()],
                 #[cfg(feature = "plugin")]
                 plugin_signatures: vec![],
-                #[cfg(feature = "plugin")]
-                plugin_decls: vec![],
             },
             permanent_state,
         }
@@ -630,13 +624,6 @@ impl<'a> StateWorkingSet<'a> {
             .expect("internal error: missing required scope frame");
 
         scope_frame.predecls.insert(name, decl_id)
-    }
-
-    #[cfg(feature = "plugin")]
-    pub fn add_plugin_decls(&mut self, decls: Vec<Box<dyn Command>>) {
-        for decl in decls {
-            self.delta.plugin_decls.push(decl);
-        }
     }
 
     #[cfg(feature = "plugin")]

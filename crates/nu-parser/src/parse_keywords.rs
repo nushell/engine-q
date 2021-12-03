@@ -1084,7 +1084,7 @@ pub fn parse_source(
 }
 
 #[cfg(feature = "plugin")]
-pub fn parse_plugin(
+pub fn parse_register(
     working_set: &mut StateWorkingSet,
     spans: &[Span],
 ) -> (Statement, Option<ParseError>) {
