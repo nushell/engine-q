@@ -287,6 +287,38 @@ impl Value {
         }
     }
 
+    pub fn get_data_by_key(&self, name: &str) -> Option<Value> {
+        match self {
+            Value::Record { cols, vals, .. } => cols
+                .iter()
+                .zip(vals.iter())
+                .find(|(col, _)| col == &name)
+                .map(|(_, val)| val.clone()),
+            Value::List { vals, span } => {
+                let mut out = vec![];
+                for item in vals {
+                    match item {
+                        Value::Record { .. } => match item.get_data_by_key(name) {
+                            Some(v) => out.push(v),
+                            None => out.push(Value::nothing(*span)),
+                        },
+                        _ => out.push(Value::nothing(*span)),
+                    }
+                }
+
+                if !out.is_empty() {
+                    Some(Value::List {
+                        vals: out,
+                        span: *span,
+                    })
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
     /// Convert Value into string. Note that Streams will be consumed.
     pub fn into_string(self, separator: &str, config: &Config) -> String {
         match self {
@@ -627,6 +659,14 @@ impl Value {
     // Only use these for test data. Span::unknown() should not be used in user data
     pub fn test_int(val: i64) -> Value {
         Value::Int {
+            val,
+            span: Span::unknown(),
+        }
+    }
+
+    // Only use these for test data. Span::unknown() should not be used in user data
+    pub fn test_float(val: f64) -> Value {
+        Value::Float {
             val,
             span: Span::unknown(),
         }

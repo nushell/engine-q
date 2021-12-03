@@ -226,6 +226,11 @@ impl ExternalCommand {
         let mut process = std::process::Command::new(&self.name.item);
 
         for arg in &self.args {
+            let arg = trim_enclosing_quotes(arg);
+            let arg = nu_path::expand_path(arg).to_string_lossy().to_string();
+
+            let arg = arg.replace("\\", "\\\\");
+
             process.arg(&arg);
         }
 
@@ -272,6 +277,16 @@ fn shell_arg_escape(arg: &str) -> String {
             let single_quotes_escaped = arg.split('\'').join("'\"'\"'");
             format!("'{}'", single_quotes_escaped)
         }
+    }
+}
+
+fn trim_enclosing_quotes(input: &str) -> String {
+    let mut chars = input.chars();
+
+    match (chars.next(), chars.next_back()) {
+        (Some('"'), Some('"')) => chars.collect(),
+        (Some('\''), Some('\'')) => chars.collect(),
+        _ => input.to_string(),
     }
 }
 
