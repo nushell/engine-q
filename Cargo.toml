@@ -34,8 +34,8 @@ nu-term-grid = { path = "./crates/nu-term-grid" }
 nu-ansi-term = { path = "./crates/nu-ansi-term" }
 miette = "3.0.0"
 ctrlc = "3.2.1"
-# mimalloc = { version = "*", default-features = false }
 crossterm_winapi = "0.9.0"
+# mimalloc = { version = "*", default-features = false }
 
 [features]
 plugin = ["nu-plugin", "nu-parser/plugin", "nu-command/plugin", "nu-protocol/plugin", "nu-engine/plugin"]

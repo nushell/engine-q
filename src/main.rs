@@ -1,11 +1,4 @@
-use std::{
-    io::Write,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
-
+use crossterm_winapi::{ConsoleMode, Handle};
 use dialoguer::{
     console::{Style, Term},
     theme::ColorfulTheme,
@@ -22,6 +15,13 @@ use nu_protocol::{
     PipelineData, ShellError, Span, Value, CONFIG_VARIABLE_ID,
 };
 use reedline::{Completer, CompletionActionHandler, DefaultPrompt, LineBuffer, Prompt};
+use std::{
+    io::Write,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 #[cfg(feature = "plugin")]
 use nu_plugin::plugin::eval_plugin_signatures;
@@ -500,7 +500,6 @@ fn enable_vt_processing() -> Result<(), ShellError> {
     pub const ENABLE_PROCESSED_OUTPUT: u32 = 0x0001;
     pub const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 0x0004;
     // let mask = ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-    use crossterm_winapi::{ConsoleMode, Handle};
 
     let console_mode = ConsoleMode::from(Handle::current_out_handle()?);
     let old_mode = console_mode.mode()?;
