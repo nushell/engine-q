@@ -3,11 +3,13 @@ use nu_engine::CallExt;
 use nu_protocol::ast::Call;
 use nu_protocol::ast::CellPath;
 use nu_protocol::engine::{Command, EngineState, Stack};
-use nu_protocol::{Example, PipelineData, ShellError, Signature, Span, SyntaxShape, Value};
+use nu_protocol::{
+    Category, Example, PipelineData, ShellError, Signature, Span, Spanned, SyntaxShape, Value,
+};
 
 struct Arguments {
-    timezone: Option<String>,
-    offset: Option<i64>,
+    timezone: Option<Spanned<String>>,
+    offset: Option<Spanned<i64>>,
     format: Option<String>,
     column_paths: Vec<CellPath>,
 }
@@ -74,9 +76,10 @@ impl Command for SubCommand {
             )
             .rest(
             "rest",
-                            SyntaxShape::Any,
-                            "optionally convert text into datetime by column paths",
-                        )
+                SyntaxShape::CellPath,
+                "optionally convert text into datetime by column paths",
+            )
+            .category(Category::Conversions)
     }
 
     fn run(
@@ -134,6 +137,8 @@ fn operate(
     call: &Call,
     input: PipelineData,
 ) -> Result<PipelineData, ShellError> {
+    let head = call.head;
+
     let options = Arguments {
         timezone: call.get_flag(engine_state, stack, "timezone")?,
         offset: call.get_flag(engine_state, stack, "offset")?,
@@ -141,15 +146,16 @@ fn operate(
         column_paths: call.rest(engine_state, stack, 0)?,
     };
 
-    let head = call.head;
-
     // if zone-offset is specified, then zone will be neglected
     let zone_options = match &options.offset {
-        Some(zone_offset) => Some(Zone::new(*zone_offset)),
-        None => options
-            .timezone
-            .as_ref()
-            .map(|zone| Zone::from_string(zone.clone())),
+        Some(zone_offset) => Some(Spanned {
+            item: Zone::new(zone_offset.item),
+            span: zone_offset.span,
+        }),
+        None => options.timezone.as_ref().map(|zone| Spanned {
+            item: Zone::from_string(zone.item.clone()),
+            span: zone.span,
+        }),
     };
 
     let format_options = options
@@ -183,12 +189,12 @@ fn operate(
 
 fn action(
     input: &Value,
-    timezone: &Option<Zone>,
+    timezone: &Option<Spanned<Zone>>,
     dateformat: &Option<DatetimeFormat>,
     head: Span,
 ) -> Value {
     match input {
-        Value::String { val: s, .. } => {
+        Value::String { val: s, span, .. } => {
             let ts = s.parse::<i64>();
             // if timezone if specified, first check if the input is a timestamp.
             if let Some(tz) = timezone {
@@ -197,14 +203,13 @@ fn action(
                 // We have to manually guard it.
                 if let Ok(t) = ts {
                     if t.abs() > TIMESTAMP_BOUND {
-                        return Value::Error{error: ShellError::CantConvert(
-                            "could not parse input as a valid timestamp".to_string(),
-                            "given timestamp is out of range, it should between -8e+12 and 8e+12".to_string(),
+                        return Value::Error{error: ShellError::UnsupportedInput(
+                            "Given timestamp is out of range, it should between -8e+12 and 8e+12".to_string(),
                             head,
                         )};
                     }
                     const HOUR: i32 = 3600;
-                    let stampout = match tz {
+                    let stampout = match tz.item {
                         Zone::Utc => Value::Date {
                             val: Utc.timestamp(t, 0).into(),
                             span: head,
@@ -214,24 +219,23 @@ fn action(
                             span: head,
                         },
                         Zone::East(i) => {
-                            let eastoffset = FixedOffset::east((*i as i32) * HOUR);
+                            let eastoffset = FixedOffset::east((i as i32) * HOUR);
                             Value::Date {
                                 val: eastoffset.timestamp(t, 0),
                                 span: head,
                             }
                         }
                         Zone::West(i) => {
-                            let westoffset = FixedOffset::west((*i as i32) * HOUR);
+                            let westoffset = FixedOffset::west((i as i32) * HOUR);
                             Value::Date {
                                 val: westoffset.timestamp(t, 0),
                                 span: head,
                             }
                         }
                         Zone::Error => Value::Error {
-                            error: ShellError::CantConvert(
-                                "could not continue to convert timestamp".to_string(),
-                                "given timezone or offset is invalid".to_string(),
-                                head,
+                            error: ShellError::UnsupportedInput(
+                                "Cannot convert given timezone or offset to timestamp".to_string(),
+                                tz.span,
                             ),
                         },
                     };
@@ -273,12 +277,11 @@ fn action(
                             }
                         }
                     }
-                    Err(reason) => {
+                    Err(_) => {
                         return Value::Error {
-                            error: ShellError::CantConvert(
-                                "could not parse as datetime".to_string(),
-                                reason.to_string(),
-                                head,
+                            error: ShellError::UnsupportedInput(
+                                "Cannot convert input string as datetime. Might be missing timezone or offset".to_string(),
+                                *span,
                             ),
                         }
                     }
@@ -337,7 +340,10 @@ mod tests {
     #[test]
     fn takes_timestamp_offset() {
         let date_str = Value::test_string("1614434140");
-        let timezone_option = Some(Zone::East(8));
+        let timezone_option = Some(Spanned {
+            item: Zone::East(8),
+            span: Span::unknown(),
+        });
         let actual = action(&date_str, &timezone_option, &None, Span::unknown());
         let expected = Value::Date {
             val: DateTime::parse_from_str("2021-02-27 21:55:40 +08:00", "%Y-%m-%d %H:%M:%S %z")
@@ -351,7 +357,10 @@ mod tests {
     #[test]
     fn takes_timestamp() {
         let date_str = Value::test_string("1614434140");
-        let timezone_option = Some(Zone::Local);
+        let timezone_option = Some(Spanned {
+            item: Zone::Local,
+            span: Span::unknown(),
+        });
         let actual = action(&date_str, &timezone_option, &None, Span::unknown());
         let expected = Value::Date {
             val: Local.timestamp(1614434140, 0).into(),
@@ -364,7 +373,10 @@ mod tests {
     #[test]
     fn takes_invalid_timestamp() {
         let date_str = Value::test_string("10440970000000");
-        let timezone_option = Some(Zone::Utc);
+        let timezone_option = Some(Spanned {
+            item: Zone::Utc,
+            span: Span::unknown(),
+        });
         let actual = action(&date_str, &timezone_option, &None, Span::unknown());
 
         assert_eq!(actual.get_type(), Error);
