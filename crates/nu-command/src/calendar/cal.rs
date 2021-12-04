@@ -200,7 +200,7 @@ fn get_current_date() -> (i32, u32, u32) {
 
 fn add_months_of_year_to_table(
     arguments: &Arguments,
-    mut calendar_vec_deque: &mut VecDeque<Value>,
+    calendar_vec_deque: &mut VecDeque<Value>,
     tag: Span,
     selected_year: i32,
     (start_month, end_month): (u32, u32),
@@ -218,7 +218,7 @@ fn add_months_of_year_to_table(
 
         let add_month_to_table_result = add_month_to_table(
             arguments,
-            &mut calendar_vec_deque,
+            calendar_vec_deque,
             tag,
             selected_year,
             month_number,
