@@ -570,7 +570,7 @@ pub fn eval_variable(
                 let mut sig_records = vec![];
                 {
                     let sig_cols = vec![
-                        "cmd_name".to_string(),
+                        "command".to_string(),
                         "parameter_name".to_string(),
                         "parameter_type".to_string(),
                         "syntax_shape".to_string(),
