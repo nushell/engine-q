@@ -227,13 +227,14 @@ impl EngineState {
                     let path = decl.is_plugin().expect("plugin should have file name");
                     let file_name = path.to_str().expect("path should be a str");
 
-                    let line = serde_json::to_string_pretty(&decl.signature())
+                    serde_json::to_string_pretty(&decl.signature())
                         .map(|signature| format!("register {} {}\n\n", file_name, signature))
-                        .map_err(|err| ShellError::PluginFailedToLoad(err.to_string()))?;
-
-                    plugin_file
-                        .write_all(line.as_bytes())
-                        .map_err(|err| ShellError::PluginFailedToLoad(err.to_string()))?;
+                        .map_err(|err| ShellError::PluginFailedToLoad(err.to_string()))
+                        .and_then(|line| {
+                            plugin_file
+                                .write_all(line.as_bytes())
+                                .map_err(|err| ShellError::PluginFailedToLoad(err.to_string()))
+                        })?;
                 }
                 Ok(())
             } else {
@@ -241,40 +242,6 @@ impl EngineState {
                     "Plugin file not found".into(),
                 ))
             }
-        } else {
-            Err(ShellError::PluginFailedToLoad(
-                "Plugin file not found".into(),
-            ))
-        }
-    }
-
-    #[cfg(feature = "plugin")]
-    pub fn update_plugin_file_1(&self) -> Result<(), ShellError> {
-        use std::io::Write;
-
-        // Updating the signatures plugin file with the added signatures
-        if let Some(plugin_path) = &self.plugin_signatures {
-            // Always creating the file which will erase previous signatures
-            let mut plugin_file = std::fs::File::create(plugin_path.as_path())
-                .map_err(|err| ShellError::PluginFailedToLoad(err.to_string()))?;
-
-            // Plugin definitions with parsed signature
-            for decl in self.plugin_decls() {
-                // A successful plugin registration already includes the plugin filename
-                // No need to check the None option
-                let path = decl.is_plugin().expect("plugin should have file name");
-                let file_name = path.to_str().expect("path should be a str");
-
-                let line = serde_json::to_string_pretty(&decl.signature())
-                    .map(|signature| format!("register {} {}\n\n", file_name, signature))
-                    .map_err(|err| ShellError::PluginFailedToLoad(err.to_string()))?;
-
-                plugin_file
-                    .write_all(line.as_bytes())
-                    .map_err(|err| ShellError::PluginFailedToLoad(err.to_string()))?;
-            }
-
-            Ok(())
         } else {
             Err(ShellError::PluginFailedToLoad(
                 "Plugin file not found".into(),
@@ -440,37 +407,71 @@ impl EngineState {
         }
     }
 
-    pub fn get_signatures(&self) -> Vec<Signature> {
-        let mut output = vec![];
-        for decl in self.decls.iter() {
-            if decl.get_block_id().is_none() {
-                let mut signature = (*decl).signature();
-                signature.usage = decl.usage().to_string();
-                signature.extra_usage = decl.extra_usage().to_string();
+    /// Get all IDs of all commands within scope, sorted by the commads' names
+    pub fn get_decl_ids_sorted(&self, include_hidden: bool) -> impl Iterator<Item = DeclId> {
+        let mut decls_map = HashMap::new();
 
-                output.push(signature);
-            }
+        for frame in &self.scope {
+            let frame_decls = if include_hidden {
+                frame.decls.clone()
+            } else {
+                frame
+                    .decls
+                    .clone()
+                    .into_iter()
+                    .filter(|(_, id)| frame.visibility.is_decl_id_visible(id))
+                    .collect()
+            };
+
+            decls_map.extend(frame_decls);
         }
 
-        output
+        let mut decls: Vec<(Vec<u8>, DeclId)> = decls_map.into_iter().collect();
+
+        decls.sort_by(|a, b| a.0.cmp(&b.0));
+        decls.into_iter().map(|(_, id)| id)
     }
 
-    pub fn get_signatures_with_examples(&self) -> Vec<(Signature, Vec<Example>, bool)> {
-        let mut output = vec![];
-        for decl in self.decls.iter() {
-            if decl.get_block_id().is_none() {
+    /// Get signatures of all commands within scope.
+    pub fn get_signatures(&self, include_hidden: bool) -> Vec<Signature> {
+        self.get_decl_ids_sorted(include_hidden)
+            .map(|id| {
+                let decl = self.get_decl(id);
+
                 let mut signature = (*decl).signature();
                 signature.usage = decl.usage().to_string();
                 signature.extra_usage = decl.extra_usage().to_string();
 
-                output.push((signature, decl.examples(), decl.is_plugin().is_some()));
-            }
-        }
+                signature
+            })
+            .collect()
+    }
 
-        output.sort_by(|a, b| a.0.name.cmp(&b.0.name));
-        output.dedup_by(|a, b| a.0.name.cmp(&b.0.name).is_eq());
+    /// Get signatures of all commands within scope.
+    ///
+    /// In addition to signatures, it returns whether each command is:
+    ///     a) a plugin
+    ///     b) custom
+    pub fn get_signatures_with_examples(
+        &self,
+        include_hidden: bool,
+    ) -> Vec<(Signature, Vec<Example>, bool, bool)> {
+        self.get_decl_ids_sorted(include_hidden)
+            .map(|id| {
+                let decl = self.get_decl(id);
 
-        output
+                let mut signature = (*decl).signature();
+                signature.usage = decl.usage().to_string();
+                signature.extra_usage = decl.extra_usage().to_string();
+
+                (
+                    signature,
+                    decl.examples(),
+                    decl.is_plugin().is_some(),
+                    decl.get_block_id().is_some(),
+                )
+            })
+            .collect()
     }
 
     pub fn get_block(&self, block_id: BlockId) -> &Block {
