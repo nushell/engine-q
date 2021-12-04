@@ -20,6 +20,7 @@ struct Arguments {
     full_year: Option<Spanned<i64>>,
     week_start: Option<Spanned<String>>,
 }
+
 impl Command for Cal {
     fn name(&self) -> &str {
         "cal"
@@ -303,7 +304,6 @@ fn add_month_to_table(
         let mut indexmap = IndexMap::new();
 
         if should_show_year_column {
-            //rows.push(Value::Record{cols: vec!["year".to_string()], vals: vec![Value::Int{val: month_helper.selected_year as, span: tag}], span: tag});
             indexmap.insert(
                 "year".to_string(),
                 Value::Int{val: month_helper.selected_year as i64, span: tag}
