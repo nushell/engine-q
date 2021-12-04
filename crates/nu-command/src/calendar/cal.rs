@@ -4,9 +4,10 @@ use chrono::{Datelike, Local, NaiveDate};
 use indexmap::IndexMap;
 use nu_engine::CallExt;
 use nu_protocol::{
-    ast::{Call},
+    ast::Call,
     engine::{Command, EngineState, Stack},
-     Example, PipelineData, ShellError, Signature, Span, SyntaxShape, Value, Spanned, IntoPipelineData,
+    Example, IntoPipelineData, PipelineData, ShellError, Signature, Span, Spanned, SyntaxShape,
+    Value,
 };
 
 #[derive(Clone)]
@@ -54,8 +55,6 @@ impl Command for Cal {
         "Display a calendar."
     }
 
-
-
     fn run(
         &self,
         engine_state: &EngineState,
@@ -65,6 +64,7 @@ impl Command for Cal {
     ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
         cal(engine_state, stack, call, input)
     }
+
     fn examples(&self) -> Vec<Example> {
         vec![
             Example {
@@ -86,16 +86,18 @@ impl Command for Cal {
     }
 }
 
-pub fn cal( engine_state: &EngineState,
+pub fn cal(
+    engine_state: &EngineState,
     stack: &mut Stack,
     call: &Call,
-    _input: PipelineData,) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
+    _input: PipelineData,
+) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
     let mut calendar_vec_deque = VecDeque::new();
     let tag = call.head;
 
     let (current_year, current_month, current_day) = get_current_date();
 
-    let arguments = Arguments{
+    let arguments = Arguments {
         year: call.has_flag("year"),
         month: call.has_flag("month"),
         month_names: call.has_flag("month-names"),
@@ -119,7 +121,6 @@ pub fn cal( engine_state: &EngineState,
         (current_month, current_month)
     };
 
-
     add_months_of_year_to_table(
         &arguments,
         &mut calendar_vec_deque,
@@ -130,11 +131,11 @@ pub fn cal( engine_state: &EngineState,
         current_day_option,
     )?;
 
-    Ok(Value::List{
+    Ok(Value::List {
         vals: calendar_vec_deque.into_iter().collect(),
-        span: tag
-    }.into_pipeline_data())
-
+        span: tag,
+    }
+    .into_pipeline_data())
 }
 
 fn get_invalid_year_shell_error(head: Span) -> ShellError {
@@ -245,9 +246,7 @@ fn add_month_to_table(
     let month_helper = match month_helper_result {
         Ok(month_helper) => month_helper,
         Err(()) => match full_year_value {
-            Some(x) => {
-                return Err(get_invalid_year_shell_error(x.span ))
-            }
+            Some(x) => return Err(get_invalid_year_shell_error(x.span)),
             None => {
                 return Err(ShellError::UnknownOperator(
                     "Issue parsing command, invalid command".to_string(),
@@ -306,23 +305,34 @@ fn add_month_to_table(
         if should_show_year_column {
             indexmap.insert(
                 "year".to_string(),
-                Value::Int{val: month_helper.selected_year as i64, span: tag}
+                Value::Int {
+                    val: month_helper.selected_year as i64,
+                    span: tag,
+                },
             );
         }
 
         if should_show_quarter_column {
             indexmap.insert(
                 "quarter".to_string(),
-                Value::Int{val: month_helper.quarter_number as i64, span: tag}
+                Value::Int {
+                    val: month_helper.quarter_number as i64,
+                    span: tag,
+                },
             );
         }
 
         if should_show_month_column || should_show_month_names {
             let month_value = if should_show_month_names {
-                Value::String{val: month_helper.month_name.clone(), span: tag}
+                Value::String {
+                    val: month_helper.month_name.clone(),
+                    span: tag,
+                }
             } else {
-                Value::Int{val: month_helper.selected_month as i64, span: tag}
-                
+                Value::Int {
+                    val: month_helper.selected_month as i64,
+                    span: tag,
+                }
             };
 
             indexmap.insert("month".to_string(), month_value);
@@ -332,12 +342,15 @@ fn add_month_to_table(
             let should_add_day_number_to_table =
                 (day_number > total_start_offset) && (day_number <= day_limit);
 
-            let mut value = Value::Nothing{span: tag};
+            let mut value = Value::Nothing { span: tag };
 
             if should_add_day_number_to_table {
                 let adjusted_day_number = day_number - total_start_offset;
 
-                value = Value::Int{val: adjusted_day_number as i64, span: tag};
+                value = Value::Int {
+                    val: adjusted_day_number as i64,
+                    span: tag,
+                };
 
                 if let Some(current_day) = current_day_option {
                     if current_day == adjusted_day_number {
@@ -355,10 +368,15 @@ fn add_month_to_table(
         let cols: Vec<String> = indexmap.keys().map(|f| f.to_string()).collect();
         let mut vals: Vec<Value> = Vec::new();
         for c in &cols {
-            if let Some(x) = indexmap.get(c) { vals.push(x.to_owned()) }
+            if let Some(x) = indexmap.get(c) {
+                vals.push(x.to_owned())
+            }
         }
-        calendar_vec_deque
-            .push_back(Value::Record{cols, vals, span: tag})
+        calendar_vec_deque.push_back(Value::Record {
+            cols,
+            vals,
+            span: tag,
+        })
     }
 
     Ok(())
