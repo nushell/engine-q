@@ -13,19 +13,13 @@ use nu_protocol::{
 pub struct Cal;
 
 struct Arguments {
-    full_year: Option<Spanned<i64>>,
-    week_start: Option<Spanned<String>>,
-    
-}
-
-struct Options {
     year: bool,
     quarter: bool,
     month: bool,
-    month_names: bool
+    month_names: bool,
+    full_year: Option<Spanned<i64>>,
+    week_start: Option<Spanned<String>>,
 }
-
-
 impl Command for Cal {
     fn name(&self) -> &str {
         "cal"
@@ -101,15 +95,12 @@ pub fn cal( engine_state: &EngineState,
     let (current_year, current_month, current_day) = get_current_date();
 
     let arguments = Arguments{
-        full_year: call.get_flag(engine_state, stack, "full-year")?,
-        week_start: call.get_flag(engine_state, stack, "week-start")?,
-    };
-
-    let options = Options {
         year: call.has_flag("year"),
         month: call.has_flag("month"),
         month_names: call.has_flag("month-names"),
-        quarter: call.has_flag("quarter")
+        quarter: call.has_flag("quarter"),
+        full_year: call.get_flag(engine_state, stack, "full-year")?,
+        week_start: call.get_flag(engine_state, stack, "week-start")?,
     };
 
     let mut selected_year: i32 = current_year;
@@ -130,7 +121,6 @@ pub fn cal( engine_state: &EngineState,
 
     add_months_of_year_to_table(
         &arguments,
-        &options,
         &mut calendar_vec_deque,
         tag,
         selected_year,
@@ -208,7 +198,6 @@ fn get_current_date() -> (i32, u32, u32) {
 
 fn add_months_of_year_to_table(
     arguments: &Arguments,
-    options: &Options,
     mut calendar_vec_deque: &mut VecDeque<Value>,
     tag: Span,
     selected_year: i32,
@@ -227,7 +216,6 @@ fn add_months_of_year_to_table(
 
         let add_month_to_table_result = add_month_to_table(
             arguments,
-            options,
             &mut calendar_vec_deque,
             tag,
             selected_year,
@@ -243,7 +231,6 @@ fn add_months_of_year_to_table(
 
 fn add_month_to_table(
     arguments: &Arguments,
-    options: &Options,
     calendar_vec_deque: &mut VecDeque<Value>,
     tag: Span,
     selected_year: i32,
@@ -307,10 +294,10 @@ fn add_month_to_table(
     let mut day_number: u32 = 1;
     let day_limit: u32 = total_start_offset + month_helper.number_of_days_in_month;
 
-    let should_show_year_column = options.year;
-    let should_show_quarter_column = options.quarter;
-    let should_show_month_column = options.month;
-    let should_show_month_names = options.month_names;
+    let should_show_year_column = arguments.year;
+    let should_show_quarter_column = arguments.quarter;
+    let should_show_month_column = arguments.month;
+    let should_show_month_names = arguments.month_names;
 
     while day_number <= day_limit {
         let mut indexmap = IndexMap::new();
@@ -368,10 +355,7 @@ fn add_month_to_table(
         let cols: Vec<String> = indexmap.keys().map(|f| f.to_string()).collect();
         let mut vals: Vec<Value> = Vec::new();
         for c in &cols {
-            match indexmap.get(c) {
-                Some(x) => vals.push(x.to_owned()),
-                None => ()
-            }
+            if let Some(x) = indexmap.get(c) { vals.push(x.to_owned()) }
         }
         calendar_vec_deque
             .push_back(Value::Record{cols, vals, span: tag})
