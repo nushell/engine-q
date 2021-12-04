@@ -75,6 +75,7 @@ pub fn create_default_context() -> EngineState {
             MathSum,
             MathVariance,
             Path,
+            PathBasename,
             Mkdir,
             Module,
             Mv,
