@@ -2,8 +2,8 @@ mod between_values;
 mod conversion;
 mod custom_value;
 mod operations;
-pub(super) mod utils;
 
+pub(super) mod utils;
 pub(super) use conversion::{Column, ColumnMap};
 pub(super) use operations::Axis;
 
