@@ -79,12 +79,11 @@ impl Command for SubCommand {
                 example: "'C:\\Users\\joe\\code\\test.txt' | path dirname",
                 result: Some(Value::test_string("C:\\Users\\joe\\code")),
             },
-            // TODO: Uncomment when `path expand` has been implemented.
-            // Example {
-            //     description: "Get dirname of a path in a column",
-            //     example: "ls ('.' | path expand) | path dirname -c [ name ]",
-            //     result: None,
-            // },
+            Example {
+                description: "Get dirname of a path in a column",
+                example: "ls ('.' | path expand) | path dirname -c [ name ]",
+                result: None,
+            },
             Example {
                 description: "Walk up two levels",
                 example: "'C:\\Users\\joe\\code\\test.txt' | path dirname -n 2",
@@ -107,12 +106,11 @@ impl Command for SubCommand {
                 example: "'/home/joe/code/test.txt' | path dirname",
                 result: Some(Value::test_string("/home/joe/code")),
             },
-            // TODO: Uncomment when `path expand` has been implemented.
-            // Example {
-            //     description: "Get dirname of a path in a column",
-            //     example: "ls ('.' | path expand) | path dirname -c [ name ]",
-            //     result: None,
-            // },
+            Example {
+                description: "Get dirname of a path in a column",
+                example: "ls ('.' | path expand) | path dirname -c [ name ]",
+                result: None,
+            },
             Example {
                 description: "Walk up two levels",
                 example: "'/home/joe/code/test.txt' | path dirname -n 2",

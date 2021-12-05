@@ -2,6 +2,7 @@ mod basename;
 pub mod command;
 mod dirname;
 mod exists;
+mod expand;
 
 use std::sync::Arc;
 
@@ -9,6 +10,7 @@ pub use basename::SubCommand as PathBasename;
 pub use command::PathCommand as Path;
 pub use dirname::SubCommand as PathDirname;
 pub use exists::SubCommand as PathExists;
+pub use expand::SubCommand as PathExpand;
 use nu_protocol::{ShellError, Span, Type, Value};
 
 trait PathSubcommandArguments {
