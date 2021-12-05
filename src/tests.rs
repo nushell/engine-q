@@ -1190,7 +1190,10 @@ fn comment_skipping_2() -> TestResult {
 
 #[test]
 fn command_filter_reject_1() -> TestResult {
-    run_test("[[lang, gems]; [nu, 100]] | reject gems", "{lang: nu}")
+    run_test(
+        "[[lang, gems]; [nu, 100]] | reject gems | to json",
+        "{lang: nu}",
+    )
 }
 
 #[test]
