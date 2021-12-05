@@ -367,7 +367,7 @@ mod tests {
         let error = LabeledError {
             label: "label".into(),
             msg: "msg".into(),
-            span: Span { start: 2, end: 30 },
+            span: Some(Span { start: 2, end: 30 }),
         };
         let response = PluginResponse::Error(error.clone());
 
