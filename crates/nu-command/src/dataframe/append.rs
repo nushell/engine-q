@@ -5,9 +5,7 @@ use nu_protocol::{
     Category, Example, PipelineData, ShellError, Signature, Span, SyntaxShape, Value,
 };
 
-use crate::dataframe::nu_dataframe::values::{Column, NuDataFrame};
-
-use super::values::Axis;
+use super::values::{Axis, Column, NuDataFrame};
 
 #[derive(Clone)]
 pub struct AppendDF;

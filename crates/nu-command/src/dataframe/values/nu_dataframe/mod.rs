@@ -3,9 +3,8 @@ mod conversion;
 mod custom_value;
 mod operations;
 
-pub(super) mod utils;
-pub(super) use conversion::{Column, ColumnMap};
-pub(super) use operations::Axis;
+pub use conversion::{Column, ColumnMap};
+pub use operations::Axis;
 
 use indexmap::map::IndexMap;
 use nu_protocol::{did_you_mean, PipelineData, ShellError, Span, Value};

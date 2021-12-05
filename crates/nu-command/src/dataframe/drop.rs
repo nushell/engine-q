@@ -5,9 +5,8 @@ use nu_protocol::{
     Category, Example, PipelineData, ShellError, Signature, Span, SyntaxShape, Value,
 };
 
-use crate::dataframe::nu_dataframe::values::{Column, NuDataFrame};
-
 use super::values::utils::convert_columns;
+use super::values::{Column, NuDataFrame};
 
 #[derive(Clone)]
 pub struct DropDF;

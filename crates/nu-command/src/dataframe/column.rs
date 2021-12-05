@@ -5,7 +5,7 @@ use nu_protocol::{
     Category, Example, PipelineData, ShellError, Signature, Span, Spanned, SyntaxShape,
 };
 
-use crate::dataframe::nu_dataframe::values::{Column, NuDataFrame};
+use super::values::{Column, NuDataFrame};
 
 #[derive(Clone)]
 pub struct ColumnDF;
