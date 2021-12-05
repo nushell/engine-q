@@ -1,9 +1,20 @@
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 use nu_engine::CallExt;
-use nu_protocol::{
-    engine::Command, Example, ShellError, Signature, Span, Spanned, SyntaxShape, Type, Value,
-};
+use nu_protocol::{engine::Command, Example, Signature, Span, Spanned, SyntaxShape, Value};
+
+use super::PathSubcommandArguments;
+
+struct Arguments {
+    columns: Option<Vec<String>>,
+    replace: Option<Spanned<String>>,
+}
+
+impl PathSubcommandArguments for Arguments {
+    fn get_columns(&self) -> Option<Vec<String>> {
+        self.columns.clone()
+    }
+}
 
 #[derive(Clone)]
 pub struct SubCommand;
@@ -41,11 +52,13 @@ impl Command for SubCommand {
         input: nu_protocol::PipelineData,
     ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
         let head = call.head;
-        let columns: Option<Vec<String>> = call.get_flag(engine_state, stack, "columns")?;
-        let replace: Option<Spanned<String>> = call.get_flag(engine_state, stack, "replace")?;
+        let args = Arc::new(Arguments {
+            columns: call.get_flag(engine_state, stack, "columns")?,
+            replace: call.get_flag(engine_state, stack, "replace")?,
+        });
 
         input.map(
-            move |value| operate(value, head, columns.clone(), replace.clone()),
+            move |value| super::operate(&get_basename, args.clone(), value, head),
             engine_state.ctrlc.clone(),
         )
     }
@@ -101,68 +114,10 @@ impl Command for SubCommand {
     }
 }
 
-fn operate(
-    v: Value,
-    name: Span,
-    columns: Option<Vec<String>>,
-    replace: Option<Spanned<String>>,
-) -> Value {
-    match v {
-        Value::String { val, span } => get_basename(val, replace.clone(), span),
-        Value::Record { cols, vals, span } => {
-            let col = if let Some(col) = columns { col } else { vec![] };
-            if col.len() == 0 {
-                return Value::Error {
-                    error: ShellError::UnsupportedInput(
-                        String::from("when the input is a table, you must specify the columns"),
-                        name,
-                    ),
-                };
-            }
-
-            let mut output_cols = vec![];
-            let mut output_vals = vec![];
-
-            for (k, v) in cols.iter().zip(vals) {
-                output_cols.push(k.clone());
-                if col.contains(k) {
-                    let new_val = match v {
-                        Value::String { val, span } => get_basename(val, replace.clone(), span),
-                        _ => return handle_invalid_values(v, name),
-                    };
-                    output_vals.push(new_val);
-                } else {
-                    output_vals.push(v);
-                }
-            }
-
-            Value::Record {
-                cols: output_cols,
-                vals: output_vals,
-                span,
-            }
-        }
-        _ => handle_invalid_values(v, name),
-    }
-}
-
-fn handle_invalid_values(rest: Value, name: Span) -> Value {
-    Value::Error {
-        error: match rest.span() {
-            Ok(span) => ShellError::PipelineMismatch {
-                expected: Type::String,
-                expected_span: name,
-                origin: span,
-            },
-            Err(error) => error,
-        },
-    }
-}
-
-fn get_basename(val: String, replace: Option<Spanned<String>>, span: Span) -> Value {
+fn get_basename(val: String, span: Span, args: &Arguments) -> Value {
     let path = Path::new(&val);
-    match replace {
-        Some(r) => Value::string(path.with_file_name(r.item).to_string_lossy(), span),
+    match &args.replace {
+        Some(r) => Value::string(path.with_file_name(r.item.clone()).to_string_lossy(), span),
         None => Value::string(
             match path.file_name() {
                 Some(n) => n.to_string_lossy(),
