@@ -163,6 +163,7 @@ pub fn create_default_context() -> EngineState {
             ToTsv,
             ToCsv,
             Touch,
+            Uniq,
             Use,
             Update,
             Where,
