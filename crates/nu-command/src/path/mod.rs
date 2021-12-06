@@ -5,6 +5,7 @@ mod exists;
 mod expand;
 mod parse;
 mod relative_to;
+mod split;
 mod r#type;
 
 pub use basename::SubCommand as PathBasename;
@@ -15,6 +16,8 @@ pub use expand::SubCommand as PathExpand;
 pub use parse::SubCommand as PathParse;
 pub use r#type::SubCommand as PathType;
 pub use relative_to::SubCommand as PathRelativeTo;
+pub use split::SubCommand as PathSplit;
+
 use nu_protocol::{ShellError, Span, Type, Value};
 
 trait PathSubcommandArguments {

@@ -81,6 +81,7 @@ pub fn create_default_context() -> EngineState {
             PathExpand,
             PathParse,
             PathRelativeTo,
+            PathSplit,
             PathType,
             Mkdir,
             Module,
