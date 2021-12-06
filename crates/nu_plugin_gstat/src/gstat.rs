@@ -1,5 +1,6 @@
 use git2::{Branch, BranchType, Repository};
-use nu_protocol::{ShellError, Span, Value};
+use nu_plugin::LabeledError;
+use nu_protocol::{Span, Spanned, Value};
 use std::fmt::Write;
 use std::ops::BitAnd;
 use std::path::PathBuf;
@@ -12,9 +13,6 @@ use std::path::PathBuf;
 
 #[derive(Default)]
 pub struct GStat;
-// pub struct GStat {
-//     pub error: Option<String>,
-// }
 
 impl GStat {
     pub fn new() -> Self {
@@ -28,49 +26,110 @@ impl GStat {
     pub fn gstat(
         &self,
         value: &Value,
-        path: Option<String>,
+        path: Option<Spanned<String>>,
         span: &Span,
-    ) -> Result<Value, ShellError> {
+    ) -> Result<Value, LabeledError> {
+        // use std::any::Any;
+        // eprintln!("input type: {:?} value: {:#?}", &value.type_id(), &value);
+        // eprintln!("path type: {:?} value: {:#?}", &path.type_id(), &path);
+
+        // This is a flag to let us know if we're using the input value (value)
+        // or using the path specified (path)
+        let mut using_input_value = false;
+
         // let's get the input value as a string
         let piped_value = match value.as_string() {
-            Ok(s) => s,
+            Ok(s) => {
+                using_input_value = true;
+                s
+            }
             _ => String::new(),
         };
+
         // now let's get the path string
         let mut a_path = match path {
-            Some(p) => p,
-            None => ".".to_string(),
+            Some(p) => {
+                // should we check for input and path? nah.
+                using_input_value = false;
+                p
+            }
+            None => Spanned {
+                item: ".".to_string(),
+                span: Span::unknown(),
+            },
         };
-        // If there was no path specified and there is a piped in value, let's use the piped in value
-        if a_path == "." && &piped_value.chars().count() > &0 {
-            // eprintln!("Using piped variable: {:?}", &piped_value);
-            a_path = piped_value;
-        }
-        // else {
-        //     eprintln!("Using supplied or default value: {:?}", &a_path);
-        // }
 
-        let repo_path = PathBuf::from(a_path).canonicalize()?;
-        // eprintln!("repo_path: {:?}", &repo_path);
-        // let stats = Repository::discover(a_path.clone()).map(|mut repo| (Stats::new(&mut repo)));
+        // If there was no path specified and there is a piped in value, let's use the piped in value
+        if a_path.item == "." && &piped_value.chars().count() > &0 {
+            a_path.item = piped_value;
+        }
+
+        // This path has to exist
+        if !std::path::Path::new(&a_path.item).exists() {
+            return Err(LabeledError {
+                label: "error with path".to_string(),
+                msg: format!("path does not exist [{}]", &a_path.item),
+                span: if using_input_value {
+                    Some(value.span().expect("unable to get value span"))
+                } else {
+                    Some(a_path.span)
+                },
+            });
+        }
+
+        let metadata = match std::fs::metadata(&a_path.item) {
+            Ok(md) => md,
+            Err(e) => {
+                return Err(LabeledError {
+                    label: "error with metadata".to_string(),
+                    msg: format!(
+                        "unable to get metadata for [{}], error: {}",
+                        &a_path.item, e
+                    ),
+                    span: if using_input_value {
+                        Some(value.span().expect("unable to get value span"))
+                    } else {
+                        Some(a_path.span)
+                    },
+                });
+            }
+        };
+
+        // This path has to be a directory
+        if !metadata.is_dir() {
+            return Err(LabeledError {
+                label: "error with directory".to_string(),
+                msg: format!("path is not a directory [{}]", &a_path.item),
+                span: if using_input_value {
+                    Some(value.span().expect("unable to get value span"))
+                } else {
+                    Some(a_path.span)
+                },
+            });
+        }
+
+        let repo_path = match PathBuf::from(&a_path.item).canonicalize() {
+            Ok(p) => p,
+            Err(e) => {
+                return Err(LabeledError {
+                    label: format!("error canonicalizing [{}]", a_path.item),
+                    msg: e.to_string(),
+                    span: if using_input_value {
+                        Some(value.span().expect("unable to get value span"))
+                    } else {
+                        Some(a_path.span)
+                    },
+                });
+            }
+        };
+
         let stats = Repository::discover(repo_path).map(|mut repo| (Stats::new(&mut repo)));
         let stats = match stats {
             Ok(s) => s,
-            Err(e) => {
-                // return Err(ShellError::InternalError(format!(
-                //     "Error getting git stats: {}",
-                //     e.message()
-                // )));
-                // return Err(ShellError::LabeledError(
-                //     e.message().to_string(),
-                //     "git status".to_string(),
-                //     *span,
-                // ));
-                return Err(ShellError::LabeledError(
-                    "git status".to_string(),
-                    e.message().to_string(),
-                    *span,
-                ));
+            Err(_) => {
+                // Since we really never want this to fail, lets return an empty record so
+                // that one can check it in a script and do something with it.
+                return Ok(self.create_empty_git_status(span));
             }
         };
 
@@ -163,6 +222,7 @@ impl GStat {
             span: *span,
         });
 
+        // Leave this in case we want to turn it into a table instead of a list
         // Ok(Value::List {
         //     vals: vec![Value::Record {
         //         cols,
@@ -177,6 +237,103 @@ impl GStat {
             vals,
             span: *span,
         })
+    }
+
+    fn create_empty_git_status(self: &Self, span: &Span) -> Value {
+        let mut cols = vec![];
+        let mut vals = vec![];
+
+        cols.push("idx_added_staged".into());
+        vals.push(Value::Int {
+            val: -1,
+            span: *span,
+        });
+        cols.push("idx_modified_staged".into());
+        vals.push(Value::Int {
+            val: -1,
+            span: *span,
+        });
+        cols.push("idx_deleted_staged".into());
+        vals.push(Value::Int {
+            val: -1,
+            span: *span,
+        });
+        cols.push("idx_renamed".into());
+        vals.push(Value::Int {
+            val: -1,
+            span: *span,
+        });
+        cols.push("idx_type_changed".into());
+        vals.push(Value::Int {
+            val: -1,
+            span: *span,
+        });
+        cols.push("wt_untracked".into());
+        vals.push(Value::Int {
+            val: -1,
+            span: *span,
+        });
+        cols.push("wt_modified".into());
+        vals.push(Value::Int {
+            val: -1,
+            span: *span,
+        });
+        cols.push("wt_deleted".into());
+        vals.push(Value::Int {
+            val: -1,
+            span: *span,
+        });
+        cols.push("wt_type_changed".into());
+        vals.push(Value::Int {
+            val: -1,
+            span: *span,
+        });
+        cols.push("wt_renamed".into());
+        vals.push(Value::Int {
+            val: -1,
+            span: *span,
+        });
+        cols.push("ignored".into());
+        vals.push(Value::Int {
+            val: -1,
+            span: *span,
+        });
+        cols.push("conflicts".into());
+        vals.push(Value::Int {
+            val: -1,
+            span: *span,
+        });
+        cols.push("ahead".into());
+        vals.push(Value::Int {
+            val: -1,
+            span: *span,
+        });
+        cols.push("behind".into());
+        vals.push(Value::Int {
+            val: -1,
+            span: *span,
+        });
+        cols.push("stashes".into());
+        vals.push(Value::Int {
+            val: -1,
+            span: *span,
+        });
+        cols.push("branch".into());
+        vals.push(Value::String {
+            val: "no_branch".to_string(),
+            span: *span,
+        });
+        cols.push("remote".into());
+        vals.push(Value::String {
+            val: "no_remote".to_string(),
+            span: *span,
+        });
+
+        Value::Record {
+            cols,
+            vals,
+            span: *span,
+        }
     }
 }
 
