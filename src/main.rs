@@ -1,18 +1,12 @@
-use std::{
-    io::Write,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
-
+#[cfg(windows)]
+use crossterm_winapi::{ConsoleMode, Handle};
 use dialoguer::{
     console::{Style, Term},
     theme::ColorfulTheme,
     Select,
 };
 use miette::{IntoDiagnostic, Result};
-use nu_cli::{report_error, NuCompleter, NuHighlighter, NuValidator, NushellPrompt};
+use nu_cli::{CliError, NuCompleter, NuHighlighter, NuValidator, NushellPrompt};
 use nu_command::create_default_context;
 use nu_engine::eval_block;
 use nu_parser::parse;
@@ -22,9 +16,13 @@ use nu_protocol::{
     PipelineData, ShellError, Span, Value, CONFIG_VARIABLE_ID,
 };
 use reedline::{Completer, CompletionActionHandler, DefaultPrompt, LineBuffer, Prompt};
-
-#[cfg(feature = "plugin")]
-use nu_plugin::plugin::eval_plugin_signatures;
+use std::{
+    io::Write,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 #[cfg(test)]
 mod tests;
@@ -66,7 +64,7 @@ impl CompletionActionHandler for FuzzyCompletion {
                 .default(0)
                 .items(&selections[..])
                 .interact_on_opt(&Term::stdout())
-                .unwrap();
+                .expect("Fuzzy completion interact on operation");
             let _ = crossterm::terminal::enable_raw_mode();
 
             if let Some(result) = result {
@@ -87,7 +85,7 @@ fn main() -> Result<()> {
     // miette::set_panic_hook();
     let miette_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |x| {
-        crossterm::terminal::disable_raw_mode().unwrap();
+        crossterm::terminal::disable_raw_mode().expect("unable to disable raw mode");
         miette_hook(x);
     }));
 
@@ -159,6 +157,59 @@ fn main() -> Result<()> {
                         std::process::exit(1);
                     }
                     println!("{}", item.into_string("\n", &config));
+                }
+
+                // Next, let's check if there are any flags we want to pass to the main function
+                let args: Vec<String> = std::env::args().skip(2).collect();
+
+                if args.is_empty() && engine_state.find_decl(b"main").is_none() {
+                    return Ok(());
+                }
+
+                let args = format!("main {}", args.join(" ")).as_bytes().to_vec();
+
+                let (block, delta) = {
+                    let mut working_set = StateWorkingSet::new(&engine_state);
+                    let (output, err) = parse(&mut working_set, Some("<cmdline>"), &args, false);
+                    if let Some(err) = err {
+                        report_error(&working_set, &err);
+
+                        std::process::exit(1);
+                    }
+                    (output, working_set.render())
+                };
+
+                if let Err(err) = engine_state.merge_delta(delta) {
+                    let working_set = StateWorkingSet::new(&engine_state);
+                    report_error(&working_set, &err);
+                }
+
+                match eval_block(
+                    &engine_state,
+                    &mut stack,
+                    &block,
+                    PipelineData::new(Span::unknown()),
+                ) {
+                    Ok(pipeline_data) => {
+                        let config = stack.get_config()?;
+                        for item in pipeline_data {
+                            if let Value::Error { error } = item {
+                                let working_set = StateWorkingSet::new(&engine_state);
+
+                                report_error(&working_set, &error);
+
+                                std::process::exit(1);
+                            }
+                            println!("{}", item.into_string("\n", &config));
+                        }
+                    }
+                    Err(err) => {
+                        let working_set = StateWorkingSet::new(&engine_state);
+
+                        report_error(&working_set, &err);
+
+                        std::process::exit(1);
+                    }
                 }
             }
             Err(err) => {
@@ -408,9 +459,8 @@ fn update_prompt<'prompt>(
             let config = stack.get_config().unwrap_or_default();
             pipeline_data.collect_string("", &config)
         }
-        Err(err) => {
-            let working_set = StateWorkingSet::new(engine_state);
-            report_error(&working_set, &err);
+        Err(..) => {
+            // If we can't run the custom prompt, give them the default
             return default_prompt as &dyn Prompt;
         }
     };
@@ -439,11 +489,6 @@ fn eval_source(
             return false;
         }
 
-        #[cfg(feature = "plugin")]
-        if let Err(err) = eval_plugin_signatures(&mut working_set) {
-            report_error(&working_set, &err);
-        }
-
         (output, working_set.render())
     };
 
@@ -463,16 +508,57 @@ fn eval_source(
                 let working_set = StateWorkingSet::new(engine_state);
 
                 report_error(&working_set, &err);
+
                 return false;
+            }
+
+            // reset vt processing, aka ansi because illbehaved externals can break it
+            #[cfg(windows)]
+            {
+                let _ = enable_vt_processing();
             }
         }
         Err(err) => {
             let working_set = StateWorkingSet::new(engine_state);
 
             report_error(&working_set, &err);
+
             return false;
         }
     }
 
     true
+}
+
+#[cfg(windows)]
+pub fn enable_vt_processing() -> Result<(), ShellError> {
+    pub const ENABLE_PROCESSED_OUTPUT: u32 = 0x0001;
+    pub const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 0x0004;
+    // let mask = ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+
+    let console_mode = ConsoleMode::from(Handle::current_out_handle()?);
+    let old_mode = console_mode.mode()?;
+
+    // researching odd ansi behavior in windows terminal repo revealed that
+    // enable_processed_output and enable_virtual_terminal_processing should be used
+    // also, instead of checking old_mode & mask, just set the mode already
+
+    // if old_mode & mask == 0 {
+    console_mode
+        .set_mode(old_mode | ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING)?;
+    // }
+
+    Ok(())
+}
+
+pub fn report_error(
+    working_set: &StateWorkingSet,
+    error: &(dyn miette::Diagnostic + Send + Sync + 'static),
+) {
+    eprintln!("Error: {:?}", CliError(error, working_set));
+    // reset vt processing, aka ansi because illbehaved externals can break it
+    #[cfg(windows)]
+    {
+        let _ = enable_vt_processing();
+    }
 }

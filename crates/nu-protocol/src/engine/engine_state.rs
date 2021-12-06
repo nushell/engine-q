@@ -1,7 +1,7 @@
 use super::Command;
 use crate::{
-    ast::Block, BlockId, DeclId, Example, Overlay, OverlayId, PipelineData, ShellError, Signature,
-    Span, Type, Value, VarId,
+    ast::Block, BlockId, DeclId, Example, Overlay, OverlayId, ShellError, Signature, Span, Type,
+    VarId,
 };
 use core::panic;
 use std::{
@@ -11,6 +11,7 @@ use std::{
 
 #[cfg(feature = "plugin")]
 use std::path::PathBuf;
+
 // Tells whether a decl etc. is visible or not
 #[derive(Debug, Clone)]
 struct Visibility {
@@ -197,17 +198,14 @@ impl EngineState {
             last.visibility.merge_with(first.visibility);
 
             #[cfg(feature = "plugin")]
-            if !delta.plugin_decls.is_empty() {
-                for decl in delta.plugin_decls {
-                    let name = decl.name().as_bytes().to_vec();
-                    self.decls.push_back(decl);
-                    let decl_id = self.decls.len() - 1;
+            if delta.plugins_changed {
+                let result = self.update_plugin_file();
 
-                    last.decls.insert(name, decl_id);
-                    last.visibility.use_decl_id(&decl_id);
+                if result.is_ok() {
+                    delta.plugins_changed = false;
                 }
 
-                return self.update_plugin_file();
+                return result;
             }
         }
 
@@ -219,35 +217,32 @@ impl EngineState {
         use std::io::Write;
 
         // Updating the signatures plugin file with the added signatures
-        if let Some(plugin_path) = &self.plugin_signatures {
-            // Always create the file, which will erase previous signatures
-            if let Ok(mut plugin_file) = std::fs::File::create(plugin_path.as_path()) {
+        self.plugin_signatures
+            .as_ref()
+            .ok_or_else(|| ShellError::PluginFailedToLoad("Plugin file not found".into()))
+            .and_then(|plugin_path| {
+                // Always create the file, which will erase previous signatures
+                std::fs::File::create(plugin_path.as_path())
+                    .map_err(|err| ShellError::PluginFailedToLoad(err.to_string()))
+            })
+            .and_then(|mut plugin_file| {
                 // Plugin definitions with parsed signature
-                for decl in self.plugin_decls() {
+                self.plugin_decls().try_for_each(|decl| {
                     // A successful plugin registration already includes the plugin filename
                     // No need to check the None option
                     let path = decl.is_plugin().expect("plugin should have file name");
                     let file_name = path.to_str().expect("path should be a str");
 
-                    let line = serde_json::to_string_pretty(&decl.signature())
-                        .map(|signature| format!("register {} {}\n", file_name, signature))
-                        .map_err(|err| ShellError::PluginFailedToLoad(err.to_string()))?;
-
-                    plugin_file
-                        .write_all(line.as_bytes())
-                        .map_err(|err| ShellError::PluginFailedToLoad(err.to_string()))?;
-                }
-                Ok(())
-            } else {
-                Err(ShellError::PluginFailedToLoad(
-                    "Plugin file not found".into(),
-                ))
-            }
-        } else {
-            Err(ShellError::PluginFailedToLoad(
-                "Plugin file not found".into(),
-            ))
-        }
+                    serde_json::to_string_pretty(&decl.signature())
+                        .map(|signature| format!("register {} {}\n\n", file_name, signature))
+                        .map_err(|err| ShellError::PluginFailedToLoad(err.to_string()))
+                        .and_then(|line| {
+                            plugin_file
+                                .write_all(line.as_bytes())
+                                .map_err(|err| ShellError::PluginFailedToLoad(err.to_string()))
+                        })
+                })
+            })
     }
 
     pub fn num_files(&self) -> usize {
@@ -311,8 +306,21 @@ impl EngineState {
         None
     }
 
+    #[cfg(feature = "plugin")]
     pub fn plugin_decls(&self) -> impl Iterator<Item = &Box<dyn Command + 'static>> {
-        self.decls.iter().filter(|decl| decl.is_plugin().is_some())
+        let mut unique_plugin_decls = HashMap::new();
+
+        // Make sure there are no duplicate decls: Newer one overwrites the older one
+        for decl in self.decls.iter().filter(|d| d.is_plugin().is_some()) {
+            unique_plugin_decls.insert(decl.name(), decl);
+        }
+
+        let mut plugin_decls: Vec<(&str, &Box<dyn Command>)> =
+            unique_plugin_decls.into_iter().collect();
+
+        // Sort the plugins by name so we don't end up with a random plugin file each time
+        plugin_decls.sort_by(|a, b| a.0.cmp(b.0));
+        plugin_decls.into_iter().map(|(_, decl)| decl)
     }
 
     pub fn find_overlay(&self, name: &[u8]) -> Option<OverlayId> {
@@ -362,68 +370,71 @@ impl EngineState {
             .expect("internal error: missing declaration")
     }
 
-    #[allow(clippy::borrowed_box)]
-    pub fn get_decl_with_input(&self, decl_id: DeclId, input: &PipelineData) -> &Box<dyn Command> {
-        let decl = self.get_decl(decl_id);
+    /// Get all IDs of all commands within scope, sorted by the commads' names
+    pub fn get_decl_ids_sorted(&self, include_hidden: bool) -> impl Iterator<Item = DeclId> {
+        let mut decls_map = HashMap::new();
 
-        match input {
-            PipelineData::Stream(..) => decl,
-            PipelineData::Value(value, ..) => match value {
-                Value::CustomValue { val, .. } => {
-                    // This filter works because the custom definitions were declared
-                    // before the default nushell declarations. This means that the custom
-                    // declarations that get overridden by the default declarations can only
-                    // be accessed if the input value has the required category
-                    let decls = self
-                        .decls
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, decl_inner)| {
-                            decl.name() == decl_inner.name()
-                                && decl_inner.signature().category == val.category()
-                        })
-                        .map(|(index, _)| index)
-                        .collect::<Vec<usize>>();
+        for frame in &self.scope {
+            let frame_decls = if include_hidden {
+                frame.decls.clone()
+            } else {
+                frame
+                    .decls
+                    .clone()
+                    .into_iter()
+                    .filter(|(_, id)| frame.visibility.is_decl_id_visible(id))
+                    .collect()
+            };
 
-                    match decls.first() {
-                        Some(index) => self.get_decl(*index),
-                        None => decl,
-                    }
-                }
-                _ => decl,
-            },
+            decls_map.extend(frame_decls);
         }
+
+        let mut decls: Vec<(Vec<u8>, DeclId)> = decls_map.into_iter().collect();
+
+        decls.sort_by(|a, b| a.0.cmp(&b.0));
+        decls.into_iter().map(|(_, id)| id)
     }
 
-    pub fn get_signatures(&self) -> Vec<Signature> {
-        let mut output = vec![];
-        for decl in self.decls.iter() {
-            if decl.get_block_id().is_none() {
+    /// Get signatures of all commands within scope.
+    pub fn get_signatures(&self, include_hidden: bool) -> Vec<Signature> {
+        self.get_decl_ids_sorted(include_hidden)
+            .map(|id| {
+                let decl = self.get_decl(id);
+
                 let mut signature = (*decl).signature();
                 signature.usage = decl.usage().to_string();
                 signature.extra_usage = decl.extra_usage().to_string();
 
-                output.push(signature);
-            }
-        }
-
-        output
+                signature
+            })
+            .collect()
     }
 
-    pub fn get_signatures_with_examples(&self) -> Vec<(Signature, Vec<Example>, bool)> {
-        let mut output = vec![];
-        for decl in self.decls.iter() {
-            if decl.get_block_id().is_none() {
+    /// Get signatures of all commands within scope.
+    ///
+    /// In addition to signatures, it returns whether each command is:
+    ///     a) a plugin
+    ///     b) custom
+    pub fn get_signatures_with_examples(
+        &self,
+        include_hidden: bool,
+    ) -> Vec<(Signature, Vec<Example>, bool, bool)> {
+        self.get_decl_ids_sorted(include_hidden)
+            .map(|id| {
+                let decl = self.get_decl(id);
+
                 let mut signature = (*decl).signature();
                 signature.usage = decl.usage().to_string();
                 signature.extra_usage = decl.extra_usage().to_string();
 
-                output.push((signature, decl.examples(), decl.is_plugin().is_some()));
-            }
-        }
-
-        output.sort_by(|a, b| a.0.name.cmp(&b.0.name));
-        output
+                (
+                    signature,
+                    decl.examples(),
+                    decl.is_plugin().is_some(),
+                    decl.get_block_id().is_some(),
+                )
+            })
+            .collect()
     }
 
     pub fn get_block(&self, block_id: BlockId) -> &Block {
@@ -519,9 +530,7 @@ pub struct StateDelta {
     overlays: Vec<Overlay>,       // indexed by OverlayId
     pub scope: Vec<ScopeFrame>,
     #[cfg(feature = "plugin")]
-    pub plugin_signatures: Vec<(PathBuf, Option<Signature>)>,
-    #[cfg(feature = "plugin")]
-    plugin_decls: Vec<Box<dyn Command>>,
+    plugins_changed: bool, // marks whether plugin file should be updated
 }
 
 impl StateDelta {
@@ -562,9 +571,7 @@ impl<'a> StateWorkingSet<'a> {
                 overlays: vec![],
                 scope: vec![ScopeFrame::new()],
                 #[cfg(feature = "plugin")]
-                plugin_signatures: vec![],
-                #[cfg(feature = "plugin")]
-                plugin_decls: vec![],
+                plugins_changed: false,
             },
             permanent_state,
         }
@@ -633,20 +640,8 @@ impl<'a> StateWorkingSet<'a> {
     }
 
     #[cfg(feature = "plugin")]
-    pub fn add_plugin_decls(&mut self, decls: Vec<Box<dyn Command>>) {
-        for decl in decls {
-            self.delta.plugin_decls.push(decl);
-        }
-    }
-
-    #[cfg(feature = "plugin")]
-    pub fn add_plugin_signature(&mut self, path: PathBuf, signature: Option<Signature>) {
-        self.delta.plugin_signatures.push((path, signature));
-    }
-
-    #[cfg(feature = "plugin")]
-    pub fn get_signatures(&self) -> impl Iterator<Item = &(PathBuf, Option<Signature>)> {
-        self.delta.plugin_signatures.iter()
+    pub fn mark_plugins_file_dirty(&mut self) {
+        self.delta.plugins_changed = true;
     }
 
     pub fn merge_predecl(&mut self, name: &[u8]) -> Option<DeclId> {

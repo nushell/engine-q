@@ -214,6 +214,17 @@ impl Value {
         }
     }
 
+    pub fn as_integer(&self) -> Result<i64, ShellError> {
+        match self {
+            Value::Int { val, .. } => Ok(*val),
+            x => Err(ShellError::CantConvert(
+                "float".into(),
+                x.get_type().to_string(),
+                self.span()?,
+            )),
+        }
+    }
+
     /// Get the span for the current value
     pub fn span(&self) -> Result<Span, ShellError> {
         match self {
@@ -646,6 +657,10 @@ impl Value {
 
     pub fn float(val: f64, span: Span) -> Value {
         Value::Float { val, span }
+    }
+
+    pub fn boolean(val: bool, span: Span) -> Value {
+        Value::Bool { val, span }
     }
 
     // Only use these for test data. Span::unknown() should not be used in user data

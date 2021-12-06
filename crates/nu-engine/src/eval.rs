@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use nu_protocol::ast::{Block, Call, Expr, Expression, Operator, Statement};
 use nu_protocol::engine::{EngineState, Stack};
 use nu_protocol::{
@@ -24,7 +26,7 @@ fn eval_call(
     call: &Call,
     input: PipelineData,
 ) -> Result<PipelineData, ShellError> {
-    let decl = engine_state.get_decl_with_input(call.decl_id, &input);
+    let decl = engine_state.get_decl(call.decl_id);
 
     if call.named.iter().any(|(flag, _)| flag.item == "help") {
         let full_help = get_full_help(&decl.signature(), &decl.examples(), engine_state);
@@ -564,6 +566,128 @@ pub fn eval_variable(
                     span,
                 });
 
+                // signature
+                let mut sig_records = vec![];
+                {
+                    let sig_cols = vec![
+                        "command".to_string(),
+                        "parameter_name".to_string(),
+                        "parameter_type".to_string(),
+                        "syntax_shape".to_string(),
+                        "is_optional".to_string(),
+                        "short_flag".to_string(),
+                        "description".to_string(),
+                    ];
+
+                    // required_positional
+                    for req in signature.required_positional {
+                        let sig_vals = vec![
+                            Value::string(&signature.name, span),
+                            Value::string(req.name, span),
+                            Value::string("positional", span),
+                            Value::string(req.shape.to_type().to_string(), span),
+                            Value::boolean(false, span),
+                            Value::nothing(span),
+                            Value::string(req.desc, span),
+                        ];
+
+                        sig_records.push(Value::Record {
+                            cols: sig_cols.clone(),
+                            vals: sig_vals,
+                            span,
+                        });
+                    }
+
+                    // optional_positional
+                    for opt in signature.optional_positional {
+                        let sig_vals = vec![
+                            Value::string(&signature.name, span),
+                            Value::string(opt.name, span),
+                            Value::string("positional", span),
+                            Value::string(opt.shape.to_type().to_string(), span),
+                            Value::boolean(true, span),
+                            Value::nothing(span),
+                            Value::string(opt.desc, span),
+                        ];
+
+                        sig_records.push(Value::Record {
+                            cols: sig_cols.clone(),
+                            vals: sig_vals,
+                            span,
+                        });
+                    }
+
+                    {
+                        // rest_positional
+                        let (name, shape, desc) = if let Some(rest) = signature.rest_positional {
+                            (
+                                Value::string(rest.name, span),
+                                Value::string(rest.shape.to_type().to_string(), span),
+                                Value::string(rest.desc, span),
+                            )
+                        } else {
+                            (
+                                Value::nothing(span),
+                                Value::nothing(span),
+                                Value::nothing(span),
+                            )
+                        };
+
+                        let sig_vals = vec![
+                            Value::string(&signature.name, span),
+                            name,
+                            Value::string("rest", span),
+                            shape,
+                            Value::boolean(false, span),
+                            Value::nothing(span),
+                            desc,
+                        ];
+
+                        sig_records.push(Value::Record {
+                            cols: sig_cols.clone(),
+                            vals: sig_vals,
+                            span,
+                        });
+                    }
+
+                    // named flags
+                    for named in signature.named {
+                        let shape = if let Some(arg) = named.arg {
+                            Value::string(arg.to_type().to_string(), span)
+                        } else {
+                            Value::nothing(span)
+                        };
+
+                        let short_flag = if let Some(c) = named.short {
+                            Value::string(c, span)
+                        } else {
+                            Value::nothing(span)
+                        };
+
+                        let sig_vals = vec![
+                            Value::string(&signature.name, span),
+                            Value::string(named.long, span),
+                            Value::string("named", span),
+                            shape,
+                            Value::boolean(!named.required, span),
+                            short_flag,
+                            Value::string(named.desc, span),
+                        ];
+
+                        sig_records.push(Value::Record {
+                            cols: sig_cols.clone(),
+                            vals: sig_vals,
+                            span,
+                        });
+                    }
+                }
+
+                cols.push("signature".to_string());
+                vals.push(Value::List {
+                    vals: sig_records,
+                    span,
+                });
+
                 cols.push("usage".to_string());
                 vals.push(Value::String {
                     val: decl.usage().into(),
@@ -597,6 +721,12 @@ pub fn eval_variable(
                 cols.push("is_plugin".to_string());
                 vals.push(Value::Bool {
                     val: decl.is_plugin().is_some(),
+                    span,
+                });
+
+                cols.push("is_custom".to_string());
+                vals.push(Value::Bool {
+                    val: decl.get_block_id().is_some(),
                     span,
                 });
 
@@ -637,18 +767,37 @@ pub fn eval_variable(
             span,
         });
 
+        commands.sort_by(|a, b| match (a, b) {
+            (Value::Record { vals: rec_a, .. }, Value::Record { vals: rec_b, .. }) => {
+                // Comparing the first value from the record
+                // It is expected that the first value is the name of the column
+                // The names of the commands should be a value string
+                match (rec_a.get(0), rec_b.get(0)) {
+                    (Some(val_a), Some(val_b)) => match (val_a, val_b) {
+                        (Value::String { val: str_a, .. }, Value::String { val: str_b, .. }) => {
+                            str_a.cmp(str_b)
+                        }
+                        _ => Ordering::Equal,
+                    },
+                    _ => Ordering::Equal,
+                }
+            }
+            _ => Ordering::Equal,
+        });
         output_cols.push("commands".to_string());
         output_vals.push(Value::List {
             vals: commands,
             span,
         });
 
+        aliases.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
         output_cols.push("aliases".to_string());
         output_vals.push(Value::List {
             vals: aliases,
             span,
         });
 
+        overlays.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
         output_cols.push("overlays".to_string());
         output_vals.push(Value::List {
             vals: overlays,

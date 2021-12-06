@@ -1187,3 +1187,39 @@ fn comment_skipping_2() -> TestResult {
         "40",
     )
 }
+
+#[test]
+fn command_filter_reject_1() -> TestResult {
+    run_test(
+        "[[lang, gems]; [nu, 100]] | reject gems | to json",
+        r#"[
+  {
+    "lang": "nu"
+  }
+]"#,
+    )
+}
+
+#[test]
+fn command_filter_reject_2() -> TestResult {
+    run_test(
+        "[[lang, gems, grade]; [nu, 100, a]] | reject gems grade | to json",
+        r#"[
+  {
+    "lang": "nu"
+  }
+]"#,
+    )
+}
+
+#[test]
+fn command_filter_reject_3() -> TestResult {
+    run_test(
+        "[[lang, gems, grade]; [nu, 100, a]] | reject grade gems | to json",
+        r#"[
+  {
+    "lang": "nu"
+  }
+]"#,
+    )
+}
