@@ -102,13 +102,13 @@ fn to_string_tagged_value(v: &Value, config: &Config) -> Result<String, ShellErr
     }
 }
 
-fn merge_descriptors(values: &[Value]) -> Vec<String> {
+pub fn merge_descriptors(values: &[Value]) -> Vec<String> {
     let mut ret: Vec<String> = vec![];
     let mut seen: IndexSet<String> = indexset! {};
     for value in values {
         let data_descriptors = match value {
             Value::Record { cols, .. } => cols.to_owned(),
-            _ => vec![],
+            _ => vec!["".to_string()],
         };
         for desc in data_descriptors {
             if !seen.contains(&desc) {
