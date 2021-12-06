@@ -3,6 +3,7 @@ pub mod command;
 mod dirname;
 mod exists;
 mod expand;
+mod relative_to;
 mod r#type;
 
 pub use basename::SubCommand as PathBasename;
@@ -11,6 +12,7 @@ pub use dirname::SubCommand as PathDirname;
 pub use exists::SubCommand as PathExists;
 pub use expand::SubCommand as PathExpand;
 pub use r#type::SubCommand as PathType;
+pub use relative_to::SubCommand as PathRelativeTo;
 use nu_protocol::{ShellError, Span, Type, Value};
 
 trait PathSubcommandArguments {
