@@ -60,7 +60,7 @@ impl GStat {
         };
 
         // If there was no path specified and there is a piped in value, let's use the piped in value
-        if a_path.item == "." && &piped_value.chars().count() > &0 {
+        if a_path.item == "." && piped_value.chars().count() > 0 {
             a_path.item = piped_value;
         }
 
@@ -239,7 +239,7 @@ impl GStat {
         })
     }
 
-    fn create_empty_git_status(self: &Self, span: &Span) -> Value {
+    fn create_empty_git_status(&self, span: &Span) -> Value {
         let mut cols = vec![];
         let mut vals = vec![];
 
