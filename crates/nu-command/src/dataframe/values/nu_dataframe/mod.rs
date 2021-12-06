@@ -1,11 +1,10 @@
-pub mod commands;
-
 mod between_values;
 mod conversion;
 mod custom_value;
 mod operations;
 
-use conversion::{Column, ColumnMap};
+pub use conversion::{Column, ColumnMap};
+pub use operations::Axis;
 
 use indexmap::map::IndexMap;
 use nu_protocol::{did_you_mean, PipelineData, ShellError, Span, Value};
@@ -110,7 +109,11 @@ impl NuDataFrame {
     pub fn series_to_value(series: Series, span: Span) -> Result<Value, ShellError> {
         match DataFrame::new(vec![series]) {
             Ok(dataframe) => Ok(NuDataFrame::dataframe_into_value(dataframe, span)),
-            Err(e) => Err(ShellError::InternalError(e.to_string())),
+            Err(e) => Err(ShellError::SpannedLabeledError(
+                "Error creating dataframe".into(),
+                e.to_string(),
+                span,
+            )),
         }
     }
 
@@ -145,12 +148,17 @@ impl NuDataFrame {
         conversion::from_parsed_columns(column_values)
     }
 
-    //pub fn try_from_series(columns: Vec<Series>) -> Result<Self, ShellError> {
-    //    let dataframe = DataFrame::new(columns)
-    //        .map_err(|e| ShellError::InternalError(format!("Unable to create DataFrame: {}", e)))?;
+    pub fn try_from_series(columns: Vec<Series>, span: Span) -> Result<Self, ShellError> {
+        let dataframe = DataFrame::new(columns).map_err(|e| {
+            ShellError::SpannedLabeledError(
+                "Error creating dataframe".into(),
+                format!("Unable to create DataFrame: {}", e),
+                span,
+            )
+        })?;
 
-    //    Ok(Self::new(dataframe))
-    //}
+        Ok(Self::new(dataframe))
+    }
 
     pub fn try_from_columns(columns: Vec<Column>) -> Result<Self, ShellError> {
         let mut column_values: ColumnMap = IndexMap::new();
@@ -165,8 +173,8 @@ impl NuDataFrame {
         conversion::from_parsed_columns(column_values)
     }
 
-    pub fn try_from_pipeline(input: PipelineData, span: Span) -> Result<Self, ShellError> {
-        match input.into_value(span) {
+    pub fn try_from_value(value: Value) -> Result<Self, ShellError> {
+        match value {
             Value::CustomValue { val, span } => match val.as_any().downcast_ref::<NuDataFrame>() {
                 Some(df) => Ok(NuDataFrame(df.0.clone())),
                 None => Err(ShellError::CantConvert(
@@ -178,9 +186,14 @@ impl NuDataFrame {
             _ => Err(ShellError::CantConvert(
                 "Dataframe not found".into(),
                 "value is not a dataframe".into(),
-                span,
+                value.span()?,
             )),
         }
+    }
+
+    pub fn try_from_pipeline(input: PipelineData, span: Span) -> Result<Self, ShellError> {
+        let value = input.into_value(span);
+        NuDataFrame::try_from_value(value)
     }
 
     pub fn column(&self, column: &str, span: Span) -> Result<Self, ShellError> {
@@ -196,8 +209,9 @@ impl NuDataFrame {
             ShellError::DidYouMean(option, span)
         })?;
 
-        let dataframe = DataFrame::new(vec![s.clone()])
-            .map_err(|e| ShellError::InternalError(e.to_string()))?;
+        let dataframe = DataFrame::new(vec![s.clone()]).map_err(|e| {
+            ShellError::SpannedLabeledError("Error creating dataframe".into(), e.to_string(), span)
+        })?;
 
         Ok(Self(dataframe))
     }
@@ -206,10 +220,12 @@ impl NuDataFrame {
         self.0.width() == 1
     }
 
-    pub fn as_series(&self, _span: Span) -> Result<Series, ShellError> {
+    pub fn as_series(&self, span: Span) -> Result<Series, ShellError> {
         if !self.is_series() {
-            return Err(ShellError::InternalError(
-                "DataFrame cannot be used as Series".into(),
+            return Err(ShellError::SpannedLabeledError(
+                "Error using as series".into(),
+                "dataframe has more than one column".into(),
+                span,
             ));
         }
 

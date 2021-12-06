@@ -1,4 +1,4 @@
-use super::super::{Column, NuDataFrame};
+use super::values::{Column, NuDataFrame};
 use nu_protocol::{
     ast::Call,
     engine::{Command, EngineState, Stack},
@@ -18,12 +18,12 @@ impl Command for DataTypes {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build(self.name().to_string()).category(Category::Custom("dataframe".into()))
+        Signature::build(self.name()).category(Category::Custom("dataframe".into()))
     }
 
     fn examples(&self) -> Vec<Example> {
         vec![Example {
-            description: "drop column a",
+            description: "Dataframe dtypes",
             example: "[[a b]; [1 2] [3 4]] | to df | dtypes",
             result: Some(
                 NuDataFrame::try_from_columns(vec![
@@ -60,7 +60,7 @@ fn command(
     call: &Call,
     input: PipelineData,
 ) -> Result<PipelineData, ShellError> {
-    let df = NuDataFrame::try_from_pipeline(input, call.head.clone())?;
+    let df = NuDataFrame::try_from_pipeline(input, call.head)?;
 
     let mut dtypes: Vec<Value> = Vec::new();
     let names: Vec<Value> = df
@@ -76,12 +76,12 @@ fn command(
 
             let dtype_str = dtype.to_string();
             dtypes.push(Value::String {
-                val: dtype_str.into(),
+                val: dtype_str,
                 span: call.head,
             });
 
             Value::String {
-                val: v.to_string().into(),
+                val: v.to_string(),
                 span: call.head,
             }
         })
@@ -90,8 +90,8 @@ fn command(
     let names_col = Column::new("column".to_string(), names);
     let dtypes_col = Column::new("dtype".to_string(), dtypes);
 
-    let df = NuDataFrame::try_from_columns(vec![names_col, dtypes_col])?;
-    Ok(PipelineData::Value(df.into_value(call.head)))
+    NuDataFrame::try_from_columns(vec![names_col, dtypes_col])
+        .map(|df| PipelineData::Value(df.into_value(call.head), None))
 }
 
 #[cfg(test)]
