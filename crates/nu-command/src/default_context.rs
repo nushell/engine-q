@@ -22,7 +22,7 @@ pub fn create_default_context() -> EngineState {
         // them only accessible if the correct input value category is used with the
         // declaration
         #[cfg(feature = "dataframe")]
-        bind_command!(DataTypes, DescribeDF, OpenDataFrame, ToDataFrame);
+        add_dataframe_decls(&mut working_set);
 
         // TODO: sort default context items categorically
         bind_command!(
@@ -32,6 +32,7 @@ pub fn create_default_context() -> EngineState {
             Append,
             Benchmark,
             BuildString,
+            Cal,
             Cd,
             Clear,
             Collect,
@@ -81,6 +82,8 @@ pub fn create_default_context() -> EngineState {
             If,
             Into,
             IntoBinary,
+            IntoDatetime,
+            IntoDecimal,
             IntoFilesize,
             IntoInt,
             IntoString,
@@ -115,6 +118,7 @@ pub fn create_default_context() -> EngineState {
             Ps,
             Range,
             Random,
+            Reject,
             Reverse,
             Rm,
             Select,
@@ -148,6 +152,7 @@ pub fn create_default_context() -> EngineState {
             StrStartsWith,
             StrReverse,
             StrSubstring,
+            StrUpcase,
             StrTrim,
             Sys,
             Table,
@@ -155,6 +160,8 @@ pub fn create_default_context() -> EngineState {
             ToJson,
             ToUrl,
             ToToml,
+            ToTsv,
+            ToCsv,
             Touch,
             Use,
             Update,

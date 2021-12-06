@@ -1,4 +1,5 @@
-use nu_protocol::{ShellError, Span, Value};
+use nu_plugin::LabeledError;
+use nu_protocol::{Span, Value};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Action {
@@ -81,14 +82,30 @@ impl Inc {
         "Usage: inc field [--major|--minor|--patch]"
     }
 
-    pub fn inc(&self, value: &Value) -> Result<Value, ShellError> {
+    pub fn inc(&self, head: Span, value: &Value) -> Result<Value, LabeledError> {
         match value {
             Value::Int { val, span } => Ok(Value::Int {
                 val: val + 1,
                 span: *span,
             }),
             Value::String { val, .. } => Ok(self.apply(val)),
-            _ => Err(ShellError::InternalError("incrementable value".to_string())),
+            x => {
+                let msg = x.as_string().map_err(|e| LabeledError {
+                    label: "Unable to extract string".into(),
+                    msg: format!(
+                        "value cannot be converted to string {:?} - {}",
+                        x,
+                        e.to_string()
+                    ),
+                    span: Some(head),
+                })?;
+
+                Err(LabeledError {
+                    label: "Incorrect value".into(),
+                    msg,
+                    span: Some(head),
+                })
+            }
         }
     }
 }

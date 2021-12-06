@@ -214,6 +214,17 @@ impl Value {
         }
     }
 
+    pub fn as_integer(&self) -> Result<i64, ShellError> {
+        match self {
+            Value::Int { val, .. } => Ok(*val),
+            x => Err(ShellError::CantConvert(
+                "float".into(),
+                x.get_type().to_string(),
+                self.span()?,
+            )),
+        }
+    }
+
     /// Get the span for the current value
     pub fn span(&self) -> Result<Span, ShellError> {
         match self {
@@ -287,6 +298,38 @@ impl Value {
         }
     }
 
+    pub fn get_data_by_key(&self, name: &str) -> Option<Value> {
+        match self {
+            Value::Record { cols, vals, .. } => cols
+                .iter()
+                .zip(vals.iter())
+                .find(|(col, _)| col == &name)
+                .map(|(_, val)| val.clone()),
+            Value::List { vals, span } => {
+                let mut out = vec![];
+                for item in vals {
+                    match item {
+                        Value::Record { .. } => match item.get_data_by_key(name) {
+                            Some(v) => out.push(v),
+                            None => out.push(Value::nothing(*span)),
+                        },
+                        _ => out.push(Value::nothing(*span)),
+                    }
+                }
+
+                if !out.is_empty() {
+                    Some(Value::List {
+                        vals: out,
+                        span: *span,
+                    })
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
     /// Convert Value into string. Note that Streams will be consumed.
     pub fn into_string(self, separator: &str, config: &Config) -> String {
         match self {
@@ -318,6 +361,42 @@ impl Value {
                     .map(|(x, y)| format!("{}: {}", x, y.clone().into_string(", ", config)))
                     .collect::<Vec<_>>()
                     .join(separator)
+            ),
+            Value::Block { val, .. } => format!("<Block {}>", val),
+            Value::Nothing { .. } => String::new(),
+            Value::Error { error } => format!("{:?}", error),
+            Value::Binary { val, .. } => format!("{:?}", val),
+            Value::CellPath { val, .. } => val.into_string(),
+            Value::CustomValue { val, .. } => val.value_string(),
+        }
+    }
+
+    /// Convert Value into string. Note that Streams will be consumed.
+    pub fn into_abbreviated_string(self, config: &Config) -> String {
+        match self {
+            Value::Bool { val, .. } => val.to_string(),
+            Value::Int { val, .. } => val.to_string(),
+            Value::Float { val, .. } => val.to_string(),
+            Value::Filesize { val, .. } => format_filesize(val, config),
+            Value::Duration { val, .. } => format_duration(val),
+            Value::Date { val, .. } => HumanTime::from(val).to_string(),
+            Value::Range { val, .. } => {
+                format!(
+                    "{}..{}",
+                    val.from.into_string(", ", config),
+                    val.to.into_string(", ", config)
+                )
+            }
+            Value::String { val, .. } => val,
+            Value::List { vals: val, .. } => format!(
+                "[list {} item{}]",
+                val.len(),
+                if val.len() == 1 { "" } else { "s" }
+            ),
+            Value::Record { cols, .. } => format!(
+                "{{record {} field{}}}",
+                cols.len(),
+                if cols.len() == 1 { "" } else { "s" }
             ),
             Value::Block { val, .. } => format!("<Block {}>", val),
             Value::Nothing { .. } => String::new(),
@@ -580,6 +659,10 @@ impl Value {
         Value::Float { val, span }
     }
 
+    pub fn boolean(val: bool, span: Span) -> Value {
+        Value::Bool { val, span }
+    }
+
     // Only use these for test data. Span::unknown() should not be used in user data
     pub fn test_string(s: impl Into<String>) -> Value {
         Value::String {
@@ -591,6 +674,14 @@ impl Value {
     // Only use these for test data. Span::unknown() should not be used in user data
     pub fn test_int(val: i64) -> Value {
         Value::Int {
+            val,
+            span: Span::unknown(),
+        }
+    }
+
+    // Only use these for test data. Span::unknown() should not be used in user data
+    pub fn test_float(val: f64) -> Value {
+        Value::Float {
             val,
             span: Span::unknown(),
         }

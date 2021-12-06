@@ -28,13 +28,15 @@ pub enum ShellError {
 
     #[error("Pipeline mismatch.")]
     #[diagnostic(code(nu::shell::pipeline_mismatch), url(docsrs))]
-    PipelineMismatch {
-        expected: Type,
-        #[label("expected: {expected}")]
-        expected_span: Span,
-        #[label("value originates from here")]
-        origin: Span,
-    },
+    PipelineMismatch(
+        String,
+        #[label("expected: {0}")] Span,
+        #[label("value originates from here")] Span,
+    ),
+
+    #[error("Type mismatch")]
+    #[diagnostic(code(nu::shell::type_mismatch), url(docsrs))]
+    TypeMismatch(String, #[label = "{0}"] Span),
 
     #[error("Unsupported operator: {0}.")]
     #[diagnostic(code(nu::shell::unsupported_operator), url(docsrs))]
@@ -84,9 +86,10 @@ pub enum ShellError {
     #[diagnostic(code(nu::shell::invalid_range), url(docsrs))]
     InvalidRange(String, String, #[label = "expected a valid range"] Span),
 
-    #[error("Internal error: {0}.")]
-    #[diagnostic(code(nu::shell::internal_error), url(docsrs))]
-    InternalError(String),
+    // Only use this one if we Nushell completely falls over and hits a state that isn't possible or isn't recoverable
+    #[error("Nushell failed: {0}.")]
+    #[diagnostic(code(nu::shell::nushell_failed), url(docsrs))]
+    NushellFailed(String),
 
     #[error("Variable not found!!!")]
     #[diagnostic(code(nu::shell::variable_not_found), url(docsrs))]
@@ -166,6 +169,22 @@ pub enum ShellError {
     #[diagnostic(code(nu::shell::file_not_found), url(docsrs))]
     FileNotFoundCustom(String, #[label("{0}")] Span),
 
+    #[error("Plugin failed to load")]
+    #[diagnostic(code(nu::shell::plugin_failed_to_load), url(docsrs))]
+    PluginFailedToLoad(String),
+
+    #[error("Plugin failed to encode")]
+    #[diagnostic(code(nu::shell::plugin_failed_to_encode), url(docsrs))]
+    PluginFailedToEncode(String),
+
+    #[error("Plugin failed to decode")]
+    #[diagnostic(code(nu::shell::plugin_failed_to_decode), url(docsrs))]
+    PluginFailedToDecode(String),
+
+    #[error("I/O error")]
+    #[diagnostic(code(nu::shell::io_error), url(docsrs))]
+    IOError(String),
+
     #[error("Directory not found")]
     #[diagnostic(code(nu::shell::directory_not_found), url(docsrs))]
     DirectoryNotFound(#[label("directory not found")] Span),
@@ -213,29 +232,33 @@ pub enum ShellError {
     NonUtf8(#[label = "non-UTF8 string"] Span),
 
     #[error("Casting error")]
-    #[diagnostic(code(nu::parser::downcast_not_possible), url(docsrs))]
+    #[diagnostic(code(nu::shell::downcast_not_possible), url(docsrs))]
     DowncastNotPossible(String, #[label("{0}")] Span),
 
     #[error("{0}")]
     #[diagnostic()]
-    LabeledError(String, String, #[label("{1}")] Span),
+    SpannedLabeledError(String, String, #[label("{1}")] Span),
+
+    #[error("{0}")]
+    #[diagnostic()]
+    LabeledError(String, String),
 }
 
 impl From<std::io::Error> for ShellError {
     fn from(input: std::io::Error) -> ShellError {
-        ShellError::InternalError(format!("{:?}", input))
+        ShellError::IOError(format!("{:?}", input))
     }
 }
 
 impl std::convert::From<Box<dyn std::error::Error>> for ShellError {
     fn from(input: Box<dyn std::error::Error>) -> ShellError {
-        ShellError::InternalError(input.to_string())
+        ShellError::IOError(input.to_string())
     }
 }
 
 impl From<Box<dyn std::error::Error + Send + Sync>> for ShellError {
     fn from(input: Box<dyn std::error::Error + Send + Sync>) -> ShellError {
-        ShellError::InternalError(format!("{:?}", input))
+        ShellError::IOError(format!("{:?}", input))
     }
 }
 

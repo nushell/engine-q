@@ -4,7 +4,6 @@ use nu_protocol::{
     engine::{Command, EngineState, Stack},
     Example, PipelineData, ShellError, Signature, Span, SyntaxShape, Value,
 };
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct SubCommand;
@@ -126,10 +125,10 @@ where
 {
     let head = call.head;
     let (options, closure_flags, input) = (
-        Arc::new(Arguments {
+        Arguments {
             character: call.get_flag(engine_state, stack, "char")?,
             column_paths: call.rest(engine_state, stack, 0)?,
-        }),
+        },
         ClosureFlags {
             all_flag: call.has_flag("all"),
             left_trim: call.has_flag("left"),
@@ -144,7 +143,7 @@ where
         input,
     );
     let to_trim = match options.character.as_ref() {
-        Some(v) => v.as_string().unwrap().chars().next(),
+        Some(v) => v.as_string()?.chars().next(),
         None => None,
     };
 

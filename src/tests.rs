@@ -56,9 +56,9 @@ fn fail_test(input: &str, expected: &str) -> TestResult {
 
 fn not_found_msg() -> &'static str {
     if cfg!(windows) {
-        "not recognized"
+        "cannot find"
     } else {
-        "not found"
+        "No such"
     }
 }
 
@@ -1185,5 +1185,41 @@ fn comment_skipping_2() -> TestResult {
         z: 40
     }; $x.z"#,
         "40",
+    )
+}
+
+#[test]
+fn command_filter_reject_1() -> TestResult {
+    run_test(
+        "[[lang, gems]; [nu, 100]] | reject gems | to json",
+        r#"[
+  {
+    "lang": "nu"
+  }
+]"#,
+    )
+}
+
+#[test]
+fn command_filter_reject_2() -> TestResult {
+    run_test(
+        "[[lang, gems, grade]; [nu, 100, a]] | reject gems grade | to json",
+        r#"[
+  {
+    "lang": "nu"
+  }
+]"#,
+    )
+}
+
+#[test]
+fn command_filter_reject_3() -> TestResult {
+    run_test(
+        "[[lang, gems, grade]; [nu, 100, a]] | reject grade gems | to json",
+        r#"[
+  {
+    "lang": "nu"
+  }
+]"#,
     )
 }

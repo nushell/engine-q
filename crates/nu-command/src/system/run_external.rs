@@ -10,7 +10,10 @@ use nu_protocol::engine::{EngineState, Stack};
 use nu_protocol::{ast::Call, engine::Command, ShellError, Signature, SyntaxShape, Value};
 use nu_protocol::{Category, Config, IntoInterruptiblePipelineData, PipelineData, Span, Spanned};
 
+use itertools::Itertools;
+
 use nu_engine::CallExt;
+use regex::Regex;
 
 const OUTPUT_BUFFER_SIZE: usize = 8192;
 
@@ -56,19 +59,21 @@ impl Command for External {
             args,
             last_expression,
             env_vars,
+            call,
         };
         command.run_with_input(engine_state, input, config)
     }
 }
 
-pub struct ExternalCommand {
+pub struct ExternalCommand<'call> {
     pub name: Spanned<String>,
     pub args: Vec<String>,
     pub last_expression: bool,
     pub env_vars: HashMap<String, String>,
+    pub call: &'call Call,
 }
 
-impl ExternalCommand {
+impl<'call> ExternalCommand<'call> {
     pub fn run_with_input(
         &self,
         engine_state: &EngineState,
@@ -81,7 +86,8 @@ impl ExternalCommand {
 
         // TODO. We don't have a way to know the current directory
         // This should be information from the EvaluationContex or EngineState
-        let path = env::current_dir().unwrap();
+        let path = env::current_dir()?;
+
         process.current_dir(path);
 
         process.envs(&self.env_vars);
@@ -142,16 +148,12 @@ impl ExternalCommand {
                     // If this external is not the last expression, then its output is piped to a channel
                     // and we create a ValueStream that can be consumed
                     if !last_expression {
-                        let stdout = child
-                            .stdout
-                            .take()
-                            .ok_or_else(|| {
-                                ShellError::ExternalCommand(
-                                    "Error taking stdout from external".to_string(),
-                                    span,
-                                )
-                            })
-                            .unwrap();
+                        let stdout = child.stdout.take().ok_or_else(|| {
+                            ShellError::ExternalCommand(
+                                "Error taking stdout from external".to_string(),
+                                span,
+                            )
+                        })?;
 
                         // Stdout is read using the Buffer reader. It will do so until there is an
                         // error or there are no more bytes to read
@@ -206,23 +208,84 @@ impl ExternalCommand {
             //TODO. This should be modifiable from the config file.
             // We could give the option to call from powershell
             // for minimal builds cwd is unused
-            let mut process = CommandSys::new("cmd");
-            process.arg("/c");
-            process.arg(&self.name.item);
-            for arg in &self.args {
-                // Clean the args before we use them:
-                // https://stackoverflow.com/questions/1200235/how-to-pass-a-quoted-pipe-character-to-cmd-exe
-                // cmd.exe needs to have a caret to escape a pipe
-                let arg = arg.replace("|", "^|");
-                process.arg(&arg);
+            if self.name.item.ends_with(".cmd") || self.name.item.ends_with(".bat") {
+                self.spawn_cmd_command()
+            } else {
+                self.spawn_simple_command()
             }
-            process
+        } else if self.name.item.ends_with(".sh") {
+            self.spawn_sh_command()
         } else {
-            let cmd_with_args = vec![self.name.item.clone(), self.args.join(" ")].join(" ");
-            let mut process = CommandSys::new("sh");
-            process.arg("-c").arg(cmd_with_args);
-            process
+            self.spawn_simple_command()
         }
+    }
+
+    /// Spawn a command without shelling out to an external shell
+    fn spawn_simple_command(&self) -> std::process::Command {
+        let mut process = std::process::Command::new(&self.name.item);
+
+        for arg in &self.args {
+            let arg = trim_enclosing_quotes(arg);
+            let arg = nu_path::expand_path(arg).to_string_lossy().to_string();
+
+            let arg = arg.replace("\\", "\\\\");
+
+            process.arg(&arg);
+        }
+
+        process
+    }
+
+    /// Spawn a cmd command with `cmd /c args...`
+    fn spawn_cmd_command(&self) -> std::process::Command {
+        let mut process = std::process::Command::new("cmd");
+        process.arg("/c");
+        process.arg(&self.name.item);
+        for arg in &self.args {
+            // Clean the args before we use them:
+            // https://stackoverflow.com/questions/1200235/how-to-pass-a-quoted-pipe-character-to-cmd-exe
+            // cmd.exe needs to have a caret to escape a pipe
+            let arg = arg.replace("|", "^|");
+            process.arg(&arg);
+        }
+        process
+    }
+
+    /// Spawn a sh command with `sh -c args...`
+    fn spawn_sh_command(&self) -> std::process::Command {
+        let joined_and_escaped_arguments =
+            self.args.iter().map(|arg| shell_arg_escape(arg)).join(" ");
+        let cmd_with_args = vec![self.name.item.clone(), joined_and_escaped_arguments].join(" ");
+        let mut process = std::process::Command::new("sh");
+        process.arg("-c").arg(cmd_with_args);
+        process
+    }
+}
+
+fn has_unsafe_shell_characters(arg: &str) -> bool {
+    let re: Regex = Regex::new(r"[^\w@%+=:,./-]").expect("regex to be valid");
+
+    re.is_match(arg)
+}
+
+fn shell_arg_escape(arg: &str) -> String {
+    match arg {
+        "" => String::from("''"),
+        s if !has_unsafe_shell_characters(s) => String::from(s),
+        _ => {
+            let single_quotes_escaped = arg.split('\'').join("'\"'\"'");
+            format!("'{}'", single_quotes_escaped)
+        }
+    }
+}
+
+fn trim_enclosing_quotes(input: &str) -> String {
+    let mut chars = input.chars();
+
+    match (chars.next(), chars.next_back()) {
+        (Some('"'), Some('"')) => chars.collect(),
+        (Some('\''), Some('\'')) => chars.collect(),
+        _ => input.to_string(),
     }
 }
 
