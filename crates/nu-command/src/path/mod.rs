@@ -4,8 +4,6 @@ mod dirname;
 mod exists;
 mod expand;
 
-use std::sync::Arc;
-
 pub use basename::SubCommand as PathBasename;
 pub use command::PathCommand as Path;
 pub use dirname::SubCommand as PathDirname;
@@ -17,7 +15,7 @@ trait PathSubcommandArguments {
     fn get_columns(&self) -> Option<Vec<String>>;
 }
 
-fn operate<F, A>(cmd: &F, args: Arc<A>, v: Value, name: Span) -> Value
+fn operate<F, A>(cmd: &F, args: &A, v: Value, name: Span) -> Value
 where
     F: Fn(String, Span, &A) -> Value + Send + Sync + 'static,
     A: PathSubcommandArguments + Send + Sync + 'static,

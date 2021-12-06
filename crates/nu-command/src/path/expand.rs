@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc};
+use std::path::Path;
 
 use nu_engine::CallExt;
 use nu_path::{canonicalize, expand_path};
@@ -52,13 +52,13 @@ impl Command for SubCommand {
         input: nu_protocol::PipelineData,
     ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
         let head = call.head;
-        let args = Arc::new(Arguments {
+        let args = Arguments {
             strict: call.has_flag("strict"),
             columns: call.get_flag(engine_state, stack, "columns")?,
-        });
+        };
 
         input.map(
-            move |value| super::operate(&expand, args.clone(), value, head),
+            move |value| super::operate(&expand, &args, value, head),
             engine_state.ctrlc.clone(),
         )
     }
