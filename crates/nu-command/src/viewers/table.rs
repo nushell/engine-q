@@ -325,11 +325,11 @@ fn convert_to_table(
 
 fn convert_with_precision(val: &str, precision: usize) -> Result<String, ShellError> {
     // vall will always be a f64 so convert it with precision formatting
-    let val_float = match val.parse::<f64>() {
+    let val_float = match val.trim().parse::<f64>() {
         Ok(f) => f,
         Err(e) => {
             return Err(ShellError::LabeledError(
-                "error converting string to f64".to_string(),
+                format!("error converting string [{}] to f64", &val),
                 e.to_string(),
             ));
         }
