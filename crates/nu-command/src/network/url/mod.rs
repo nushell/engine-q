@@ -1,4 +1,8 @@
 mod command;
+mod host;
+mod path;
+mod query;
+mod scheme;
 
 use nu_engine::CallExt;
 use nu_protocol::{
@@ -8,6 +12,10 @@ use nu_protocol::{
 };
 use url::{self};
 
+pub use self::host::SubCommand as UrlHost;
+pub use self::path::SubCommand as UrlPath;
+pub use self::query::SubCommand as UrlQuery;
+pub use self::scheme::SubCommand as UrlScheme;
 pub use command::Url;
 
 fn handle_value<F>(action: &F, v: &Value, span: Span) -> Value
