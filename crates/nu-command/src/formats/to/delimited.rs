@@ -108,7 +108,6 @@ pub fn merge_descriptors(values: &[Value]) -> Vec<String> {
     for value in values {
         let data_descriptors = match value {
             Value::Record { cols, .. } => cols.to_owned(),
-            Value::List { vals, .. } => merge_descriptors(vals),
             _ => vec!["".to_string()],
         };
         for desc in data_descriptors {

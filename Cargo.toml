@@ -39,14 +39,11 @@ ctrlc = "3.2.1"
 crossterm_winapi = "0.9.0"
 # mimalloc = { version = "*", default-features = false }
 
-[features]
-plugin = ["nu-plugin", "nu-parser/plugin", "nu-command/plugin", "nu-protocol/plugin", "nu-engine/plugin"]
-dataframe = ["nu-command/dataframe"]
-zip-support = ["nu-command/zip"]
-default = ["plugin"]
+
 nu_plugin_inc = { version = "0.1.0", path = "./crates/nu_plugin_inc", optional = true }
 nu_plugin_example = { version = "0.1.0", path = "./crates/nu_plugin_example", optional = true }
 nu_plugin_gstat = { version = "0.1.0", path = "./crates/nu_plugin_gstat", optional = true }
+
 
 [dev-dependencies]
 tempfile = "3.2.0"
@@ -80,6 +77,8 @@ example = ["nu_plugin_example"]
 
 # Extra
 gstat = ["nu_plugin_gstat"]
+
+zip-support = ["nu-command/zip"]
 
 # Dataframe feature for nushell
 dataframe = ["nu-command/dataframe"]
