@@ -1,10 +1,9 @@
 use crate::formats::to::delimited::merge_descriptors;
-use nu_engine::CallExt;
+use indexmap::map::IndexMap;
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
-    Category, Config, Example, IntoPipelineData, PipelineData, ShellError, Signature, Span, Spanned, SyntaxShape,
-    Value,
+    Category, Config, Example, IntoPipelineData, PipelineData, ShellError, Signature, Span, Value,
 };
 
 #[derive(Clone)]
@@ -27,15 +26,40 @@ impl Command for ToMd {
                 "treat each row as markdown syntax element",
                 Some('e'),
             )
+            .category(Category::Formats)
     }
 
     fn usage(&self) -> &str {
         "Convert table into simple Markdown"
     }
 
+    fn examples(&self) -> Vec<Example> {
+        vec![
+            Example {
+                description: "Outputs an MD string representing the contents of this table",
+                example: "[[foo bar]; [1 2]] | to md",
+                result: Some(Value::test_string("|foo|bar|\n|-|-|\n|1|2|\n")),
+            },
+            Example {
+                description: "Optionally, output a formatted markdown string",
+                example: "[[foo bar]; [1 2]] | to md --pretty",
+                result: Some(Value::test_string(
+                    "| foo | bar |\n| --- | --- |\n| 1   | 2   |\n",
+                )),
+            },
+            Example {
+                description: "Treat each row as a markdown element",
+                example: r#"[{"H1": "Welcome to Nushell" } [[foo bar]; [1 2]]] | to md --per-element --pretty"#,
+                result: Some(Value::test_string(
+                    "# Welcome to Nushell\n| foo | bar |\n| --- | --- |\n| 1   | 2   |",
+                )),
+            },
+        ]
+    }
+
     fn run(
         &self,
-        engine_state: &EngineState,
+        _engine_state: &EngineState,
         stack: &mut Stack,
         call: &Call,
         input: PipelineData,
@@ -46,22 +70,37 @@ impl Command for ToMd {
         let config = stack.get_config()?;
         to_md(input, pretty, per_element, config, head)
     }
-
 }
 
-fn to_md(input: PipelineData, pretty: bool, per_element: bool, config: Config, head: Span) -> Result<PipelineData, ShellError> {
-    Ok(Value::test_string(
-        match input.into_value(head) {
-            Value::List { vals, span } => table(&vals, pretty, &config),
-            _ => "".to_string()
-        }
-    ).into_pipeline_data())
+fn to_md(
+    input: PipelineData,
+    pretty: bool,
+    per_element: bool,
+    config: Config,
+    head: Span,
+) -> Result<PipelineData, ShellError> {
+    let (grouped_input, single_list) = group_by(input, head, &config);
+    if per_element || single_list {
+        return Ok(Value::string(
+            grouped_input
+                .into_iter()
+                .map(move |val| match val {
+                    Value::List { .. } => table(val.into_pipeline_data(), pretty, &config),
+                    other => fragment(other, pretty, &config),
+                })
+                .collect::<Vec<String>>()
+                .join(""),
+            head,
+        )
+        .into_pipeline_data());
+    }
+    Ok(Value::string(table(grouped_input, pretty, &config), head).into_pipeline_data())
 }
 
 fn fragment(input: Value, pretty: bool, config: &Config) -> String {
     let headers = match input {
         Value::Record { ref cols, .. } => cols.to_owned(),
-        _ => vec!["".to_string()],
+        _ => vec![],
     };
     let mut out = String::new();
 
@@ -72,18 +111,17 @@ fn fragment(input: Value, pretty: bool, config: &Config) -> String {
             "h3" => "### ".to_string(),
             "blockquote" => "> ".to_string(),
 
-            _ => return table(&[input.clone()], pretty, config),
+            _ => return table(input.into_pipeline_data(), pretty, config),
         };
 
         out.push_str(&markup);
-        out.push_str(&input.into_string("|", config));
-    // } else if let Value::Record { cols, vals, span } = input {
-    //     let string = match vals.iter().next() {
-    //         Some(value) => value.1.as_string().unwrap_or_default(),
-    //         None => String::from(""),
-    //     };
-
-    //     out = format_leaf(&UntaggedValue::from(string)).plain_string(100_000)
+        let data = match input.get_data_by_key(&headers[0]) {
+            Some(v) => v,
+            None => input,
+        };
+        out.push_str(&data.into_string("|", config));
+    } else if let Value::Record { .. } = input {
+        out = table(input.into_pipeline_data(), pretty, config)
     } else {
         out = input.into_string("|", config)
     }
@@ -109,21 +147,24 @@ fn collect_headers(headers: &[String]) -> (Vec<String>, Vec<usize>) {
     (escaped_headers, column_widths)
 }
 
-fn table(input: &[Value], pretty: bool, config: &Config) -> String {
-    let headers = merge_descriptors(input);
+fn table(input: PipelineData, pretty: bool, config: &Config) -> String {
+    let vec_of_values = input.into_iter().collect::<Vec<Value>>();
+    let headers = merge_descriptors(&vec_of_values);
 
     let (escaped_headers, mut column_widths) = collect_headers(&headers);
 
     let mut escaped_rows: Vec<Vec<String>> = Vec::new();
 
-    for row in input {
+    for row in vec_of_values {
         let mut escaped_row: Vec<String> = Vec::new();
 
         match row.to_owned() {
-            Value::Record { cols, vals, span } => {
+            Value::Record { span, .. } => {
                 for i in 0..headers.len() {
                     let data = row.get_data_by_key(&headers[i]);
-                    let value_string = data.unwrap_or_else(|| Value::nothing(span)).into_string("|", config);
+                    let value_string = data
+                        .unwrap_or_else(|| Value::nothing(span))
+                        .into_string("|", config);
                     let new_column_width = value_string.len();
 
                     escaped_row.push(value_string);
@@ -133,9 +174,17 @@ fn table(input: &[Value], pretty: bool, config: &Config) -> String {
                     }
                 }
             }
+            Value::List { ref vals, .. } => {
+                let value_string = match &vals[..] {
+                    [Value::Record { .. }, _end @ ..] => {
+                        htmlescape::encode_minimal(&format!("Table {} rows", vals.len()))
+                    }
+                    _ => htmlescape::encode_minimal(&format!("List {} elements", vals.len())),
+                };
+                escaped_row.push(value_string);
+            }
             p => {
-                let value_string =
-                    htmlescape::encode_minimal(&p.into_string("|", config));
+                let value_string = htmlescape::encode_minimal(&p.into_string("|", config));
                 escaped_row.push(value_string);
             }
         }
@@ -154,6 +203,46 @@ fn table(input: &[Value], pretty: bool, config: &Config) -> String {
     };
 
     output_string
+}
+
+fn group_by(values: PipelineData, head: Span, config: &Config) -> (PipelineData, bool) {
+    let mut lists = IndexMap::new();
+    let mut single_list = false;
+    for val in values {
+        if let Value::Record { ref cols, .. } = val {
+            lists
+                .entry(cols.concat())
+                .and_modify(|v: &mut Vec<Value>| v.push(val.clone()))
+                .or_insert_with(|| vec![val.clone()]);
+        } else {
+            lists
+                .entry(val.clone().into_string(",", config))
+                .and_modify(|v: &mut Vec<Value>| v.push(val.clone()))
+                .or_insert_with(|| vec![val.clone()]);
+        }
+    }
+    let mut output = vec![];
+    for (_, mut value) in lists {
+        if value.len() == 1 {
+            output.push(value.pop().unwrap_or_else(|| Value::nothing(head)))
+        } else {
+            output.push(Value::List {
+                vals: value.to_vec(),
+                span: head,
+            })
+        }
+    }
+    if output.len() == 1 {
+        single_list = true;
+    }
+    (
+        Value::List {
+            vals: output,
+            span: head,
+        }
+        .into_pipeline_data(),
+        single_list,
+    )
 }
 
 fn get_output_string(
@@ -244,60 +333,102 @@ fn get_padded_string(text: String, desired_length: usize, padding_character: cha
     )
 }
 
-fn one(string: &str) -> String {
-    string
-        .lines()
-        .skip(1)
-        .map(|line| line.trim())
-        .collect::<Vec<&str>>()
-        .join("\n")
-        .trim_end()
-        .to_string()
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{fragment, one, table};
-    use nu_protocol::{row, Value};
+    use super::*;
+    use nu_protocol::{Config, IntoPipelineData, Span, Value};
+
+    fn one(string: &str) -> String {
+        string
+            .lines()
+            .skip(1)
+            .map(|line| line.trim())
+            .collect::<Vec<&str>>()
+            .join("\n")
+            .trim_end()
+            .to_string()
+    }
+
+    #[test]
+    fn test_examples() {
+        use crate::test_examples;
+
+        test_examples(ToMd {})
+    }
 
     #[test]
     fn render_h1() {
-        let value = row! {"H1".into() => Value::from("Ecuador")};
+        let value = Value::Record {
+            cols: vec!["H1".to_string()],
+            vals: vec![Value::test_string("Ecuador")],
+            span: Span::unknown(),
+        };
 
-        assert_eq!(fragment(&value, false), "# Ecuador\n");
+        assert_eq!(fragment(value, false, &Config::default()), "# Ecuador\n");
     }
 
     #[test]
     fn render_h2() {
-        let value = row! {"H2".into() => Value::from("Ecuador")};
+        let value = Value::Record {
+            cols: vec!["H2".to_string()],
+            vals: vec![Value::test_string("Ecuador")],
+            span: Span::unknown(),
+        };
 
-        assert_eq!(fragment(&value, false), "## Ecuador\n");
+        assert_eq!(fragment(value, false, &Config::default()), "## Ecuador\n");
     }
 
     #[test]
     fn render_h3() {
-        let value = row! {"H3".into() => Value::from("Ecuador")};
+        let value = Value::Record {
+            cols: vec!["H3".to_string()],
+            vals: vec![Value::test_string("Ecuador")],
+            span: Span::unknown(),
+        };
 
-        assert_eq!(fragment(&value, false), "### Ecuador\n");
+        assert_eq!(fragment(value, false, &Config::default()), "### Ecuador\n");
     }
 
     #[test]
     fn render_blockquote() {
-        let value = row! {"BLOCKQUOTE".into() => Value::from("Ecuador")};
+        let value = Value::Record {
+            cols: vec!["BLOCKQUOTE".to_string()],
+            vals: vec![Value::test_string("Ecuador")],
+            span: Span::unknown(),
+        };
 
-        assert_eq!(fragment(&value, false), "> Ecuador\n");
+        assert_eq!(fragment(value, false, &Config::default()), "> Ecuador\n");
     }
 
     #[test]
     fn render_table() {
-        let value = vec![
-            row! { "country".into() => Value::from("Ecuador")},
-            row! { "country".into() => Value::from("New Zealand")},
-            row! { "country".into() => Value::from("USA")},
-        ];
+        let value = Value::List {
+            vals: vec![
+                Value::Record {
+                    cols: vec!["country".to_string()],
+                    vals: vec![Value::test_string("Ecuador")],
+                    span: Span::unknown(),
+                },
+                Value::Record {
+                    cols: vec!["country".to_string()],
+                    vals: vec![Value::test_string("New Zealand")],
+                    span: Span::unknown(),
+                },
+                Value::Record {
+                    cols: vec!["country".to_string()],
+                    vals: vec![Value::test_string("USA")],
+                    span: Span::unknown(),
+                },
+            ],
+            span: Span::unknown(),
+        };
 
         assert_eq!(
-            table(&value, false),
+            table(
+                value.clone().into_pipeline_data(),
+                false,
+                &Config::default()
+            ),
             one(r#"
             |country|
             |-|
@@ -308,7 +439,7 @@ mod tests {
         );
 
         assert_eq!(
-            table(&value, true),
+            table(value.clone().into_pipeline_data(), true, &Config::default()),
             one(r#"
             | country     |
             | ----------- |
