@@ -205,7 +205,7 @@ fn table(input: PipelineData, pretty: bool, config: &Config) -> String {
     output_string
 }
 
-fn group_by(values: PipelineData, head: Span, config: &Config) -> (PipelineData, bool) {
+pub fn group_by(values: PipelineData, head: Span, config: &Config) -> (PipelineData, bool) {
     let mut lists = IndexMap::new();
     let mut single_list = false;
     for val in values {

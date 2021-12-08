@@ -19,7 +19,7 @@ mod skip;
 mod update;
 mod where_;
 mod wrap;
-mod zip;
+mod zip_;
 
 pub use all::All;
 pub use any::Any;
@@ -42,4 +42,4 @@ pub use skip::*;
 pub use update::Update;
 pub use where_::Where;
 pub use wrap::Wrap;
-pub use zip::Zip;
+pub use zip_::Zip;

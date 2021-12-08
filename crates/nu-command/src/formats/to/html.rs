@@ -1,9 +1,10 @@
+use crate::formats::to::delimited::merge_descriptors;
 use nu_engine::CallExt;
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
-    Category, Config, Example, PipelineData, ShellError, Signature, Span, Spanned, SyntaxShape,
-    Value,
+    Category, Config, Example, IntoPipelineData, PipelineData, ShellError, Signature, Spanned,
+    SyntaxShape, Value,
 };
 use regex::Regex;
 use rust_embed::RustEmbed;
@@ -109,6 +110,33 @@ impl Command for ToHtml {
                 Some('t'),
             )
             .switch("list", "list the names of all available themes", Some('l'))
+            .category(Category::Formats)
+    }
+
+    fn examples(&self) -> Vec<Example> {
+        vec![
+            Example {
+                description: "Outputs an  HTML string representing the contents of this table",
+                example: "[[foo bar]; [1 2]] | to html",
+                result: Some(Value::test_string(
+                    r#"<html><style>body { background-color:white;color:black; }</style><body><table><tr><th>foo</th><th>bar</th></tr><tr><td>1</td><td>2</td></tr></table></body></html>"#,
+                )),
+            },
+            Example {
+                description: "Optionally, only output the html for the content itself",
+                example: "[[foo bar]; [1 2]] | to html --partial",
+                result: Some(Value::test_string(
+                    r#"<div style="background-color:white;color:black;"><table><tr><th>foo</th><th>bar</th></tr><tr><td>1</td><td>2</td></tr></table></div>"#,
+                )),
+            },
+            Example {
+                description: "Optionally, output the string with a dark background",
+                example: "[[foo bar]; [1 2]] | to html --dark",
+                result: Some(Value::test_string(
+                    r#"<html><style>body { background-color:black;color:white; }</style><body><table><tr><th>foo</th><th>bar</th></tr><tr><td>1</td><td>2</td></tr></table></body></html>"#,
+                )),
+            },
+        ]
     }
 
     fn usage(&self) -> &str {
@@ -131,7 +159,7 @@ fn get_theme_from_asset_file(
     theme: &Option<Spanned<String>>,
 ) -> Result<HashMap<&'static str, String>, ShellError> {
     let theme_name = match theme {
-        Some(s) => s.item,
+        Some(s) => s.item.clone(),
         None => "default".to_string(), // There is no theme named "default" so this will be HtmlTheme::default(), which is "nu_default".
     };
 
@@ -165,7 +193,7 @@ fn get_theme_from_asset_file(
         && theme.is_some()
     {
         return Err(ShellError::NotFound(
-            theme.expect("this should never trigger").span,
+            theme.as_ref().expect("this should never trigger").span,
         ));
     }
 
@@ -191,7 +219,7 @@ fn get_asset_by_name_as_html_themes(
                 let mut zip_file = archive.by_name(json_name)?;
                 let mut contents = String::new();
                 zip_file.read_to_string(&mut contents)?;
-                Ok(serde_json::from_str(&contents)?)
+                Ok(nu_json::from_str(&contents)?)
             }
             #[cfg(not(feature = "zip"))]
             {
@@ -258,16 +286,23 @@ fn get_list_of_theme_names() -> Vec<String> {
     theme_names
 }
 
-fn to_html(input: PipelineData, call: &Call, engine_state: &EngineState, stack: &mut Stack) -> Result<PipelineData, ShellError> {
-    let name_span = call.head;
+fn to_html(
+    input: PipelineData,
+    call: &Call,
+    engine_state: &EngineState,
+    stack: &mut Stack,
+) -> Result<PipelineData, ShellError> {
+    let head = call.head;
     let html_color = call.has_flag("html_color");
     let no_color = call.has_flag("no_color");
     let dark = call.has_flag("dark");
     let partial = call.has_flag("partial");
     let list = call.has_flag("list");
     let theme: Option<Spanned<String>> = call.get_flag(engine_state, stack, "theme")?;
+    let config = stack.get_config()?;
 
-    let headers = nu_protocol::merge_descriptors(&input);
+    let vec_of_values = input.into_iter().collect::<Vec<Value>>();
+    let headers = merge_descriptors(&vec_of_values);
     let headers = Some(headers)
         .filter(|headers| !headers.is_empty() && (headers.len() > 1 || !headers[0].is_empty()));
     let mut output_string = String::new();
@@ -285,19 +320,19 @@ fn to_html(input: PipelineData, call: &Call, engine_state: &EngineState, stack: 
         output_string.push_str("\nScreenshots of themes can be found here:\n");
         output_string.push_str("https://github.com/mbadolato/iTerm2-Color-Schemes\n");
     } else {
-        let theme_tag = match &theme {
-            Some(v) => &v.tag,
-            None => &name_tag,
+        let theme_span = match &theme {
+            Some(v) => v.span,
+            None => head,
         };
 
-        let color_hm = get_theme_from_asset_file(dark, theme);
+        let color_hm = get_theme_from_asset_file(dark, &theme);
         let color_hm = match color_hm {
             Ok(c) => c,
             _ => {
-                return Err(ShellError::labeled_error(
-                    "Error finding theme name",
-                    "Error finding theme name",
-                    theme_tag.span,
+                return Err(ShellError::SpannedLabeledError(
+                    "Error finding theme name".to_string(),
+                    "Error finding theme name".to_string(),
+                    theme_span,
                 ))
             }
         };
@@ -329,18 +364,18 @@ fn to_html(input: PipelineData, call: &Call, engine_state: &EngineState, stack: 
             .unwrap();
         }
 
-        let inner_value = match input.len() {
+        let inner_value = match vec_of_values.len() {
             0 => String::default(),
             1 => match headers {
-                Some(headers) => html_table(input, headers),
+                Some(headers) => html_table(vec_of_values, headers, &config),
                 None => {
-                    let value = &input[0];
-                    html_value(value)
+                    let value = &vec_of_values[0];
+                    html_value(value.clone(), &config)
                 }
             },
             _ => match headers {
-                Some(headers) => html_table(input, headers),
-                None => html_list(input),
+                Some(headers) => html_table(vec_of_values, headers, &config),
+                None => html_list(vec_of_values, &config),
             },
         };
 
@@ -361,29 +396,23 @@ fn to_html(input: PipelineData, call: &Call, engine_state: &EngineState, stack: 
             output_string = run_regexes(&regex_hm, &output_string);
         }
     }
-    Ok(OutputStream::one(
-        UntaggedValue::string(output_string).into_value(name_tag),
-    ))
+    Ok(Value::string(output_string, head).into_pipeline_data())
 }
 
-fn html_list(list: Vec<Value>) -> String {
+fn html_list(list: Vec<Value>, config: &Config) -> String {
     let mut output_string = String::new();
     output_string.push_str("<ol>");
     for value in list {
         output_string.push_str("<li>");
-        output_string.push_str(&html_value(&value));
+        output_string.push_str(&html_value(value, config));
         output_string.push_str("</li>");
     }
     output_string.push_str("</ol>");
     output_string
 }
 
-fn html_table(table: Vec<Value>, headers: Vec<String>) -> String {
+fn html_table(table: Vec<Value>, headers: Vec<String>, config: &Config) -> String {
     let mut output_string = String::new();
-    // Add grid lines to html
-    // let mut output_string = "<html><head><style>".to_string();
-    // output_string.push_str("table, th, td { border: 2px solid black; border-collapse: collapse; padding: 10px; }");
-    // output_string.push_str("</style></head><body>");
 
     output_string.push_str("<table>");
 
@@ -396,12 +425,15 @@ fn html_table(table: Vec<Value>, headers: Vec<String>) -> String {
     output_string.push_str("</tr>");
 
     for row in table {
-        if let UntaggedValue::Row(row) = row.value {
+        if let Value::Record { span, .. } = row {
             output_string.push_str("<tr>");
             for header in &headers {
-                let data = row.get_data(header);
+                let data = row.get_data_by_key(header);
                 output_string.push_str("<td>");
-                output_string.push_str(&html_value(data.borrow()));
+                output_string.push_str(&html_value(
+                    data.unwrap_or_else(|| Value::nothing(span)),
+                    config,
+                ));
                 output_string.push_str("</td>");
             }
             output_string.push_str("</tr>");
@@ -412,68 +444,17 @@ fn html_table(table: Vec<Value>, headers: Vec<String>) -> String {
     output_string
 }
 
-fn html_value(value: &Value) -> String {
+fn html_value(value: Value, config: &Config) -> String {
     let mut output_string = String::new();
-    match &value {
-        Value::Binary { val, span } => {
-            // This might be a bit much, but it's fun :)
-            // match &value.tag.anchor {
-            //     Some(AnchorLocation::Url(f)) | Some(AnchorLocation::File(f)) => {
-            //         let extension = f.split('.').last().map(String::from);
-            //         match extension {
-            //             Some(s)
-            //                 if ["png", "jpg", "bmp", "gif", "tiff", "jpeg"]
-            //                     .contains(&s.to_lowercase().as_str()) =>
-            //             {
-            //                 output_string.push_str("<img src=\"data:image/");
-            //                 output_string.push_str(&s);
-            //                 output_string.push_str(";base64,");
-            //                 output_string.push_str(&base64::encode(&b));
-            //                 output_string.push_str("\">");
-            //             }
-            //             _ => {
-            //                 let output = nu_pretty_hex::pretty_hex(&b);
-
-            //                 output_string.push_str("<pre>");
-            //                 output_string.push_str(&output);
-            //                 output_string.push_str("</pre>");
-            //             }
-            //         }
-            //     }
-            //     _ => {
-                    let output = nu_pretty_hex::pretty_hex(&b);
-
-                    output_string.push_str("<pre>");
-                    output_string.push_str(&output);
-                    output_string.push_str("</pre>");
-                //}
-            //}
-        }
-        Value::String { val: ref b, span } => {
-            // This might be a bit much, but it's fun :)
-            // match &value.tag.anchor {
-            //     Some(AnchorLocation::Url(f)) | Some(AnchorLocation::File(f)) => {
-            //         let extension = f.split('.').last().map(String::from);
-            //         match extension {
-            //             Some(s) if s.to_lowercase() == "svg" => {
-            //                 output_string.push_str("<img src=\"data:image/svg+xml;base64,");
-            //                 output_string.push_str(&base64::encode(&b.as_bytes()));
-            //                 output_string.push_str("\">");
-            //                 return output_string;
-            //             }
-            //             _ => {}
-            //         }
-            //     }
-            //     _ => {}
-            // }
-            output_string.push_str(
-                &htmlescape::encode_minimal(&format_leaf(&value).plain_string(100_000))
-                    .replace("\n", "<br>"),
-            );
+    match value {
+        Value::Binary { val, .. } => {
+            let output = pretty_hex::pretty_hex(&val);
+            output_string.push_str("<pre>");
+            output_string.push_str(&output);
+            output_string.push_str("</pre>");
         }
         other => output_string.push_str(
-            &htmlescape::encode_minimal(&format_leaf(other).plain_string(100_000))
-                .replace("\n", "<br>"),
+            &htmlescape::encode_minimal(&other.into_string("", config)).replace("\n", "<br>"),
         ),
     }
     output_string

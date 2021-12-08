@@ -40,6 +40,7 @@ crossterm_winapi = "0.9.0"
 [features]
 plugin = ["nu-plugin", "nu-parser/plugin", "nu-command/plugin", "nu-protocol/plugin", "nu-engine/plugin"]
 dataframe = ["nu-command/dataframe"]
+zip-support = ["nu-command/zip"]
 default = ["plugin"]
 
 [dev-dependencies]
