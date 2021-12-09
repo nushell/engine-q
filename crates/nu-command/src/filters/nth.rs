@@ -83,7 +83,6 @@ impl Command for Nth {
             skip,
             current: 0,
         }
-        .into_iter()
         .into_pipeline_data(engine_state.ctrlc.clone()))
     }
 }
