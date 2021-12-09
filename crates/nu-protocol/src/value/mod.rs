@@ -1536,13 +1536,4 @@ fn format_filesize(num_bytes: i64, config: &Config) -> String {
         }
         _ => adj_byte.format(1),
     }
-
-    // if byte.get_bytes() == 0u128 {
-    //     return "—".to_string();
-    // }
-
-    // match adj_byte.get_unit() {
-    //     byte_unit::ByteUnit::B => format!("{} B ", adj_byte.get_value()),
-    //     _ => adj_byte.format(1),
-    // }
 }
