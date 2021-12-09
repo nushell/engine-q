@@ -14,6 +14,7 @@ pub struct Config {
     pub footer_mode: FooterMode,
     pub animate_prompt: bool,
     pub float_precision: i64,
+    pub filesize_format: String,
 }
 
 impl Default for Config {
@@ -27,6 +28,7 @@ impl Default for Config {
             footer_mode: FooterMode::Never,
             animate_prompt: ANIMATE_PROMPT_DEFAULT,
             float_precision: 4,
+            filesize_format: "auto".into(),
         }
     }
 }
@@ -72,7 +74,7 @@ impl Value {
                     config.use_grid_icons = value.as_bool()?;
                 }
                 "footer_mode" => {
-                    let val_str = value.as_string()?;
+                    let val_str = value.as_string()?.to_lowercase();
                     config.footer_mode = match val_str.as_ref() {
                         "auto" => FooterMode::Auto,
                         "never" => FooterMode::Never,
@@ -90,6 +92,12 @@ impl Value {
                 "float_precision" => {
                     let val = value.as_integer()?;
                     config.float_precision = val;
+                }
+                "filesize_format" => {
+                    config.filesize_format = value.as_string()?.to_lowercase();
+                }
+                "filesize_format" => {
+                    config.filesize_format = value.as_string()?.to_lowercase();
                 }
                 _ => {}
             }
