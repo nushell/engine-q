@@ -63,6 +63,14 @@ impl Command for Nth {
                     span: Span::unknown(),
                 }),
             },
+            Example {
+                example: "[0,1,2,3,4,5] | nth 2 0 4",
+                description: "Get the first, third, and fifth row",
+                result: Some(Value::List {
+                    vals: vec![Value::test_int(0), Value::test_int(2), Value::test_int(4)],
+                    span: Span::unknown(),
+                }),
+            },
         ]
     }
 
@@ -73,7 +81,8 @@ impl Command for Nth {
         call: &Call,
         input: PipelineData,
     ) -> Result<PipelineData, ShellError> {
-        let rows: Vec<usize> = call.rest(engine_state, stack, 0)?;
+        let mut rows: Vec<usize> = call.rest(engine_state, stack, 0)?;
+        rows.sort_unstable();
         let skip = call.has_flag("skip");
         let pipeline_iter: PipelineIterator = input.into_iter();
 
