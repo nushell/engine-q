@@ -99,9 +99,6 @@ impl Value {
                 "filesize_format" => {
                     config.filesize_format = value.as_string()?.to_lowercase();
                 }
-                "filesize_format" => {
-                    config.filesize_format = value.as_string()?.to_lowercase();
-                }
                 _ => {}
             }
         }
