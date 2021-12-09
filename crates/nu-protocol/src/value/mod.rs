@@ -5,6 +5,7 @@ mod range;
 mod stream;
 mod unit;
 
+use byte_unit::ByteUnit;
 use chrono::{DateTime, FixedOffset};
 use chrono_humanize::HumanTime;
 pub use from_value::FromValue;
@@ -1477,24 +1478,7 @@ pub fn format_duration(duration: i64) -> String {
 
 fn format_filesize(num_bytes: i64, config: &Config) -> String {
     // Allow the user to specify how they want their numbers formatted
-    let filesize_format_var = match config.filesize_format.as_str() {
-        "b" => (byte_unit::ByteUnit::B, ""),
-        "kb" => (byte_unit::ByteUnit::KB, ""),
-        "kib" => (byte_unit::ByteUnit::KiB, ""),
-        "mb" => (byte_unit::ByteUnit::MB, ""),
-        "mib" => (byte_unit::ByteUnit::MiB, ""),
-        "gb" => (byte_unit::ByteUnit::GB, ""),
-        "gib" => (byte_unit::ByteUnit::GiB, ""),
-        "tb" => (byte_unit::ByteUnit::TB, ""),
-        "tib" => (byte_unit::ByteUnit::TiB, ""),
-        "pb" => (byte_unit::ByteUnit::PB, ""),
-        "pib" => (byte_unit::ByteUnit::PiB, ""),
-        "eb" => (byte_unit::ByteUnit::EB, ""),
-        "eib" => (byte_unit::ByteUnit::EiB, ""),
-        "zb" => (byte_unit::ByteUnit::ZB, ""),
-        "zib" => (byte_unit::ByteUnit::ZiB, ""),
-        _ => (byte_unit::ByteUnit::B, "auto"),
-    };
+    let filesize_format_var = get_config_filesize_format(config);
 
     let byte = byte_unit::Byte::from_bytes(num_bytes as u128);
     let adj_byte =
@@ -1536,4 +1520,71 @@ fn format_filesize(num_bytes: i64, config: &Config) -> String {
         }
         _ => adj_byte.format(1),
     }
+}
+
+fn get_config_filesize_format(config: &Config) -> (ByteUnit, &str) {
+    // We need to take into account config.filesize_metric so, if someone asks for KB
+    // filesize_metric is true, return KiB
+    let filesize_format = match config.filesize_format.as_str() {
+        "b" => (byte_unit::ByteUnit::B, ""),
+        "kb" => {
+            if config.filesize_metric {
+                (byte_unit::ByteUnit::KiB, "")
+            } else {
+                (byte_unit::ByteUnit::KB, "")
+            }
+        }
+        "kib" => (byte_unit::ByteUnit::KiB, ""),
+        "mb" => {
+            if config.filesize_metric {
+                (byte_unit::ByteUnit::MiB, "")
+            } else {
+                (byte_unit::ByteUnit::MB, "")
+            }
+        }
+        "mib" => (byte_unit::ByteUnit::MiB, ""),
+        "gb" => {
+            if config.filesize_metric {
+                (byte_unit::ByteUnit::GiB, "")
+            } else {
+                (byte_unit::ByteUnit::GB, "")
+            }
+        }
+        "gib" => (byte_unit::ByteUnit::GiB, ""),
+        "tb" => {
+            if config.filesize_metric {
+                (byte_unit::ByteUnit::TiB, "")
+            } else {
+                (byte_unit::ByteUnit::TB, "")
+            }
+        }
+        "tib" => (byte_unit::ByteUnit::TiB, ""),
+        "pb" => {
+            if config.filesize_metric {
+                (byte_unit::ByteUnit::PiB, "")
+            } else {
+                (byte_unit::ByteUnit::PB, "")
+            }
+        }
+        "pib" => (byte_unit::ByteUnit::PiB, ""),
+        "eb" => {
+            if config.filesize_metric {
+                (byte_unit::ByteUnit::EiB, "")
+            } else {
+                (byte_unit::ByteUnit::EB, "")
+            }
+        }
+        "eib" => (byte_unit::ByteUnit::EiB, ""),
+        "zb" => {
+            if config.filesize_metric {
+                (byte_unit::ByteUnit::ZiB, "")
+            } else {
+                (byte_unit::ByteUnit::ZB, "")
+            }
+        }
+        "zib" => (byte_unit::ByteUnit::ZiB, ""),
+        _ => (byte_unit::ByteUnit::B, "auto"),
+    };
+
+    filesize_format
 }

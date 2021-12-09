@@ -1148,7 +1148,7 @@ fn multi_word_imports() -> TestResult {
 }
 
 #[test]
-fn config_var_1() -> TestResult {
+fn config_filesize_format_with_metric_true() -> TestResult {
     // Note: this tests both the config variable and that it is properly captured into a block
     run_test(
         r#"let config = {"filesize_metric": $true "filesize_format": "kib" }; do { 40kb | into string } "#,
@@ -1157,7 +1157,16 @@ fn config_var_1() -> TestResult {
 }
 
 #[test]
-fn config_var_2() -> TestResult {
+fn config_filesize_format_with_metric_false_kib() -> TestResult {
+    // Note: this tests both the config variable and that it is properly captured into a block
+    run_test(
+        r#"let config = {"filesize_metric": $false "filesize_format": "kib" }; do { 40kb | into string } "#,
+        "39.1 KiB",
+    )
+}
+
+#[test]
+fn config_filesize_format_with_metric_false_kb() -> TestResult {
     // Note: this tests both the config variable and that it is properly captured into a block
     run_test(
         r#"let config = {"filesize_metric": $false "filesize_format": "kb" }; do { 40kb | into string } "#,
