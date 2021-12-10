@@ -454,7 +454,8 @@ fn html_value(value: Value, config: &Config) -> String {
             output_string.push_str("</pre>");
         }
         other => output_string.push_str(
-            &htmlescape::encode_minimal(&other.into_string("", config)).replace("\n", "<br>"),
+            &htmlescape::encode_minimal(&other.into_abbreviated_string(config))
+                .replace("\n", "<br>"),
         ),
     }
     output_string

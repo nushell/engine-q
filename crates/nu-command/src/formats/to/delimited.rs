@@ -87,14 +87,11 @@ fn to_string_tagged_value(v: &Value, config: &Config) -> Result<String, ShellErr
         | Value::Error { .. }
         | Value::Filesize { .. }
         | Value::CellPath { .. }
-        | Value::Float { .. } => Ok(v.clone().into_string("", config)),
+        | Value::List { .. }
+        | Value::Record { .. }
+        | Value::Float { .. } => Ok(v.clone().into_abbreviated_string(config)),
         Value::Date { val, .. } => Ok(val.to_string()),
         Value::Nothing { .. } => Ok(String::new()),
-        Value::List { ref vals, .. } => match &vals[..] {
-            [Value::Record { .. }, _end @ ..] => Ok(String::from("[Table]")),
-            _ => Ok(String::from("[List]")),
-        },
-        Value::Record { .. } => Ok(String::from("[Row]")),
         _ => Err(ShellError::UnsupportedInput(
             "Unexpected value".to_string(),
             v.span().unwrap_or_else(|_| Span::unknown()),

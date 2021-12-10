@@ -174,17 +174,8 @@ fn table(input: PipelineData, pretty: bool, config: &Config) -> String {
                     }
                 }
             }
-            Value::List { ref vals, .. } => {
-                let value_string = match &vals[..] {
-                    [Value::Record { .. }, _end @ ..] => {
-                        htmlescape::encode_minimal(&format!("Table {} rows", vals.len()))
-                    }
-                    _ => htmlescape::encode_minimal(&format!("List {} elements", vals.len())),
-                };
-                escaped_row.push(value_string);
-            }
             p => {
-                let value_string = htmlescape::encode_minimal(&p.into_string("|", config));
+                let value_string = htmlescape::encode_minimal(&p.into_abbreviated_string(config));
                 escaped_row.push(value_string);
             }
         }
