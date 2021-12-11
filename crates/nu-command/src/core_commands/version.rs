@@ -216,7 +216,7 @@ pub fn version(
     let installed_plugins = engine_state
         .plugin_decls()
         .into_iter()
-        .filter(|cmd| all_plugins.contains(&cmd.name()))
+        .filter(|x| x.is_plugin().is_some())
         .map(|x| x.name())
         .collect::<Vec<_>>();
 
