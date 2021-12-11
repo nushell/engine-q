@@ -165,6 +165,7 @@ pub fn create_default_context() -> EngineState {
             Touch,
             Use,
             Update,
+            Version,
             Where,
             WithEnv,
             Wrap,
