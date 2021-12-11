@@ -9,7 +9,9 @@ mod experimental;
 mod filesystem;
 mod filters;
 mod formats;
+mod hash;
 mod math;
+mod network;
 mod platform;
 mod random;
 mod shells;
@@ -17,8 +19,6 @@ mod strings;
 mod system;
 mod viewers;
 
-#[cfg(feature = "dataframe")]
-mod dataframe;
 pub use calendar::*;
 pub use conversions::*;
 pub use core_commands::*;
@@ -30,13 +30,18 @@ pub use experimental::*;
 pub use filesystem::*;
 pub use filters::*;
 pub use formats::*;
+pub use hash::*;
 pub use math::*;
+pub use network::*;
 pub use platform::*;
 pub use random::*;
 pub use shells::*;
 pub use strings::*;
 pub use system::*;
 pub use viewers::*;
+
+#[cfg(feature = "dataframe")]
+mod dataframe;
 
 #[cfg(feature = "dataframe")]
 pub use dataframe::*;

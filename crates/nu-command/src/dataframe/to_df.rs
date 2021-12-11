@@ -1,4 +1,4 @@
-use super::super::{Column, NuDataFrame};
+use super::values::{Column, NuDataFrame};
 
 use nu_protocol::{
     ast::Call,
@@ -11,7 +11,7 @@ pub struct ToDataFrame;
 
 impl Command for ToDataFrame {
     fn name(&self) -> &str {
-        "to df"
+        "dataframe to-df"
     }
 
     fn usage(&self) -> &str {
@@ -19,14 +19,14 @@ impl Command for ToDataFrame {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build(self.name().to_string()).category(Category::Custom("dataframe".into()))
+        Signature::build(self.name()).category(Category::Custom("dataframe".into()))
     }
 
     fn examples(&self) -> Vec<Example> {
         vec![
             Example {
                 description: "Takes a dictionary and creates a dataframe",
-                example: "[[a b];[1 2] [3 4]] | to df",
+                example: "[[a b];[1 2] [3 4]] | dataframe to-df",
                 result: Some(
                     NuDataFrame::try_from_columns(vec![
                         Column::new("a".to_string(), vec![1.into(), 3.into()]),
@@ -38,7 +38,7 @@ impl Command for ToDataFrame {
             },
             Example {
                 description: "Takes a list of tables and creates a dataframe",
-                example: "[[1 2 a] [3 4 b] [5 6 c]] | to df",
+                example: "[[1 2 a] [3 4 b] [5 6 c]] | dataframe to-df",
                 result: Some(
                     NuDataFrame::try_from_columns(vec![
                         Column::new("0".to_string(), vec![1.into(), 3.into(), 5.into()]),
@@ -58,7 +58,7 @@ impl Command for ToDataFrame {
             },
             Example {
                 description: "Takes a list and creates a dataframe",
-                example: "[a b c] | to df",
+                example: "[a b c] | dataframe to-df",
                 result: Some(
                     NuDataFrame::try_from_columns(vec![Column::new(
                         "0".to_string(),
@@ -74,7 +74,7 @@ impl Command for ToDataFrame {
             },
             Example {
                 description: "Takes a list of booleans and creates a dataframe",
-                example: "[$true $true $false] | to df",
+                example: "[$true $true $false] | dataframe to-df",
                 result: Some(
                     NuDataFrame::try_from_columns(vec![Column::new(
                         "0".to_string(),
@@ -94,8 +94,8 @@ impl Command for ToDataFrame {
         call: &Call,
         input: PipelineData,
     ) -> Result<PipelineData, ShellError> {
-        let df = NuDataFrame::try_from_iter(input.into_iter())?;
-        Ok(PipelineData::Value(NuDataFrame::into_value(df, call.head)))
+        NuDataFrame::try_from_iter(input.into_iter())
+            .map(|df| PipelineData::Value(NuDataFrame::into_value(df, call.head), None))
     }
 }
 
