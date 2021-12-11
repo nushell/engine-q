@@ -189,28 +189,29 @@ pub fn version(
     );
 
     // Manually create a list of all possible plugin names
-    let all_plugins = vec![
-        "fetch",
-        "inc",
-        "match",
-        "post",
-        "ps",
-        "sys",
-        "textview",
-        "binaryview",
-        "chart bar",
-        "chart line",
-        "from bson",
-        "from sqlite",
-        "query json",
-        "s3",
-        "selector",
-        "start",
-        "to bson",
-        "to sqlite",
-        "tree",
-        "xpath",
-    ];
+    // Don't think we need this anymore. Leaving it here, just in case we do actually need it.
+    // let all_plugins = vec![
+    //     "fetch",
+    //     "inc",
+    //     "match",
+    //     "post",
+    //     "ps",
+    //     "sys",
+    //     "textview",
+    //     "binaryview",
+    //     "chart bar",
+    //     "chart line",
+    //     "from bson",
+    //     "from sqlite",
+    //     "query json",
+    //     "s3",
+    //     "selector",
+    //     "start",
+    //     "to bson",
+    //     "to sqlite",
+    //     "tree",
+    //     "xpath",
+    // ];
 
     // Get a list of command names and check for plugins
     let installed_plugins = engine_state
@@ -233,8 +234,8 @@ pub fn version(
 
     Ok(Value::List {
         vals: vec![Value::Record {
-            cols: cols,
-            vals: vals,
+            cols,
+            vals,
             span: Span::unknown(),
         }],
         span: Span::unknown(),
