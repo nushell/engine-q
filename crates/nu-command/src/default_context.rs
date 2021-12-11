@@ -22,7 +22,7 @@ pub fn create_default_context() -> EngineState {
         add_dataframe_decls(&mut working_set);
 
         // Core
-        bind_command!(
+        bind_command! {
             Alias,
             Debug,
             Def,
@@ -40,10 +40,10 @@ pub fn create_default_context() -> EngineState {
             Module,
             Source,
             Use,
-        );
+        };
 
         // Filters
-        bind_command!(
+        bind_command! {
             All,
             Any,
             Append,
@@ -71,18 +71,18 @@ pub fn create_default_context() -> EngineState {
             Where,
             Wrap,
             Zip,
-        );
+        };
 
         // System
-        bind_command!(
+        bind_command! {
             Benchmark,
             External,
             Ps,
             Sys,
-        );
+        };
 
         // Strings
-        bind_command!(
+        bind_command! {
             BuildString,
             Format,
             Parse,
@@ -112,10 +112,10 @@ pub fn create_default_context() -> EngineState {
             StrSubstring,
             StrTrim,
             StrUpcase,
-        );
+        };
 
         // FileSystem
-        bind_command!(
+        bind_command! {
             Cd,
             Cp,
             Ls,
@@ -123,17 +123,17 @@ pub fn create_default_context() -> EngineState {
             Mv,
             Rm,
             Touch,
-        );
+        };
 
         // Platform
-        bind_command!(
+        bind_command! {
             Clear,
             Kill,
             Sleep,
-        );
+        };
 
         // Date
-        bind_command!(
+        bind_command! {
             Date,
             DateFormat,
             DateHumanize,
@@ -141,15 +141,15 @@ pub fn create_default_context() -> EngineState {
             DateNow,
             DateToTable,
             DateToTimezone,
-        );
+        };
 
         // Shells
-        bind_command!(
+        bind_command! {
             Exit,
-        );
+        };
 
         // Formats
-        bind_command!(
+        bind_command! {
             From,
             FromCsv,
             FromEml,
@@ -176,16 +176,16 @@ pub fn create_default_context() -> EngineState {
             ToUrl,
             ToXml,
             ToYaml,
-        );
+        };
 
         // Viewers
-        bind_command!(
+        bind_command! {
             Griddle,
             Table,
-        );
+        };
 
         // Conversions
-        bind_command!(
+        bind_command! {
             Into,
             IntoBinary,
             IntoDatetime,
@@ -193,16 +193,16 @@ pub fn create_default_context() -> EngineState {
             IntoFilesize,
             IntoInt,
             IntoString,
-        );
+        };
 
         // Env
-        bind_command!(
+        bind_command! {
             LetEnv,
             WithEnv,
-        );
+        };
 
         // Math
-        bind_command!(
+        bind_command! {
             Math,
             MathAbs,
             MathAvg,
@@ -219,24 +219,24 @@ pub fn create_default_context() -> EngineState {
             MathStddev,
             MathSum,
             MathVariance,
-        );
+        };
 
         // Random
-        bind_command!(
+        bind_command! {
             Random,
-        );
+        };
 
         // Generators
-        bind_command!(
+        bind_command! {
             Cal,
-        );
+        };
 
         // Hash
-        bind_command!(
+        bind_command! {
             Hash,
             HashMd5::default(),
             HashSha256::default(),
-        );
+        };
 
         #[cfg(feature = "plugin")]
         bind_command!(Register);
