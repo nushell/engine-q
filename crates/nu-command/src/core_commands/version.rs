@@ -44,9 +44,9 @@ impl Command for Version {
 
 pub fn version(
     engine_state: &EngineState,
-    stack: &mut Stack,
+    _stack: &mut Stack,
     call: &Call,
-    input: PipelineData,
+    _input: PipelineData,
 ) -> Result<PipelineData, ShellError> {
     let tag = call.head;
 
@@ -240,9 +240,6 @@ pub fn version(
         span: Span::unknown(),
     }
     .into_pipeline_data())
-
-    // let value = UntaggedValue::Row(Dictionary::from(indexmap)).into_value(&tag);
-    // Ok(OutputStream::one(value))
 }
 
 fn features_enabled() -> Vec<String> {
