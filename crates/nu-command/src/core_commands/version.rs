@@ -229,8 +229,8 @@ pub fn version(
         },
     );
 
-    let cols = indexmap.keys().map(|k| k.clone()).collect::<Vec<_>>();
-    let vals = indexmap.values().map(|v| v.clone()).collect::<Vec<_>>();
+    let cols = indexmap.keys().cloned().collect::<Vec<_>>();
+    let vals = indexmap.values().cloned().collect::<Vec<_>>();
 
     Ok(Value::List {
         vals: vec![Value::Record {
