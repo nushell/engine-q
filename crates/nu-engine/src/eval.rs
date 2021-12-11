@@ -520,9 +520,16 @@ pub fn eval_variable(
             }
         }
 
-        if let Ok(cwd) = std::env::var("PWD") {
-            output_cols.push("pwd".into());
-            output_vals.push(Value::String { val: cwd, span })
+        // since the env var PWD doesn't exist on all platforms
+        // lets just get the current directory
+        if let Ok(current_dir) = std::env::current_dir() {
+            if let Some(cwd) = current_dir.to_str() {
+                output_cols.push("cwd".into());
+                output_vals.push(Value::String {
+                    val: cwd.into(),
+                    span,
+                })
+            }
         }
 
         Ok(Value::Record {
