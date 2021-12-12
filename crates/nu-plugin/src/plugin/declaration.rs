@@ -77,16 +77,17 @@ impl Command for PluginDeclaration {
 
         // Create message to plugin to indicate that signature is required and
         // send call to plugin asking for signature
-        if let Some(stdin_writer) = &mut child.stdin {
-            // PluginCall information
+        if let Some(mut stdin_writer) = child.stdin.take() {
+            let encoding_clone = self.encoding.clone();
             let plugin_call = PluginCall::CallInfo(Box::new(CallInfo {
                 name: self.name.clone(),
                 call: EvaluatedCall::try_from_call(call, engine_state, stack)?,
                 input,
             }));
-
-            let mut writer = stdin_writer;
-            self.encoding.encode_call(&plugin_call, &mut writer)?
+            std::thread::spawn(move || {
+                // PluginCall information
+                encoding_clone.encode_call(&plugin_call, &mut stdin_writer)
+            });
         }
 
         // Deserialize response from plugin to extract the resulting value
@@ -131,6 +132,6 @@ impl Command for PluginDeclaration {
     }
 
     fn is_plugin(&self) -> Option<(&PathBuf, &str)> {
-        Some((&self.filename, &self.encoding.to_str()))
+        Some((&self.filename, self.encoding.to_str()))
     }
 }

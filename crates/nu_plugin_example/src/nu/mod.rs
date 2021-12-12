@@ -48,10 +48,10 @@ impl Plugin for Example {
         match name {
             "nu-example-1" => self.test1(call, input),
             "nu-example-2" => self.test2(call, input),
-            "nu-exmaple-3" => self.test3(call, input),
+            "nu-example-3" => self.test3(call, input),
             _ => Err(LabeledError {
                 label: "Plugin call with wrong name signature".into(),
-                msg: "using the wrong signature".into(),
+                msg: "the signature used to call the plugin does not match any name in the plugin signature vector".into(),
                 span: Some(call.head),
             }),
         }

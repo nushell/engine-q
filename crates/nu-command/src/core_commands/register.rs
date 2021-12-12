@@ -19,7 +19,7 @@ impl Command for Register {
             .required(
                 "plugin",
                 SyntaxShape::Filepath,
-                "location of bin for plugin",
+                "path of executable for plugin",
             )
             .required_named(
                 "encoding",
@@ -29,10 +29,9 @@ impl Command for Register {
             )
             .optional(
                 "signature",
-                SyntaxShape::Block(Some(vec![SyntaxShape::Any])),
+                SyntaxShape::Any,
                 "Block with signature description as json object",
             )
-            .optional("signature", SyntaxShape::Any, "plugin signature")
             .category(Category::Core)
     }
 

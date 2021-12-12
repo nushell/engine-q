@@ -56,36 +56,27 @@ fn create_command(path: &Path) -> CommandSys {
 }
 
 pub fn get_signature(path: &Path, encoding: &EncodingType) -> Result<Vec<Signature>, ShellError> {
-    eprintln!("1");
     let mut plugin_cmd = create_command(path);
 
-    eprintln!("2");
     let mut child = plugin_cmd.spawn().map_err(|err| {
         ShellError::PluginFailedToLoad(format!("Error spawning child process: {}", err))
     })?;
 
-    eprintln!("3");
     // Create message to plugin to indicate that signature is required and
     // send call to plugin asking for signature
-    if let Some(stdin_writer) = &mut child.stdin {
-        eprintln!("3.1");
-        let mut writer = stdin_writer;
-        eprintln!("3.2");
-        encoding.encode_call(&PluginCall::Signature, &mut writer)?;
-        eprintln!("3.3");
+    if let Some(mut stdin_writer) = child.stdin.take() {
+        let encoding_clone = encoding.clone();
+        std::thread::spawn(move || {
+            encoding_clone.encode_call(&PluginCall::Signature, &mut stdin_writer)
+        });
     }
 
-    eprintln!("4");
     // deserialize response from plugin to extract the signature
-    let signature = if let Some(stdout_reader) = &mut child.stdout {
-        eprintln!("5");
+    let signatures = if let Some(stdout_reader) = &mut child.stdout {
         let reader = stdout_reader;
-        eprintln!("6");
         let mut buf_read = BufReader::with_capacity(OUTPUT_BUFFER_SIZE, reader);
-        eprintln!("7");
         let response = encoding.decode_response(&mut buf_read)?;
 
-        eprintln!("8");
         match response {
             PluginResponse::Signature(sign) => Ok(sign),
             PluginResponse::Error(err) => Err(err.into()),
@@ -101,7 +92,7 @@ pub fn get_signature(path: &Path, encoding: &EncodingType) -> Result<Vec<Signatu
 
     // There is no need to wait for the child process to finish since the
     // signature has being collected
-    Ok(signature)
+    Ok(signatures)
 }
 
 // The next trait and functions are part of the plugin that is being created
@@ -134,11 +125,8 @@ pub trait Plugin {
 // That should be encoded correctly and sent to StdOut for nushell to decode and
 // and present its result
 pub fn serve_plugin(plugin: &mut impl Plugin, encoder: impl PluginEncoder) {
-    eprintln!("in serve_plugin 1");
     let mut stdin_buf = BufReader::with_capacity(OUTPUT_BUFFER_SIZE, std::io::stdin());
-    eprintln!("in serve_plugin 2");
     let plugin_call = encoder.decode_call(&mut stdin_buf);
-    eprintln!("in serve_plugin 3");
 
     match plugin_call {
         Err(err) => {
@@ -151,9 +139,7 @@ pub fn serve_plugin(plugin: &mut impl Plugin, encoder: impl PluginEncoder) {
             match plugin_call {
                 // Sending the signature back to nushell to create the declaration definition
                 PluginCall::Signature => {
-                    eprintln!("signature 1");
                     let response = PluginResponse::Signature(plugin.signature());
-                    eprintln!("signature 2");
                     encoder
                         .encode_response(&response, &mut std::io::stdout())
                         .expect("Error encoding response");

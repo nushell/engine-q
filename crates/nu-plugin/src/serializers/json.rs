@@ -19,12 +19,6 @@ impl PluginEncoder for JsonSerializer {
         &self,
         reader: &mut impl std::io::BufRead,
     ) -> Result<crate::protocol::PluginCall, nu_protocol::ShellError> {
-        eprintln!("decoding the call");
-
-        let mut buf = Vec::new();
-        let a = reader.read_to_end(&mut buf);
-        eprintln!("{:?}", a);
-
         serde_json::from_reader(reader)
             .map_err(|err| ShellError::PluginFailedToEncode(err.to_string()))
     }

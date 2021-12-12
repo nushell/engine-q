@@ -1112,7 +1112,7 @@ pub fn parse_register(
     }
 
     // Parsing the spans and checking that they match the register signature
-    // Using the parsed call makes more sense than checking for how many spans are in the call
+    // Using a parsed call makes more sense than checking for how many spans are in the call
     // Also, by creating a call, it can be checked if it matches the declaration signature
     let (call, call_span) = match working_set.find_decl(b"register") {
         None => {
@@ -1185,7 +1185,7 @@ pub fn parse_register(
         });
 
     // Signature is the only optional value from the call and will be used to decide if
-    // the plugin is used to call for the signature or to use the given signature
+    // the plugin is called to get the signatures or to use the given signature
     let signature = call.positional.get(1).map(|expr| {
         let signature = working_set.get_span_contents(expr.span);
         serde_json::from_slice::<Signature>(signature).map_err(|_| {
@@ -1234,7 +1234,7 @@ pub fn parse_register(
         Statement::Pipeline(Pipeline::from_vec(vec![Expression {
             expr: Expr::Call(call),
             span: call_span,
-            ty: Type::Unknown,
+            ty: Type::Nothing,
             custom_completion: None,
         }])),
         error,
