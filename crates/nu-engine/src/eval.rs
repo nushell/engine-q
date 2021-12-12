@@ -491,6 +491,7 @@ pub fn eval_variable(
             config_path.push("nushell");
 
             let mut history_path = config_path.clone();
+            let mut keybinding_path = config_path.clone();
 
             history_path.push("history.txt");
 
@@ -507,6 +508,15 @@ pub fn eval_variable(
                 val: config_path.to_string_lossy().to_string(),
                 span,
             });
+
+            // TODO: keybindings don't exist yet but lets add a file
+            // path for them to be stored in. It doesn't have to be yml.
+            keybinding_path.push("keybindings.yml");
+            output_cols.push("keybinding-path".into());
+            output_vals.push(Value::String {
+                val: keybinding_path.to_string_lossy().to_string(),
+                span,
+            })
         }
 
         #[cfg(feature = "plugin")]
@@ -520,9 +530,35 @@ pub fn eval_variable(
             }
         }
 
-        if let Ok(cwd) = std::env::var("PWD") {
-            output_cols.push("pwd".into());
-            output_vals.push(Value::String { val: cwd, span })
+        // since the env var PWD doesn't exist on all platforms
+        // lets just get the current directory
+        if let Ok(current_dir) = std::env::current_dir() {
+            if let Some(cwd) = current_dir.to_str() {
+                output_cols.push("cwd".into());
+                output_vals.push(Value::String {
+                    val: cwd.into(),
+                    span,
+                })
+            }
+        }
+
+        if let Some(home_path) = nu_path::home_dir() {
+            if let Some(home_path_str) = home_path.to_str() {
+                output_cols.push("home-path".into());
+                output_vals.push(Value::String {
+                    val: home_path_str.into(),
+                    span,
+                })
+            }
+        }
+
+        let temp = std::env::temp_dir();
+        if let Some(temp_path) = temp.to_str() {
+            output_cols.push("temp-path".into());
+            output_vals.push(Value::String {
+                val: temp_path.into(),
+                span,
+            })
         }
 
         Ok(Value::Record {

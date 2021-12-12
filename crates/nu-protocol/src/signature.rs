@@ -42,12 +42,15 @@ pub enum Category {
     Filters,
     Formats,
     Math,
+    Network,
     Random,
     Platform,
     Shells,
     Strings,
     System,
     Viewers,
+    Hash,
+    Generators,
     Custom(String),
 }
 
@@ -64,12 +67,15 @@ impl std::fmt::Display for Category {
             Category::Filters => "filters",
             Category::Formats => "formats",
             Category::Math => "math",
+            Category::Network => "network",
             Category::Random => "random",
             Category::Platform => "platform",
             Category::Shells => "shells",
             Category::Strings => "strings",
             Category::System => "system",
             Category::Viewers => "viewers",
+            Category::Hash => "hash",
+            Category::Generators => "generators",
             Category::Custom(name) => name,
         };
 
