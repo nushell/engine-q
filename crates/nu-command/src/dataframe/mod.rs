@@ -10,6 +10,8 @@ mod dtypes;
 mod open;
 mod to_df;
 
+pub use series::*;
+
 pub use append::AppendDF;
 pub use column::ColumnDF;
 pub use command::Dataframe;
@@ -31,6 +33,21 @@ pub fn add_dataframe_decls(working_set: &mut StateWorkingSet) {
             };
         }
 
+    // Series commands
+    bind_command!(
+        AllFalse,
+        AllTrue,
+        ArgMax,
+        ArgMin,
+        ArgSort,
+        ArgTrue,
+        ArgUnique,
+        Concatenate,
+        Contains,
+        Cumulative
+    );
+
+    // Dataframe commands
     bind_command!(
         AppendDF,
         ColumnDF,

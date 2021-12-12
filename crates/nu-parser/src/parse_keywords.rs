@@ -12,7 +12,7 @@ use std::collections::{HashMap, HashSet};
 use crate::{
     lex, lite_parse,
     parser::{
-        check_call, check_name, garbage, garbage_statement, parse, parse_block_expression,
+        check_name, garbage, garbage_statement, parse, parse_block_expression,
         parse_import_pattern, parse_internal_call, parse_signature, parse_string, trim_quotes,
     },
     ParseError,
@@ -1096,6 +1096,7 @@ pub fn parse_register(
     working_set: &mut StateWorkingSet,
     spans: &[Span],
 ) -> (Statement, Option<ParseError>) {
+    use crate::parser::check_call;
     use nu_plugin::{get_signature, EncodingType, PluginDeclaration};
     use nu_protocol::Signature;
 

@@ -14,7 +14,7 @@ pub struct OpenDataFrame;
 
 impl Command for OpenDataFrame {
     fn name(&self) -> &str {
-        "dataframe open"
+        "df open"
     }
 
     fn usage(&self) -> &str {
@@ -63,7 +63,7 @@ impl Command for OpenDataFrame {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "Takes a file name and creates a dataframe",
-            example: "dataframe open test.csv",
+            example: "df open test.csv",
             result: None,
         }]
     }

@@ -10,7 +10,7 @@ pub struct Dataframe;
 
 impl Command for Dataframe {
     fn name(&self) -> &str {
-        "dataframe"
+        "df"
     }
 
     fn usage(&self) -> &str {
