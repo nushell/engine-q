@@ -136,18 +136,15 @@ the output of 'path parse' and 'path split' subcommands."#
 
 fn handle_value(v: Value, args: &Arguments, head: Span) -> Value {
     match v {
-        Value::String { val, span } => join_single(val, span, args),
-        Value::List { vals, span } => match join_list(&vals, span) {
-            Ok(v) => Value::string(v.to_string_lossy(), span),
-            Err(e) => Value::Error { error: e },
-        },
+        Value::String { ref val, span } => join_single(&Path::new(val), span, args),
+        Value::Record { cols, vals, span } => join_record(&cols, &vals, span, args),
+        Value::List { vals, span } => join_list(&vals, span, args),
 
         _ => super::handle_invalid_values(v, head),
     }
 }
 
-fn join_single(val: String, span: Span, args: &Arguments) -> Value {
-    let path = Path::new(&val);
+fn join_single(path: &Path, span: Span, args: &Arguments) -> Value {
     let path = if let Some(ref append) = args.append {
         path.join(Path::new(&append.item))
     } else {
@@ -157,65 +154,85 @@ fn join_single(val: String, span: Span, args: &Arguments) -> Value {
     Value::string(path.to_string_lossy(), span)
 }
 
-fn join_list(parts: &[Value], span: Span) -> Result<PathBuf, ShellError> {
-    parts
+fn join_list(parts: &[Value], span: Span, args: &Arguments) -> Value {
+    let vals = parts
         .iter()
-        .map(|part| match &part {
-            Value::String { val, .. } => Ok(Path::new(val).to_path_buf()),
-            Value::Record { cols, vals, span } => {
-                for key in cols {
-                    if !super::ALLOWED_COLUMNS.contains(&&key[..]) {
-                        let allowed_cols = super::ALLOWED_COLUMNS.join(", ");
-                        let msg = format!("Column '{}' is not valid for a structured path. Allowed columns are: {}", key, allowed_cols);
-                        return Err(ShellError::UnsupportedInput(msg, *span));
-                    }
-                }
+        .map(|part| match part {
+            Value::String { val, span } => join_single(&Path::new(&val), *span, args),
+            Value::Record { cols, vals, span } => join_record(cols, vals, *span, args),
 
-                let entries: HashMap<&str, &Value> = cols.iter().map(String::as_str).zip(vals).collect();
-                let mut result = PathBuf::new();
-
-                #[cfg(windows)]
-                if let Some(val) = entries.get("prefix") {
-                    let p = val.as_string()?;
-                    if !p.is_empty() {
-                        result.push(p);
-                    }
-                }
-
-                if let Some(val) = entries.get("parent") {
-                    let p = val.as_string()?;
-                    if !p.is_empty() {
-                        result.push(p);
-                    }
-                }
-
-                let mut basename = String::new();
-
-                if let Some(val) = entries.get("stem") {
-                    let p = val.as_string()?;
-                    if !p.is_empty() {
-                        basename.push_str(&p);
-                    }
-                }
-
-                if let Some(val) = entries.get("extension") {
-                    let p = val.as_string()?;
-                    if !p.is_empty() {
-                        basename.push('.');
-                        basename.push_str(&p);
-                    }
-                }
-
-                if !basename.is_empty() {
-                    result.push(basename);
-                }
-
-                Ok(result)
-            },
-
-            _ => Err(super::err_from_value(part, span)),
+            _ => super::handle_invalid_values(part.clone(), span),
         })
-        .collect()
+        .collect();
+
+    Value::List { vals, span }
+}
+
+fn join_record(cols: &Vec<String>, vals: &Vec<Value>, span: Span, args: &Arguments) -> Value {
+    if args.columns.is_some() {
+        super::operate(
+            &join_single,
+            args,
+            Value::Record {
+                cols: cols.to_vec(),
+                vals: vals.to_vec(),
+                span,
+            },
+            span,
+        )
+    } else {
+        match merge_record(cols, vals, span) {
+            Ok(p) => join_single(p.as_path(), span, args),
+            Err(error) => Value::Error { error },
+        }
+    }
+}
+
+fn merge_record(cols: &Vec<String>, vals: &Vec<Value>, span: Span) -> Result<PathBuf, ShellError> {
+    for key in cols {
+        if !super::ALLOWED_COLUMNS.contains(&key.as_str()) {
+            let allowed_cols = super::ALLOWED_COLUMNS.join(", ");
+            let msg = format!(
+                "Column '{}' is not valid for a structured path. Allowed columns are: {}",
+                key, allowed_cols
+            );
+            return Err(ShellError::UnsupportedInput(msg, span));
+        }
+    }
+    let entries: HashMap<&str, &Value> = cols.iter().map(String::as_str).zip(vals).collect();
+    let mut result = PathBuf::new();
+    #[cfg(windows)]
+    if let Some(val) = entries.get("prefix") {
+        let p = val.as_string()?;
+        if !p.is_empty() {
+            result.push(p);
+        }
+    }
+    if let Some(val) = entries.get("parent") {
+        let p = val.as_string()?;
+        if !p.is_empty() {
+            result.push(p);
+        }
+    }
+    let mut basename = String::new();
+    if let Some(val) = entries.get("stem") {
+        let p = val.as_string()?;
+        if !p.is_empty() {
+            basename.push_str(&p);
+        }
+    }
+    if let Some(val) = entries.get("extension") {
+        let p = val.as_string()?;
+        if !p.is_empty() {
+            basename.push('.');
+            basename.push_str(&p);
+        }
+    }
+    if !basename.is_empty() {
+        result.push(basename);
+    }
+
+    Ok(result)
 }
 
 #[cfg(test)]
