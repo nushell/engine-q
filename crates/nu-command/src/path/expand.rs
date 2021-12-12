@@ -117,7 +117,6 @@ fn expand(val: String, span: Span, args: &Arguments) -> Value {
                 "could not be expanded (path might not exist, non-final \
                     component is not a directory, or other cause)"
                     .into(),
-                span,
             ),
         }
     } else {

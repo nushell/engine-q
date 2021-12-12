@@ -20,7 +20,7 @@ pub use r#type::SubCommand as PathType;
 pub use relative_to::SubCommand as PathRelativeTo;
 pub use split::SubCommand as PathSplit;
 
-use nu_protocol::{ShellError, Span, Type, Value};
+use nu_protocol::{ShellError, Span, Value};
 
 #[cfg(windows)]
 const ALLOWED_COLUMNS: [&str; 4] = ["prefix", "parent", "stem", "extension"];
@@ -87,11 +87,7 @@ fn handle_invalid_values(rest: Value, name: Span) -> Value {
 
 fn err_from_value(rest: &Value, name: Span) -> ShellError {
     match rest.span() {
-        Ok(span) => ShellError::PipelineMismatch {
-            expected: Type::String,
-            expected_span: name,
-            origin: span,
-        },
+        Ok(span) => ShellError::PipelineMismatch("string".into(), name, span),
         Err(error) => error,
     }
 }
