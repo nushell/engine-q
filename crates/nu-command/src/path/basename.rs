@@ -114,8 +114,7 @@ impl Command for SubCommand {
     }
 }
 
-fn get_basename(val: String, span: Span, args: &Arguments) -> Value {
-    let path = Path::new(&val);
+fn get_basename(path: &Path, span: Span, args: &Arguments) -> Value {
     match &args.replace {
         Some(r) => Value::string(path.with_file_name(r.item.clone()).to_string_lossy(), span),
         None => Value::string(

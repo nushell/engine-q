@@ -106,8 +106,7 @@ impl Command for SubCommand {
     }
 }
 
-fn expand(val: String, span: Span, args: &Arguments) -> Value {
-    let path = Path::new(&val);
+fn expand(path: &Path, span: Span, args: &Arguments) -> Value {
     if let Ok(p) = canonicalize(path) {
         Value::string(p.to_string_lossy(), span)
     } else if args.strict {

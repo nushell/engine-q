@@ -9,6 +9,8 @@ mod relative_to;
 mod split;
 mod r#type;
 
+use std::path::Path as StdPath;
+
 pub use basename::SubCommand as PathBasename;
 pub use command::PathCommand as Path;
 pub use dirname::SubCommand as PathDirname;
@@ -33,11 +35,11 @@ trait PathSubcommandArguments {
 
 fn operate<F, A>(cmd: &F, args: &A, v: Value, name: Span) -> Value
 where
-    F: Fn(String, Span, &A) -> Value + Send + Sync + 'static,
+    F: Fn(&StdPath, Span, &A) -> Value + Send + Sync + 'static,
     A: PathSubcommandArguments + Send + Sync + 'static,
 {
     match v {
-        Value::String { val, span } => cmd(val, span, &args),
+        Value::String { val, span } => cmd(&StdPath::new(&val), span, &args),
         Value::Record { cols, vals, span } => {
             let col = if let Some(col) = args.get_columns() {
                 col
@@ -60,7 +62,7 @@ where
                 output_cols.push(k.clone());
                 if col.contains(k) {
                     let new_val = match v {
-                        Value::String { val, span } => cmd(val, span, &args),
+                        Value::String { val, span } => cmd(&StdPath::new(&val), span, &args),
                         _ => return handle_invalid_values(v, name),
                     };
                     output_vals.push(new_val);

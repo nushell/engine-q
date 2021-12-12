@@ -49,7 +49,7 @@ impl Command for SubCommand {
         };
 
         input.map(
-            move |value| super::operate(&cmd, &args, value, head),
+            move |value| super::operate(&r#type, &args, value, head),
             engine_state.ctrlc.clone(),
         )
     }
@@ -70,8 +70,7 @@ impl Command for SubCommand {
     }
 }
 
-fn cmd(val: String, span: Span, _: &Arguments) -> Value {
-    let path = Path::new(&val);
+fn r#type(path: &Path, span: Span, _: &Arguments) -> Value {
     let meta = std::fs::symlink_metadata(path);
 
     Value::string(

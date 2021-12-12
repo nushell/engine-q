@@ -93,9 +93,9 @@ impl Command for SubCommand {
     }
 }
 
-fn exists(val: String, span: Span, _args: &Arguments) -> Value {
+fn exists(path: &Path, span: Span, _args: &Arguments) -> Value {
     Value::Bool {
-        val: Path::new(&val).exists(),
+        val: path.exists(),
         span,
     }
 }

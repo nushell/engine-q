@@ -49,7 +49,7 @@ impl Command for SubCommand {
         };
 
         input.map(
-            move |value| super::operate(&cmd, &args, value, head),
+            move |value| super::operate(&split, &args, value, head),
             engine_state.ctrlc.clone(),
         )
     }
@@ -104,9 +104,7 @@ impl Command for SubCommand {
     }
 }
 
-fn cmd(val: String, span: Span, _: &Arguments) -> Value {
-    let path = Path::new(&val);
-
+fn split(path: &Path, span: Span, _: &Arguments) -> Value {
     Value::List {
         vals: path
             .components()

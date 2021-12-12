@@ -66,7 +66,7 @@ On Windows, an extra 'prefix' column is added."#
         };
 
         input.map(
-            move |value| super::operate(&cmd, &args, value, head),
+            move |value| super::operate(&parse, &args, value, head),
             engine_state.ctrlc.clone(),
         )
     }
@@ -124,9 +124,7 @@ On Windows, an extra 'prefix' column is added."#
     }
 }
 
-fn cmd(val: String, span: Span, args: &Arguments) -> Value {
-    let path = Path::new(&val);
-
+fn parse(path: &Path, span: Span, args: &Arguments) -> Value {
     let mut map: IndexMap<String, Value> = IndexMap::new();
 
     #[cfg(windows)]

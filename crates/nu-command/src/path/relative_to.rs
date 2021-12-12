@@ -65,7 +65,7 @@ path."#
         };
 
         input.map(
-            move |value| super::operate(&cmd, &args, value, head),
+            move |value| super::operate(&relative_to, &args, value, head),
             engine_state.ctrlc.clone(),
         )
     }
@@ -113,9 +113,7 @@ path."#
     }
 }
 
-fn cmd(val: String, span: Span, args: &Arguments) -> Value {
-    let path = Path::new(&val);
-
+fn relative_to(path: &Path, span: Span, args: &Arguments) -> Value {
     match path.strip_prefix(Path::new(&args.path.item)) {
         Ok(p) => Value::string(p.to_string_lossy(), span),
         Err(_) => todo!(),
