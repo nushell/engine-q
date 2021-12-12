@@ -129,6 +129,8 @@ fn parse(path: &Path, span: Span, args: &Arguments) -> Value {
 
     #[cfg(windows)]
     {
+        use std::path::Component;
+
         let prefix = match path.components().next() {
             Some(Component::Prefix(prefix_component)) => {
                 prefix_component.as_os_str().to_string_lossy()
