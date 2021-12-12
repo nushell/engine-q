@@ -28,41 +28,11 @@ impl Completer for NuCompleter {
 
         let flattened = flatten_block(&working_set, &output);
 
+        println!("{:?}", flattened);
+
         for flat in flattened {
             if pos >= flat.0.start && pos <= flat.0.end {
                 let prefix = working_set.get_span_contents(flat.0);
-                if prefix.starts_with(b"$") {
-                    let mut output = vec![];
-
-                    for scope in &working_set.delta.scope {
-                        for v in &scope.vars {
-                            if v.0.starts_with(prefix) {
-                                output.push((
-                                    reedline::Span {
-                                        start: flat.0.start - offset,
-                                        end: flat.0.end - offset,
-                                    },
-                                    String::from_utf8_lossy(v.0).to_string(),
-                                ));
-                            }
-                        }
-                    }
-                    for scope in &self.engine_state.scope {
-                        for v in &scope.vars {
-                            if v.0.starts_with(prefix) {
-                                output.push((
-                                    reedline::Span {
-                                        start: flat.0.start - offset,
-                                        end: flat.0.end - offset,
-                                    },
-                                    String::from_utf8_lossy(v.0).to_string(),
-                                ));
-                            }
-                        }
-                    }
-
-                    return output;
-                }
 
                 match &flat.1 {
                     nu_parser::FlatShape::Custom(custom_completion) => {
@@ -157,7 +127,48 @@ impl Completer for NuCompleter {
                             })
                             .collect();
                     }
-                    _ => {}
+                    _ => {
+                        let prefix = working_set.get_span_contents(flat.0);
+
+                        println!("prefix: {}", String::from_utf8_lossy(prefix));
+                        println!("");
+
+                        if prefix.starts_with(b"$") {
+                            println!("Yes!");
+                            println!("");
+                            let mut output = vec![];
+
+                            for scope in &working_set.delta.scope {
+                                for v in &scope.vars {
+                                    println!("{}", String::from_utf8_lossy(&v.0));
+                                    println!("");
+                                    if v.0.starts_with(prefix) {
+                                        output.push((
+                                            reedline::Span {
+                                                start: flat.0.start - offset,
+                                                end: flat.0.end - offset,
+                                            },
+                                            String::from_utf8_lossy(v.0).to_string(),
+                                        ));
+                                    }
+                                }
+                            }
+                            for scope in &self.engine_state.scope {
+                                for v in &scope.vars {
+                                    if v.0.starts_with(prefix) {
+                                        output.push((
+                                            reedline::Span {
+                                                start: flat.0.start - offset,
+                                                end: flat.0.end - offset,
+                                            },
+                                            String::from_utf8_lossy(v.0).to_string(),
+                                        ));
+                                    }
+                                }
+                            }
+                            return output;
+                        }
+                    }
                 }
             }
         }
