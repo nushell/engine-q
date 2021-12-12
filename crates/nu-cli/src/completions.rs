@@ -102,9 +102,25 @@ impl Completer for NuCompleter {
 
                         return v;
                     }
-                    nu_parser::FlatShape::External | nu_parser::FlatShape::InternalCall => {
+                    nu_parser::FlatShape::External
+                    | nu_parser::FlatShape::InternalCall
+                    | nu_parser::FlatShape::String => {
                         let prefix = working_set.get_span_contents(flat.0);
                         let results = working_set.find_commands_by_prefix(prefix);
+
+                        let prefix = String::from_utf8_lossy(prefix).to_string();
+                        let results2 =
+                            file_path_completion(flat.0, &prefix)
+                                .into_iter()
+                                .map(move |x| {
+                                    (
+                                        reedline::Span {
+                                            start: x.0.start - offset,
+                                            end: x.0.end - offset,
+                                        },
+                                        x.1,
+                                    )
+                                });
 
                         return results
                             .into_iter()
@@ -117,6 +133,7 @@ impl Completer for NuCompleter {
                                     String::from_utf8_lossy(&x).to_string(),
                                 )
                             })
+                            .chain(results2.into_iter())
                             .collect();
                     }
                     nu_parser::FlatShape::Filepath
