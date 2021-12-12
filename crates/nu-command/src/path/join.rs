@@ -102,7 +102,10 @@ the output of 'path parse' and 'path split' subcommands."#
             Example {
                 description: "Join a structured path into a path",
                 example: r"[ [parent stem extension]; ['C:\Users\viking' 'spam' 'txt']] | path join",
-                result: Some(Value::test_string(r"C:\Users\viking\spam.txt")),
+                result: Some(Value::List {
+                    vals: vec![Value::test_string(r"C:\Users\viking\spam.txt")],
+                    span: Span::unknown(),
+                }),
             },
         ]
     }
@@ -128,7 +131,10 @@ the output of 'path parse' and 'path split' subcommands."#
             Example {
                 description: "Join a structured path into a path",
                 example: r"[[ parent stem extension ]; [ '/home/viking' 'spam' 'txt' ]] | path join",
-                result: Some(Value::test_string(r"/home/viking/spam.txt")),
+                result: Some(Value::List {
+                    vals: vec![Value::test_string(r"/home/viking/spam.txt")],
+                    span: Span::unknown(),
+                }),
             },
         ]
     }
@@ -155,20 +161,30 @@ fn join_single(path: &Path, span: Span, args: &Arguments) -> Value {
 }
 
 fn join_list(parts: &[Value], span: Span, args: &Arguments) -> Value {
-    let vals = parts
-        .iter()
-        .map(|part| match part {
-            Value::String { val, span } => join_single(&Path::new(&val), *span, args),
-            Value::Record { cols, vals, span } => join_record(cols, vals, *span, args),
+    let path: Result<PathBuf, ShellError> = parts.iter().map(Value::as_string).collect();
 
-            _ => super::handle_invalid_values(part.clone(), span),
-        })
-        .collect();
+    match path {
+        Ok(ref path) => join_single(path, span, args),
+        Err(_) => {
+            let records: Result<Vec<_>, ShellError> = parts.iter().map(Value::as_record).collect();
+            match records {
+                Ok(vals) => {
+                    let vals = vals
+                        .iter()
+                        .map(|(k, v)| join_record(k, v, span, args))
+                        .collect();
 
-    Value::List { vals, span }
+                    Value::List { vals, span }
+                }
+                Err(_) => Value::Error {
+                    error: ShellError::PipelineMismatch("string or record".into(), span, span),
+                },
+            }
+        }
+    }
 }
 
-fn join_record(cols: &Vec<String>, vals: &Vec<Value>, span: Span, args: &Arguments) -> Value {
+fn join_record(cols: &[String], vals: &[Value], span: Span, args: &Arguments) -> Value {
     if args.columns.is_some() {
         super::operate(
             &join_single,
@@ -188,7 +204,7 @@ fn join_record(cols: &Vec<String>, vals: &Vec<Value>, span: Span, args: &Argumen
     }
 }
 
-fn merge_record(cols: &Vec<String>, vals: &Vec<Value>, span: Span) -> Result<PathBuf, ShellError> {
+fn merge_record(cols: &[String], vals: &[Value], span: Span) -> Result<PathBuf, ShellError> {
     for key in cols {
         if !super::ALLOWED_COLUMNS.contains(&key.as_str()) {
             let allowed_cols = super::ALLOWED_COLUMNS.join(", ");
@@ -199,8 +215,10 @@ fn merge_record(cols: &Vec<String>, vals: &Vec<Value>, span: Span) -> Result<Pat
             return Err(ShellError::UnsupportedInput(msg, span));
         }
     }
+
     let entries: HashMap<&str, &Value> = cols.iter().map(String::as_str).zip(vals).collect();
     let mut result = PathBuf::new();
+
     #[cfg(windows)]
     if let Some(val) = entries.get("prefix") {
         let p = val.as_string()?;
@@ -208,12 +226,14 @@ fn merge_record(cols: &Vec<String>, vals: &Vec<Value>, span: Span) -> Result<Pat
             result.push(p);
         }
     }
+
     if let Some(val) = entries.get("parent") {
         let p = val.as_string()?;
         if !p.is_empty() {
             result.push(p);
         }
     }
+
     let mut basename = String::new();
     if let Some(val) = entries.get("stem") {
         let p = val.as_string()?;
@@ -221,6 +241,7 @@ fn merge_record(cols: &Vec<String>, vals: &Vec<Value>, span: Span) -> Result<Pat
             basename.push_str(&p);
         }
     }
+
     if let Some(val) = entries.get("extension") {
         let p = val.as_string()?;
         if !p.is_empty() {
@@ -228,6 +249,7 @@ fn merge_record(cols: &Vec<String>, vals: &Vec<Value>, span: Span) -> Result<Pat
             basename.push_str(&p);
         }
     }
+
     if !basename.is_empty() {
         result.push(basename);
     }

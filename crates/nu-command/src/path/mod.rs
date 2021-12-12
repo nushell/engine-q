@@ -89,7 +89,7 @@ fn handle_invalid_values(rest: Value, name: Span) -> Value {
 
 fn err_from_value(rest: &Value, name: Span) -> ShellError {
     match rest.span() {
-        Ok(span) => ShellError::PipelineMismatch("string".into(), name, span),
+        Ok(span) => ShellError::PipelineMismatch("string, row or list".into(), name, span),
         Err(error) => error,
     }
 }
