@@ -60,7 +60,7 @@ impl Command for External {
         name.item = path.to_string_lossy().to_string();
 
         let path = Path::new(&name.item);
-        if (name.item.starts_with(".") || name.item.starts_with("/") || name.item.starts_with("\\"))
+        if (name.item.starts_with('.') || name.item.starts_with('/') || name.item.starts_with('\\'))
             && path.is_dir()
             && args.is_empty()
         {
