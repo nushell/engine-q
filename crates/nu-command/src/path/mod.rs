@@ -3,6 +3,7 @@ pub mod command;
 mod dirname;
 mod exists;
 mod expand;
+mod join;
 mod parse;
 mod relative_to;
 mod split;
@@ -13,12 +14,18 @@ pub use command::PathCommand as Path;
 pub use dirname::SubCommand as PathDirname;
 pub use exists::SubCommand as PathExists;
 pub use expand::SubCommand as PathExpand;
+pub use join::SubCommand as PathJoin;
 pub use parse::SubCommand as PathParse;
 pub use r#type::SubCommand as PathType;
 pub use relative_to::SubCommand as PathRelativeTo;
 pub use split::SubCommand as PathSplit;
 
 use nu_protocol::{ShellError, Span, Type, Value};
+
+#[cfg(windows)]
+const ALLOWED_COLUMNS: [&str; 4] = ["prefix", "parent", "stem", "extension"];
+#[cfg(not(windows))]
+const ALLOWED_COLUMNS: [&str; 3] = ["parent", "stem", "extension"];
 
 trait PathSubcommandArguments {
     fn get_columns(&self) -> Option<Vec<String>>;
@@ -74,13 +81,17 @@ where
 
 fn handle_invalid_values(rest: Value, name: Span) -> Value {
     Value::Error {
-        error: match rest.span() {
-            Ok(span) => ShellError::PipelineMismatch {
-                expected: Type::String,
-                expected_span: name,
-                origin: span,
-            },
-            Err(error) => error,
+        error: err_from_value(&rest, name),
+    }
+}
+
+fn err_from_value(rest: &Value, name: Span) -> ShellError {
+    match rest.span() {
+        Ok(span) => ShellError::PipelineMismatch {
+            expected: Type::String,
+            expected_span: name,
+            origin: span,
         },
+        Err(error) => error,
     }
 }
