@@ -140,6 +140,16 @@ fn main() -> Result<()> {
             },
         );
 
+        let config = match stack.get_config() {
+            Ok(config) => config,
+            Err(e) => {
+                let working_set = StateWorkingSet::new(&engine_state);
+
+                report_error(&working_set, &e);
+                Config::default()
+            }
+        };
+
         match eval_block(
             &engine_state,
             &mut stack,
@@ -147,7 +157,6 @@ fn main() -> Result<()> {
             PipelineData::new(Span::unknown()),
         ) {
             Ok(pipeline_data) => {
-                let config = stack.get_config().unwrap_or_default();
                 for item in pipeline_data {
                     if let Value::Error { error } = item {
                         let working_set = StateWorkingSet::new(&engine_state);
@@ -191,7 +200,6 @@ fn main() -> Result<()> {
                     PipelineData::new(Span::unknown()),
                 ) {
                     Ok(pipeline_data) => {
-                        let config = stack.get_config().unwrap_or_default();
                         for item in pipeline_data {
                             if let Value::Error { error } = item {
                                 let working_set = StateWorkingSet::new(&engine_state);
