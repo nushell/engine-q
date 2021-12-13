@@ -8,15 +8,15 @@ use nu_protocol::{
 use polars::prelude::IntoSeries;
 
 #[derive(Clone)]
-pub struct ArgTrue;
+pub struct GetWeek;
 
-impl Command for ArgTrue {
+impl Command for GetWeek {
     fn name(&self) -> &str {
-        "df arg-true"
+        "df get-week"
     }
 
     fn usage(&self) -> &str {
-        "Returns indexes where values are true"
+        "Gets week from date"
     }
 
     fn signature(&self) -> Signature {
@@ -25,12 +25,14 @@ impl Command for ArgTrue {
 
     fn examples(&self) -> Vec<Example> {
         vec![Example {
-            description: "Returns indexes where values are true",
-            example: "[$false $true $false] | df to-df | df arg-true",
+            description: "Returns week from a date",
+            example: r#"let dt = ('2020-08-04T16:39:18+00:00' | into datetime -z 'UTC');
+    let df = ([$dt $dt] | df to-df);
+    $df | df get-week"#,
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
-                    "arg_true".to_string(),
-                    vec![1.into()],
+                    "0".to_string(),
+                    vec![32.into(), 32.into()],
                 )])
                 .expect("simple df for test should not fail")
                 .into_value(Span::unknown()),
@@ -56,30 +58,30 @@ fn command(
     input: PipelineData,
 ) -> Result<PipelineData, ShellError> {
     let df = NuDataFrame::try_from_pipeline(input, call.head)?;
-
     let series = df.as_series(call.head)?;
-    let bool = series.bool().map_err(|_| {
+
+    let casted = series.datetime().map_err(|e| {
         ShellError::SpannedLabeledError(
-            "Error converting to bool".into(),
-            "all-false only works with series of type bool".into(),
+            "Error casting to datetime type".into(),
+            e.to_string(),
             call.head,
         )
     })?;
 
-    let mut res = bool.arg_true().into_series();
-    res.rename("arg_true");
+    let res = casted.week().into_series();
 
-    NuDataFrame::try_from_series(vec![res], call.head)
+    NuDataFrame::try_from_series(vec![res.into_series()], call.head)
         .map(|df| PipelineData::Value(NuDataFrame::into_value(df, call.head), None))
 }
 
 #[cfg(test)]
 mod test {
+    use super::super::super::super::IntoDatetime;
     use super::super::super::test_dataframe::test_dataframe;
     use super::*;
 
     #[test]
     fn test_examples() {
-        test_dataframe(vec![Box::new(ArgTrue {})])
+        test_dataframe(vec![Box::new(GetWeek {}), Box::new(IntoDatetime {})])
     }
 }

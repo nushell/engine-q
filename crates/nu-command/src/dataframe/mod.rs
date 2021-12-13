@@ -44,7 +44,17 @@ pub fn add_dataframe_decls(working_set: &mut StateWorkingSet) {
         ArgUnique,
         Concatenate,
         Contains,
-        Cumulative
+        Cumulative,
+        GetDay,
+        GetHour,
+        GetMinute,
+        GetMonth,
+        GetNanosecond,
+        GetOrdinal,
+        GetSecond,
+        GetWeek,
+        GetWeekDay,
+        GetYear
     );
 
     // Dataframe commands

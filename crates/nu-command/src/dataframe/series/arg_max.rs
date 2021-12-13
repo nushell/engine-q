@@ -76,6 +76,6 @@ mod test {
 
     #[test]
     fn test_examples() {
-        test_dataframe(ArgMax {})
+        test_dataframe(vec![Box::new(ArgMax {})])
     }
 }

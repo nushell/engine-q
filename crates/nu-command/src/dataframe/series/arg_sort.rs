@@ -90,6 +90,6 @@ mod test {
 
     #[test]
     fn test_examples() {
-        test_dataframe(ArgSort {})
+        test_dataframe(vec![Box::new(ArgSort {})])
     }
 }

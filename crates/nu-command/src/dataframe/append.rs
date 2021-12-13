@@ -31,7 +31,7 @@ impl Command for AppendDF {
             Example {
                 description: "Appends a dataframe as new columns",
                 example: r#"let a = ([[a b]; [1 2] [3 4]] | df to-df);
-$a | df append $a"#,
+    $a | df append $a"#,
                 result: Some(
                     NuDataFrame::try_from_columns(vec![
                         Column::new("a".to_string(), vec![1.into(), 3.into()]),
@@ -46,7 +46,7 @@ $a | df append $a"#,
             Example {
                 description: "Appends a dataframe merging at the end of columns",
                 example: r#"let a = ([[a b]; [1 2] [3 4]] | df to-df);
-$a | df append $a --col"#,
+    $a | df append $a --col"#,
                 result: Some(
                     NuDataFrame::try_from_columns(vec![
                         Column::new(
@@ -103,6 +103,6 @@ mod test {
 
     #[test]
     fn test_examples() {
-        test_dataframe(AppendDF {})
+        test_dataframe(vec![Box::new(AppendDF {})])
     }
 }

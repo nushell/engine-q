@@ -39,8 +39,8 @@ impl Command for AllTrue {
             Example {
                 description: "Checks the result from a comparison",
                 example: r#"let s = ([5 6 2 8] | df to-df);
-let res = ($s > 9);
-$res | df all-true"#,
+    let res = ($s > 9);
+    $res | df all-true"#,
                 result: Some(
                     NuDataFrame::try_from_columns(vec![Column::new(
                         "all_true".to_string(),
@@ -97,6 +97,6 @@ mod test {
 
     #[test]
     fn test_examples() {
-        test_dataframe(AllTrue {})
+        test_dataframe(vec![Box::new(AllTrue {})])
     }
 }

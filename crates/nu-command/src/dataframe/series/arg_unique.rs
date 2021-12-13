@@ -81,6 +81,6 @@ mod test {
 
     #[test]
     fn test_examples() {
-        test_dataframe(ArgUnique {})
+        test_dataframe(vec![Box::new(ArgUnique {})])
     }
 }

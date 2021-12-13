@@ -106,6 +106,6 @@ mod test {
 
     #[test]
     fn test_examples() {
-        test_dataframe(DropDF {})
+        test_dataframe(vec![Box::new(DropDF {})])
     }
 }

@@ -34,7 +34,7 @@ impl Command for Concatenate {
         vec![Example {
             description: "Concatenate string",
             example: r#"let other = ([za xs cd] | df to-df);
-[abc abc abc] | df to-df | df concatenate $other"#,
+    [abc abc abc] | df to-df | df concatenate $other"#,
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "0".to_string(),
@@ -106,6 +106,6 @@ mod test {
 
     #[test]
     fn test_examples() {
-        test_dataframe(Concatenate {})
+        test_dataframe(vec![Box::new(Concatenate {})])
     }
 }

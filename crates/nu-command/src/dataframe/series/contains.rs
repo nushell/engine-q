@@ -93,6 +93,6 @@ mod test {
 
     #[test]
     fn test_examples() {
-        test_dataframe(Contains {})
+        test_dataframe(vec![Box::new(Contains {})])
     }
 }
