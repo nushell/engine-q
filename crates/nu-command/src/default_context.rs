@@ -74,6 +74,20 @@ pub fn create_default_context() -> EngineState {
             Zip,
         };
 
+        // Path
+        bind_command! {
+            Path,
+            PathBasename,
+            PathDirname,
+            PathExists,
+            PathExpand,
+            PathJoin,
+            PathParse,
+            PathRelativeTo,
+            PathSplit,
+            PathType,
+        };
+
         // System
         bind_command! {
             Benchmark,
@@ -227,9 +241,24 @@ pub fn create_default_context() -> EngineState {
             MathVariance,
         };
 
+        // Network
+        bind_command! {
+            Url,
+            UrlHost,
+            UrlPath,
+            UrlQuery,
+            UrlScheme,
+        }
+
         // Random
         bind_command! {
             Random,
+            RandomBool,
+            RandomChars,
+            RandomDecimal,
+            RandomDice,
+            RandomInteger,
+            RandomUuid,
         };
 
         // Generators
