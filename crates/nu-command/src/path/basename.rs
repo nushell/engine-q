@@ -79,12 +79,19 @@ impl Command for SubCommand {
             Example {
                 description: "Get basename of a path in a column",
                 example: "[[name];[C:\\Users\\Joe]] | path basename -c [ name ]",
-                result: Some(Value::test_string("joe")),
+                result: Some(Value::List {
+                    vals: vec![Value::Record {
+                        cols: vec!["name".to_string()],
+                        vals: vec![Value::test_string("Joe")],
+                        span: Span::unknown(),
+                    }],
+                    span: Span::unknown(),
+                }),
             },
             Example {
                 description: "Replace basename of a path",
                 example: "'C:\\Users\\joe\\test.txt' | path basename -r 'spam.png'",
-                result: Some(Value::test_string("/home/joe/spam.png")),
+                result: Some(Value::test_string("C:\\Users\\joe\\spam.png")),
             },
         ]
     }
@@ -101,7 +108,11 @@ impl Command for SubCommand {
                 description: "Get basename of a path by column",
                 example: "[name];[/home/joe] | path basename -c [ name ]",
                 result: Some(Value::List {
-                    vals: vec![Value::test_string("joe")],
+                    vals: vec![Value::Record {
+                        cols: vec!["name".to_string()],
+                        vals: vec![Value::test_string("joe")],
+                        span: Span::unknown(),
+                    }],
                     span: Span::unknown(),
                 }),
             },
