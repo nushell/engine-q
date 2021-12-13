@@ -39,14 +39,14 @@ where
     A: PathSubcommandArguments + Send + Sync + 'static,
 {
     match v {
-        Value::String { val, span } => cmd(&StdPath::new(&val), span, &args),
+        Value::String { val, span } => cmd(StdPath::new(&val), span, args),
         Value::Record { cols, vals, span } => {
             let col = if let Some(col) = args.get_columns() {
                 col
             } else {
                 vec![]
             };
-            if col.len() == 0 {
+            if col.is_empty() {
                 return Value::Error {
                     error: ShellError::UnsupportedInput(
                         String::from("when the input is a table, you must specify the columns"),
@@ -62,7 +62,7 @@ where
                 output_cols.push(k.clone());
                 if col.contains(k) {
                     let new_val = match v {
-                        Value::String { val, span } => cmd(&StdPath::new(&val), span, &args),
+                        Value::String { val, span } => cmd(StdPath::new(&val), span, args),
                         _ => return handle_invalid_values(v, name),
                     };
                     output_vals.push(new_val);

@@ -157,7 +157,7 @@ fn parse(path: &Path, span: Span, args: &Arguments) -> Value {
             item: extension,
             span: extension_span,
         }) => {
-            let ext_with_dot = [".", &extension].concat();
+            let ext_with_dot = [".", extension].concat();
             if basename.ends_with(&ext_with_dot) && !extension.is_empty() {
                 let stem = basename.trim_end_matches(&ext_with_dot);
                 map.insert("stem".into(), Value::string(stem, span));

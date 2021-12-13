@@ -142,7 +142,7 @@ the output of 'path parse' and 'path split' subcommands."#
 
 fn handle_value(v: Value, args: &Arguments, head: Span) -> Value {
     match v {
-        Value::String { ref val, span } => join_single(&Path::new(val), span, args),
+        Value::String { ref val, span } => join_single(Path::new(val), span, args),
         Value::Record { cols, vals, span } => join_record(&cols, &vals, span, args),
         Value::List { vals, span } => join_list(&vals, span, args),
 
