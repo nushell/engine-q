@@ -127,6 +127,7 @@ pub fn create_default_context() -> EngineState {
             StrSubstring,
             StrTrim,
             StrUpcase,
+            Ansi
         };
 
         // FileSystem
