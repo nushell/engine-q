@@ -75,7 +75,7 @@ impl Value {
                                 span: _,
                             } => {
                                 // make a string from our config.color_config section that
-                                // looks like this: { fg: "#rrggbb", bg: "#rrggbb", attr: "abc", }
+                                // looks like this: { fg: "#rrggbb" bg: "#rrggbb" attr: "abc", }
                                 // the real key here was to have quotes around the values but not
                                 // require them around the keys.
 
@@ -87,7 +87,7 @@ impl Value {
                                     .zip(inner_vals)
                                     .map(|(x, y)| {
                                         let clony = y.clone();
-                                        format!("{}: \"{}\", ", x, clony.into_string(", ", &config))
+                                        format!("{}: \"{}\" ", x, clony.into_string(", ", &config))
                                     })
                                     .collect();
                                 // now insert the braces at the front and the back to fake the json string
