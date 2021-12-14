@@ -650,7 +650,7 @@ fn hides_def_import_1() -> TestResult {
 #[test]
 fn hides_def_import_2() -> TestResult {
     fail_test(
-        r#"module spam { export def foo [] { "foo" } }; use spam; hide spam *; spam foo"#,
+        r#"module spam { export def foo [] { "foo" } }; use spam; hide spam; spam foo"#,
         not_found_msg(),
     )
 }
@@ -682,7 +682,7 @@ fn hides_def_import_5() -> TestResult {
 #[test]
 fn hides_def_import_6() -> TestResult {
     fail_test(
-        r#"module spam { export def foo [] { "foo" } }; use spam; hide spam; spam foo"#,
+        r#"module spam { export def foo [] { "foo" } }; use spam *; hide spam *; foo"#,
         not_found_msg(),
     )
 }
@@ -698,7 +698,7 @@ fn hides_env_import_1() -> TestResult {
 #[test]
 fn hides_env_import_2() -> TestResult {
     fail_test(
-        r#"module spam { export env foo { "foo" } }; use spam; hide spam *; $nu.env.'spam foo'"#,
+        r#"module spam { export env foo { "foo" } }; use spam; hide spam; $nu.env.'spam foo'"#,
         "did you mean",
     )
 }
@@ -730,7 +730,7 @@ fn hides_env_import_5() -> TestResult {
 #[test]
 fn hides_env_import_6() -> TestResult {
     fail_test(
-        r#"module spam { export env foo { "foo" } }; use spam; hide spam; $nu.env.'spam foo'"#,
+        r#"module spam { export env foo { "foo" } }; use spam *; hide spam *; $nu.env.foo"#,
         "did you mean",
     )
 }
@@ -1231,4 +1231,21 @@ fn command_filter_reject_3() -> TestResult {
   }
 ]"#,
     )
+}
+
+#[test]
+fn command_drop_column_1() -> TestResult {
+    run_test(
+        "[[lang, gems, grade]; [nu, 100, a]] | drop column 2 | to json",
+        r#"[
+  {
+    "lang": "nu"
+  }
+]"#,
+    )
+}
+
+#[test]
+fn chained_operator_typecheck() -> TestResult {
+    run_test("1 != 2 && 3 != 4 && 5 != 6", "true")
 }
