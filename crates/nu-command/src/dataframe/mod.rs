@@ -54,7 +54,18 @@ pub fn add_dataframe_decls(working_set: &mut StateWorkingSet) {
         GetSecond,
         GetWeek,
         GetWeekDay,
-        GetYear
+        GetYear,
+        IsDuplicated,
+        IsIn,
+        IsNotNull,
+        IsNull,
+        IsUnique,
+        NNull,
+        NUnique,
+        NotSeries,
+        Rename,
+        Replace,
+        ReplaceAll
     );
 
     // Dataframe commands
