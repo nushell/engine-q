@@ -159,6 +159,5 @@ fn get_keep_columns(input: Vec<String>, mut num_of_columns_to_drop: i64) -> Vec<
     }
 
     let num_of_columns_to_keep = (vlen - num_of_columns_to_drop) as usize;
-    let keep_columns = input[0..num_of_columns_to_keep].to_vec();
-    keep_columns
+    input[0..num_of_columns_to_keep].to_vec()
 }
