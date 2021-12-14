@@ -74,7 +74,7 @@ impl Command for Table {
                         let ctrlc = ctrlc.clone();
 
                         let ls_colors = match stack.get_env_var("LS_COLORS") {
-                            Some(s) => LsColors::from_string(&s),
+                            Some(v) => LsColors::from_string(&v.as_string()?),
                             None => LsColors::default(),
                         };
 

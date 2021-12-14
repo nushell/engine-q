@@ -17,6 +17,7 @@ use nu_protocol::{
 };
 use reedline::{Completer, CompletionActionHandler, DefaultPrompt, LineBuffer, Prompt};
 use std::{
+    collections::HashMap,
     io::Write,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -126,8 +127,15 @@ fn main() -> Result<()> {
 
         let mut stack = nu_protocol::engine::Stack::new();
 
+        // First, set up env vars as strings only
         for (k, v) in std::env::vars() {
-            stack.add_env_var(k, v);
+            stack.add_env_var(
+                k,
+                Value::String {
+                    val: v,
+                    span: Span::unknown(),
+                },
+            );
         }
 
         // Set up our initial config to start from
@@ -149,6 +157,49 @@ fn main() -> Result<()> {
                 Config::default()
             }
         };
+
+        // Translate environment variables from Strings to Values (requires config to get any
+        // custom conversions)
+        let mut new_env_vars = vec![];
+
+        for scope in &stack.env_vars {
+            let mut new_scope = HashMap::new();
+
+            for (name, val) in scope {
+                if let Some(conv) = config.env_conversions.get(name) {
+                    let block = engine_state.get_block(conv.from_string.0);
+
+                    if let Some(var) = block.signature.get_positional(0) {
+                        let mut stack = stack.collect_captures(&block.captures);
+                        if let Some(var_id) = &var.var_id {
+                            stack.add_var(*var_id, val.clone());
+                        }
+
+                        let val = eval_block(
+                            &engine_state,
+                            &mut stack,
+                            block,
+                            PipelineData::new(Span::unknown()),
+                        )?
+                        .into_value(Span::unknown());
+
+                        new_scope.insert(name.to_string(), val);
+                    } else {
+                        let working_set = StateWorkingSet::new(&engine_state);
+                        report_error(
+                            &working_set,
+                            &ShellError::MissingParameter("block input".into(), conv.from_string.1),
+                        )
+                    }
+                } else {
+                    new_scope.insert(name.to_string(), val.clone());
+                }
+            }
+
+            new_env_vars.push(new_scope);
+        }
+
+        stack.env_vars = new_env_vars;
 
         match eval_block(
             &engine_state,
@@ -239,8 +290,15 @@ fn main() -> Result<()> {
         let mut nu_prompt = NushellPrompt::new();
         let mut stack = nu_protocol::engine::Stack::new();
 
+        // First, set up env vars as strings only
         for (k, v) in std::env::vars() {
-            stack.add_env_var(k, v);
+            stack.add_env_var(
+                k,
+                Value::String {
+                    val: v,
+                    span: Span::unknown(),
+                },
+            );
         }
 
         // Set up our initial config to start from
@@ -268,6 +326,61 @@ fn main() -> Result<()> {
                 }
             }
         }
+
+        // Get the config
+        let config = match stack.get_config() {
+            Ok(config) => config,
+            Err(e) => {
+                let working_set = StateWorkingSet::new(&engine_state);
+
+                report_error(&working_set, &e);
+                Config::default()
+            }
+        };
+
+        // Translate environment variables from Strings to Values (requires config to get any
+        // custom conversions)
+        // TODO: deduplicate
+        let mut new_env_vars = vec![];
+
+        for scope in &stack.env_vars {
+            let mut new_scope = HashMap::new();
+
+            for (name, val) in scope {
+                if let Some(conv) = config.env_conversions.get(name) {
+                    let block = engine_state.get_block(conv.from_string.0);
+
+                    if let Some(var) = block.signature.get_positional(0) {
+                        let mut stack = stack.collect_captures(&block.captures);
+                        if let Some(var_id) = &var.var_id {
+                            stack.add_var(*var_id, val.clone());
+                        }
+
+                        let new_val = eval_block(
+                            &engine_state,
+                            &mut stack,
+                            block,
+                            PipelineData::new(Span::unknown()),
+                        )?
+                        .into_value(Span::unknown());
+
+                        new_scope.insert(name.to_string(), new_val);
+                    } else {
+                        let working_set = StateWorkingSet::new(&engine_state);
+                        report_error(
+                            &working_set,
+                            &ShellError::MissingParameter("block input".into(), conv.from_string.1),
+                        )
+                    }
+                } else {
+                    new_scope.insert(name.to_string(), val.clone());
+                }
+            }
+
+            new_env_vars.push(new_scope);
+        }
+
+        stack.env_vars = new_env_vars;
 
         let history_path = if let Some(mut history_path) = nu_path::config_dir() {
             history_path.push("nushell");
@@ -447,8 +560,12 @@ fn update_prompt<'prompt>(
     nu_prompt: &'prompt mut NushellPrompt,
     default_prompt: &'prompt DefaultPrompt,
 ) -> &'prompt dyn Prompt {
+    // TODO: Make PROMPT_COMMAND a block, not just a String -- allows better syntax highlighting
     let prompt_command = match stack.get_env_var(env_variable) {
-        Some(prompt) => prompt,
+        Some(prompt) => match prompt.as_string() {
+            Ok(s) => s,
+            Err(_) => return default_prompt as &dyn Prompt,
+        },
         None => return default_prompt as &dyn Prompt,
     };
 

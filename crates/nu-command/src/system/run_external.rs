@@ -7,6 +7,7 @@ use std::process::{Command as CommandSys, Stdio};
 use std::sync::atomic::Ordering;
 use std::sync::mpsc;
 
+use nu_engine::eval_block;
 use nu_protocol::engine::{EngineState, Stack};
 use nu_protocol::{ast::Call, engine::Command, ShellError, Signature, SyntaxShape, Value};
 use nu_protocol::{Category, Config, IntoInterruptiblePipelineData, PipelineData, Span, Spanned};
@@ -53,6 +54,38 @@ impl Command for External {
         let last_expression = call.has_flag("last_expression");
         let env_vars = stack.get_env_vars();
 
+        // Translate environment variables from Values to Strings
+        let mut env_vars_str = HashMap::new();
+        let config = stack.get_config()?;
+        for (env_name, val) in env_vars {
+            if let Some(conv) = config.env_conversions.get(&env_name) {
+                let block = engine_state.get_block(conv.to_string.0);
+
+                if let Some(var) = block.signature.get_positional(0) {
+                    let mut stack = stack.collect_captures(&block.captures);
+                    if let Some(var_id) = &var.var_id {
+                        stack.add_var(*var_id, val);
+                    }
+
+                    let val_str = eval_block(
+                        engine_state,
+                        &mut stack,
+                        block,
+                        PipelineData::new(Span::unknown()),
+                    )?
+                    .into_value(Span::unknown())
+                    .as_string()?;
+
+                    env_vars_str.insert(env_name, val_str);
+                } else {
+                    return Err(ShellError::MissingParameter(
+                        "block input".into(),
+                        conv.to_string.1,
+                    ));
+                }
+            }
+        }
+
         let config = stack.get_config().unwrap_or_default();
 
         // Check if this is a single call to a directory, if so auto-cd
@@ -73,7 +106,13 @@ impl Command for External {
 
             //FIXME: this only changes the current scope, but instead this environment variable
             //should probably be a block that loads the information from the state in the overlay
-            stack.add_env_var("PWD".into(), name.item.clone());
+            stack.add_env_var(
+                "PWD".into(),
+                Value::String {
+                    val: name.item.clone(),
+                    span: Span::unknown(),
+                },
+            );
             return Ok(PipelineData::new(call.head));
         }
 
@@ -81,7 +120,7 @@ impl Command for External {
             name,
             args,
             last_expression,
-            env_vars,
+            env_vars: env_vars_str,
             call,
         };
         command.run_with_input(engine_state, input, config)

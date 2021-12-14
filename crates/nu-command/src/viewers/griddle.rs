@@ -141,11 +141,11 @@ fn create_grid_output(
     width_param: Option<String>,
     color_param: bool,
     separator_param: Option<String>,
-    env_str: Option<String>,
+    env_str: Option<Value>,
     use_grid_icons: bool,
 ) -> Result<PipelineData, ShellError> {
     let ls_colors = match env_str {
-        Some(s) => LsColors::from_string(&s),
+        Some(v) => LsColors::from_string(&v.as_string()?),
         None => LsColors::default(),
     };
 

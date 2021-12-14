@@ -1,7 +1,7 @@
 use nu_engine::CallExt;
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
-use nu_protocol::{Category, PipelineData, Signature, SyntaxShape};
+use nu_protocol::{Category, PipelineData, Signature, Span, SyntaxShape, Value};
 
 #[derive(Clone)]
 pub struct Cd;
@@ -44,7 +44,13 @@ impl Command for Cd {
 
         //FIXME: this only changes the current scope, but instead this environment variable
         //should probably be a block that loads the information from the state in the overlay
-        stack.add_env_var("PWD".into(), path);
+        stack.add_env_var(
+            "PWD".into(),
+            Value::String {
+                val: path,
+                span: Span::unknown(),
+            },
+        );
         Ok(PipelineData::new(call.head))
     }
 }
