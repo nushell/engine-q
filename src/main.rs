@@ -8,7 +8,7 @@ use dialoguer::{
 use miette::{IntoDiagnostic, Result};
 use nu_cli::{CliError, NuCompleter, NuHighlighter, NuValidator, NushellPrompt};
 use nu_command::create_default_context;
-use nu_engine::eval_block;
+use nu_engine::{env_to_values, eval_block};
 use nu_parser::parse;
 use nu_protocol::{
     ast::Call,
@@ -17,7 +17,6 @@ use nu_protocol::{
 };
 use reedline::{Completer, CompletionActionHandler, DefaultPrompt, LineBuffer, Prompt};
 use std::{
-    collections::HashMap,
     io::Write,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -159,7 +158,11 @@ fn main() -> Result<()> {
         };
 
         // Translate environment variables from Strings to Values
-        convert_env_vars(&engine_state, &mut stack, &config)?;
+        if let Some(e) = env_to_values(&engine_state, &mut stack, &config) {
+            let working_set = StateWorkingSet::new(&engine_state);
+            report_error(&working_set, &e);
+            std::process::exit(1);
+        }
 
         match eval_block(
             &engine_state,
@@ -299,7 +302,10 @@ fn main() -> Result<()> {
         };
 
         // Translate environment variables from Strings to Values
-        convert_env_vars(&engine_state, &mut stack, &config)?;
+        if let Some(e) = env_to_values(&engine_state, &mut stack, &config) {
+            let working_set = StateWorkingSet::new(&engine_state);
+            report_error(&working_set, &e);
+        }
 
         let history_path = if let Some(mut history_path) = nu_path::config_dir() {
             history_path.push("nushell");
@@ -415,57 +421,6 @@ fn main() -> Result<()> {
 
         Ok(())
     }
-}
-
-// Translate environment variables from Strings to Values. Requires config to be already set up in
-// case the user defined custom env conversions in the config.nu.
-fn convert_env_vars(
-    engine_state: &EngineState,
-    stack: &mut Stack,
-    config: &Config,
-) -> Result<(), ShellError> {
-    let mut new_env_vars = vec![];
-
-    for scope in &stack.env_vars {
-        let mut new_scope = HashMap::new();
-
-        for (name, val) in scope {
-            if let Some(conv) = config.env_conversions.get(name) {
-                let block = engine_state.get_block(conv.from_string.0);
-
-                if let Some(var) = block.signature.get_positional(0) {
-                    let mut stack = stack.collect_captures(&block.captures);
-                    if let Some(var_id) = &var.var_id {
-                        stack.add_var(*var_id, val.clone());
-                    }
-
-                    let val = eval_block(
-                        engine_state,
-                        &mut stack,
-                        block,
-                        PipelineData::new(Span::unknown()),
-                    )?
-                    .into_value(Span::unknown());
-
-                    new_scope.insert(name.to_string(), val);
-                } else {
-                    let working_set = StateWorkingSet::new(engine_state);
-                    report_error(
-                        &working_set,
-                        &ShellError::MissingParameter("block input".into(), conv.from_string.1),
-                    )
-                }
-            } else {
-                new_scope.insert(name.to_string(), val.clone());
-            }
-        }
-
-        new_env_vars.push(new_scope);
-    }
-
-    stack.env_vars = new_env_vars;
-
-    Ok(())
 }
 
 fn print_pipeline_data(

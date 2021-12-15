@@ -73,7 +73,7 @@ impl Default for Config {
             float_precision: 4,
             filesize_format: "auto".into(),
             use_ansi_coloring: true,
-            env_conversions: HashMap::new(),
+            env_conversions: HashMap::new(), // TODO: Add default conversoins
         }
     }
 }
