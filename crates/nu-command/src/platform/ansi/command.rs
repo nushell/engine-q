@@ -1,8 +1,8 @@
 use nu_ansi_term::*;
 use nu_engine::CallExt;
 use nu_protocol::{
-    ast::Call, engine::Command, Example, IntoPipelineData, PipelineData, ShellError, Signature,
-    SyntaxShape, Value,
+    ast::Call, engine::Command, Category, Example, IntoPipelineData, PipelineData, ShellError,
+    Signature, SyntaxShape, Value,
 };
 
 #[derive(Clone)]
@@ -30,6 +30,7 @@ impl Command for AnsiCommand {
                 "operating system command (ocs) escape sequence without the escape character(s)",
                 Some('o'),
             )
+            .category(Category::Platform)
     }
 
     fn usage(&self) -> &str {
