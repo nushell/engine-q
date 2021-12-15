@@ -124,9 +124,9 @@ Format: #
         if escape && osc {
             return Err(ShellError::IncompatibleParameters {
                 left_message: "escape".into(),
-                left_span: call.get_named_arg("escape").unwrap().span,
+                left_span: call.get_named_arg("escape")?.span,
                 right_message: "osc".into(),
-                right_span: call.get_named_arg("osc").unwrap().span,
+                right_span: call.get_named_arg("osc")?.span,
             });
         }
         if escape || osc {
@@ -134,7 +134,7 @@ Format: #
             if code_vec[0] == '\\' {
                 return Err(ShellError::UnsupportedInput(
                     String::from("no need for escape characters"),
-                    call.get_flag_expr("escape").unwrap().span,
+                    call.get_flag_expr("escape")?.span,
                 ));
             }
         }
@@ -150,7 +150,7 @@ Format: #
                 None => {
                     return Err(ShellError::UnsupportedInput(
                         String::from("Unknown ansi code"),
-                        call.nth(0).unwrap().span,
+                        call.nth(0).expect("Unexpected missing argument").span,
                     ))
                 }
             }
