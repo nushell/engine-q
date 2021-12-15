@@ -1,5 +1,4 @@
 use nu_ansi_term::*;
-//TODO: clean imports
 use nu_engine::CallExt;
 use nu_protocol::{ast::Call,engine::Command, Example, IntoPipelineData, PipelineData, 
     ShellError, Signature, SyntaxShape, Value};
@@ -84,33 +83,32 @@ Format: #
             Example {
                 description: "Change color to green",
                 example: r#"ansi green"#,
-                result: Some(Value::from(String::from("\u{1b}[32m")))
+                result: Some(Value::test_string("\u{1b}[32m"))
             },
             Example {
                 description: "Reset the color",
                 example: r#"ansi reset"#,
-                result: Some(Value::from(String::from("\u{1b}[0m"))),
+                result: Some(Value::test_string("\u{1b}[0m")),
             },
             Example {
                 description:
                     "Use ansi to color text (rb = red bold, gb = green bold, pb = purple bold)",
                 example: r#"echo [(ansi rb) Hello " " (ansi gb) Nu " " (ansi pb) World] | str collect"#,
-                result: Some(Value::from(String::from(
+                result: Some(Value::test_string(
                     "\u{1b}[1;31mHello \u{1b}[1;32mNu \u{1b}[1;35mWorld",
-                ))),
+                )),
             },
             Example {
                 description:
                     "Use ansi to color text (rb = red bold, gb = green bold, pb = purple bold)",
                 example: r#"echo [(ansi -e '3;93;41m') Hello (ansi reset) " " (ansi gb) Nu " " (ansi pb) World] | str collect"#,
-                result: Some(Value::from(String::from(
+                result: Some(Value::test_string(
                     "\u{1b}[3;93;41mHello\u{1b}[0m \u{1b}[1;32mNu \u{1b}[1;35mWorld",
-                ))),
+                )),
             },
         ]
     }
 
-    //fn run(&self, args: CommandArgs) -> Result<OutputStream, ShellError> {
     fn run(
         &self,
         engine_state: &nu_protocol::engine::EngineState,
@@ -153,7 +151,7 @@ Format: #
                 )),
             }
         };
-        return Ok(Value::string(output,call.head).into_pipeline_data());
+        Ok(Value::string(output,call.head).into_pipeline_data())
     }
 }
 
