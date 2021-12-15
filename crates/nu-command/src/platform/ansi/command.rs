@@ -1,7 +1,9 @@
 use nu_ansi_term::*;
 use nu_engine::CallExt;
-use nu_protocol::{ast::Call,engine::Command, Example, IntoPipelineData, PipelineData, 
-    ShellError, Signature, SyntaxShape, Value};
+use nu_protocol::{
+    ast::Call, engine::Command, Example, IntoPipelineData, PipelineData, ShellError, Signature,
+    SyntaxShape, Value,
+};
 
 #[derive(Clone)]
 pub struct AnsiCommand;
@@ -83,7 +85,7 @@ Format: #
             Example {
                 description: "Change color to green",
                 example: r#"ansi green"#,
-                result: Some(Value::test_string("\u{1b}[32m"))
+                result: Some(Value::test_string("\u{1b}[32m")),
             },
             Example {
                 description: "Reset the color",
@@ -120,12 +122,12 @@ Format: #
         let osc: bool = call.has_flag("osc");
         let code: String = call.req(engine_state, stack, 0)?;
         if escape && osc {
-            return Err(ShellError::IncompatibleParameters{
+            return Err(ShellError::IncompatibleParameters {
                 left_message: "escape".into(),
                 left_span: call.get_named_arg("escape").unwrap().span,
                 right_message: "osc".into(),
-                right_span: call.get_named_arg("osc").unwrap().span
-            })
+                right_span: call.get_named_arg("osc").unwrap().span,
+            });
         }
         if escape || osc {
             let code_vec: Vec<char> = code.chars().collect();
@@ -145,13 +147,15 @@ Format: #
         } else {
             match str_to_ansi(&code) {
                 Some(c) => c,
-                None =>  return Err(ShellError::UnsupportedInput(
-                    String::from("Unknown ansi code"),
-                    call.nth(0).unwrap().span,
-                )),
+                None => {
+                    return Err(ShellError::UnsupportedInput(
+                        String::from("Unknown ansi code"),
+                        call.nth(0).unwrap().span,
+                    ))
+                }
             }
         };
-        Ok(Value::string(output,call.head).into_pipeline_data())
+        Ok(Value::string(output, call.head).into_pipeline_data())
     }
 }
 
@@ -334,7 +338,7 @@ mod tests {
     use super::AnsiCommand;
 
     #[test]
-    fn examples_work_as_expected(){
+    fn examples_work_as_expected() {
         use crate::test_examples;
 
         test_examples(AnsiCommand {})
