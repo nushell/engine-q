@@ -11,7 +11,7 @@ pub struct EnvConversion {
 }
 
 impl EnvConversion {
-    pub fn from(value: &Value) -> Result<Self, ShellError> {
+    pub fn from_record(value: &Value) -> Result<Self, ShellError> {
         let record = value.as_record()?;
 
         let mut conv_map = HashMap::new();
@@ -177,7 +177,7 @@ impl Value {
                     let mut env_conversions = HashMap::new();
 
                     for (env_var, record) in env_vars.iter().zip(conversions) {
-                        env_conversions.insert(env_var.into(), EnvConversion::from(record)?);
+                        env_conversions.insert(env_var.into(), EnvConversion::from_record(record)?);
                     }
 
                     config.env_conversions = env_conversions;
