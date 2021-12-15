@@ -846,7 +846,7 @@ pub fn eval_variable(
     }
 }
 
-pub fn compute(size: i64, unit: Unit, span: Span) -> Value {
+fn compute(size: i64, unit: Unit, span: Span) -> Value {
     match unit {
         Unit::Byte => Value::Filesize { val: size, span },
         Unit::Kilobyte => Value::Filesize {
