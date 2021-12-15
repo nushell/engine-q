@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use nu_protocol::engine::{EngineState, Stack};
-use nu_protocol::{Config, PipelineData, ShellError, Span};
+use nu_protocol::{Config, PipelineData, ShellError, Span, Value};
 
 use crate::eval_block;
 
@@ -43,10 +43,12 @@ pub fn env_to_values(
                         Err(e) => error = error.or(Some(e)),
                     }
                 } else {
-                    error = error.or_else(|| Some(ShellError::MissingParameter(
-                        "block input".into(),
-                        conv.from_string.1,
-                    )));
+                    error = error.or_else(|| {
+                        Some(ShellError::MissingParameter(
+                            "block input".into(),
+                            conv.from_string.1,
+                        ))
+                    });
                 }
             } else {
                 new_scope.insert(name.to_string(), val.clone());
@@ -61,7 +63,43 @@ pub fn env_to_values(
     error
 }
 
-/// Translate environment variables from Values to Strings
+/// Translate one environment variable from Value to String
+pub fn env_to_string(
+    env_name: &str,
+    value: Value,
+    engine_state: &EngineState,
+    stack: &mut Stack,
+    config: &Config,
+) -> Result<String, ShellError> {
+    if let Some(conv) = config.env_conversions.get(env_name) {
+        let block = engine_state.get_block(conv.to_string.0);
+
+        if let Some(var) = block.signature.get_positional(0) {
+            let mut stack = stack.collect_captures(&block.captures);
+            if let Some(var_id) = &var.var_id {
+                stack.add_var(*var_id, value);
+            }
+
+            Ok(eval_block(
+                engine_state,
+                &mut stack,
+                block,
+                PipelineData::new(Span::unknown()),
+            )?
+            .into_value(Span::unknown())
+            .as_string()?)
+        } else {
+            Err(ShellError::MissingParameter(
+                "block input".into(),
+                conv.to_string.1,
+            ))
+        }
+    } else {
+        Ok(value.as_string()?)
+    }
+}
+
+/// Translate all environment variables from Values to Strings
 pub fn env_to_strings(
     engine_state: &EngineState,
     stack: &mut Stack,
@@ -70,32 +108,8 @@ pub fn env_to_strings(
     let env_vars = stack.get_env_vars();
     let mut env_vars_str = HashMap::new();
     for (env_name, val) in env_vars {
-        if let Some(conv) = config.env_conversions.get(&env_name) {
-            let block = engine_state.get_block(conv.to_string.0);
-
-            if let Some(var) = block.signature.get_positional(0) {
-                let mut stack = stack.collect_captures(&block.captures);
-                if let Some(var_id) = &var.var_id {
-                    stack.add_var(*var_id, val);
-                }
-
-                let val_str = eval_block(
-                    engine_state,
-                    &mut stack,
-                    block,
-                    PipelineData::new(Span::unknown()),
-                )?
-                .into_value(Span::unknown())
-                .as_string()?;
-
-                env_vars_str.insert(env_name, val_str);
-            } else {
-                return Err(ShellError::MissingParameter(
-                    "block input".into(),
-                    conv.to_string.1,
-                ));
-            }
-        }
+        let val_str = env_to_string(&env_name, val, engine_state, stack, config)?;
+        env_vars_str.insert(env_name, val_str);
     }
 
     Ok(env_vars_str)
