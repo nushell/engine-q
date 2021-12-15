@@ -235,9 +235,11 @@ pub enum ShellError {
     DowncastNotPossible(String, #[label("{0}")] Span),
 
     #[error("Unsupported config value")]
+    #[diagnostic(code(nu::shell::unsupported_config_value), url(docsrs))]
     UnsupportedConfigValue(String, String, #[label = "expected {0}, got {1}"] Span),
 
     #[error("Missing config value")]
+    #[diagnostic(code(nu::shell::missing_config_value), url(docsrs))]
     MissingConfigValue(String, #[label = "missing {0}"] Span),
 
     #[error("{0}")]
