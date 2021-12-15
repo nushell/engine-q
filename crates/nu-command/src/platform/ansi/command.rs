@@ -124,9 +124,9 @@ Format: #
         if escape && osc {
             return Err(ShellError::IncompatibleParameters {
                 left_message: "escape".into(),
-                left_span: call.get_named_arg("escape")?.span,
+                left_span: call.get_named_arg("escape").expect("Unexpected missing argument").span,
                 right_message: "osc".into(),
-                right_span: call.get_named_arg("osc")?.span,
+                right_span: call.get_named_arg("osc").expect("Unexpected missing argument").span,
             });
         }
         if escape || osc {
@@ -134,7 +134,7 @@ Format: #
             if code_vec[0] == '\\' {
                 return Err(ShellError::UnsupportedInput(
                     String::from("no need for escape characters"),
-                    call.get_flag_expr("escape")?.span,
+                    call.get_flag_expr("escape").expect("Unexpected missing argument").span,
                 ));
             }
         }
