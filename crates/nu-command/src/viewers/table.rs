@@ -1,5 +1,5 @@
 use lscolors::{LsColors, Style};
-use nu_config::{get_color_config, style_primitive};
+use nu_color_config::{get_color_config, style_primitive};
 use nu_protocol::ast::{Call, PathMember};
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{

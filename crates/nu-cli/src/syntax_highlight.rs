@@ -1,5 +1,5 @@
 use nu_ansi_term::Style;
-use nu_config::get_shape_color;
+use nu_color_config::get_shape_color;
 use nu_parser::{flatten_block, parse, FlatShape};
 use nu_protocol::engine::{EngineState, StateWorkingSet};
 use nu_protocol::Config;

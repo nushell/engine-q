@@ -1,5 +1,5 @@
 [package]
-name = "nu-config"
+name = "nu-color-config"
 version = "0.1.0"
 edition = "2018"
 

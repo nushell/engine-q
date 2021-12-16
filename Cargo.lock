@@ -820,8 +820,8 @@ dependencies = [
  "miette",
  "nu-ansi-term",
  "nu-cli",
+ "nu-color-config",
  "nu-command",
- "nu-config",
  "nu-engine",
  "nu-json",
  "nu-parser",
@@ -1614,13 +1614,24 @@ version = "0.1.0"
 dependencies = [
  "miette",
  "nu-ansi-term",
- "nu-config",
+ "nu-color-config",
  "nu-engine",
  "nu-parser",
  "nu-path",
  "nu-protocol",
  "reedline",
  "thiserror",
+]
+
+[[package]]
+name = "nu-color-config"
+version = "0.1.0"
+dependencies = [
+ "nu-ansi-term",
+ "nu-json",
+ "nu-protocol",
+ "nu-table",
+ "serde",
 ]
 
 [[package]]
@@ -1650,7 +1661,7 @@ dependencies = [
  "md-5",
  "meval",
  "nu-ansi-term",
- "nu-config",
+ "nu-color-config",
  "nu-engine",
  "nu-json",
  "nu-parser",
@@ -1684,17 +1695,6 @@ dependencies = [
  "url",
  "uuid",
  "zip",
-]
-
-[[package]]
-name = "nu-config"
-version = "0.1.0"
-dependencies = [
- "nu-ansi-term",
- "nu-json",
- "nu-protocol",
- "nu-table",
- "serde",
 ]
 
 [[package]]
