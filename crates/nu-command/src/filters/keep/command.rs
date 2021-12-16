@@ -74,7 +74,10 @@ impl Command for Keep {
                     span,
                 )
             })?,
-            Some(_) => return Err(ShellError::InternalError("Expected integer".into())),
+            Some(_) => {
+                let span = call.head;
+                return Err(ShellError::TypeMismatch("expected integer".into(), span));
+            }
             None => 1,
         };
 
