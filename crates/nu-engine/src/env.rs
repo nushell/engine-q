@@ -5,6 +5,11 @@ use nu_protocol::{Config, PipelineData, ShellError, Value};
 
 use crate::eval_block;
 
+#[cfg(windows)]
+const ENV_SEP: &str = ";";
+#[cfg(not(windows))]
+const ENV_SEP: &str = ":";
+
 /// Translate environment variables from Strings to Values. Requires config to be already set up in
 /// case the user defined custom env conversions in config.nu.
 ///
@@ -91,6 +96,7 @@ pub fn env_to_string(
             }
 
             Ok(
+                // This one is OK to fail: We want to know if custom conversion is working
                 eval_block(engine_state, &mut stack, block, PipelineData::new(span))?
                     .into_value(span)
                     .as_string()?,
@@ -102,7 +108,9 @@ pub fn env_to_string(
             ))
         }
     } else {
-        Ok(value.as_string()?)
+        // Do not fail here. Must sicceed, otherwise setting a non-string env var would constantly
+        // throw errors when running externals etc.
+        Ok(value.into_string(ENV_SEP, config))
     }
 }
 
