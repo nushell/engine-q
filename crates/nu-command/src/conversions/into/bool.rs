@@ -34,7 +34,7 @@ impl Command for SubCommand {
         call: &Call,
         input: PipelineData,
     ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
-        unimplemented!();
+        into_bool(engine_state, stack, call, input)
     }
 
     fn examples(&self) -> Vec<Example> {
@@ -65,5 +65,57 @@ impl Command for SubCommand {
                 result: None,
             },
         ]
+    }
+}
+
+fn into_bool(
+    engine_state: &EngineState,
+    stack: &mut Stack,
+    call: &Call,
+    input: PipelineData,
+) -> Result<PipelineData, ShellError> {
+    let head = call.head;
+    let column_paths: Vec<CellPath> = call.rest(engine_state, stack, 0)?;
+
+    input.map(
+        move |v| {
+            if column_paths.is_empty() {
+                action(&v, head)
+            } else {
+                unimplemented!()
+            }
+        },
+        engine_state.ctrlc.clone(),
+    )
+}
+
+fn action(input: &Value, span: Span) -> Value {
+    match input {
+        Value::Int { val, .. } => Value::Bool {
+            val: *val != 0,
+            span,
+        },
+        Value::Float { val, .. } => Value::Bool {
+            val: *val != 0.0,
+            span,
+        },
+        _ => Value::Error {
+            error: ShellError::UnsupportedInput(
+                "'into bool' does not support this input".into(),
+                span,
+            ),
+        },
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_examples() {
+        use crate::test_examples;
+
+        test_examples(SubCommand {})
     }
 }
