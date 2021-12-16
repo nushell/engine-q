@@ -1,4 +1,5 @@
-use indexmap::map::IndexMap;
+use std::collections::HashMap;
+
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
@@ -62,7 +63,7 @@ b=2' | from ini",
 }
 
 pub fn from_ini_string_to_value(s: String, span: Span) -> Result<Value, ShellError> {
-    let v: Result<IndexMap<String, IndexMap<String, String>>, serde_ini::de::Error> =
+    let v: Result<HashMap<String, HashMap<String, String>>, serde_ini::de::Error> =
         serde_ini::from_str(&s);
     match v {
         Ok(index_map) => {
