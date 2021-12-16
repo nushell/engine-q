@@ -223,6 +223,7 @@ pub fn create_default_context() -> EngineState {
         bind_command! {
             LetEnv,
             WithEnv,
+            Env,
         };
 
         // Math
