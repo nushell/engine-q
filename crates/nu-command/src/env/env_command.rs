@@ -29,16 +29,23 @@ impl Command for Env {
         let span = call.head;
         let config = stack.get_config().unwrap_or_default();
 
+        let mut env_vars: Vec<(String, Value)> = stack.get_env_vars().into_iter().collect();
+        env_vars.sort_by(|(name1, _), (name2, _)| name1.cmp(name2));
+
         let mut values = vec![];
 
-        for (name, val) in stack.get_env_vars().into_iter() {
+        for (name, val) in env_vars {
             let mut cols = vec![];
             let mut vals = vec![];
 
             let raw = env_to_string(&name, val.clone(), engine_state, stack, &config)?;
+            let val_type = val.get_type();
 
             cols.push("name".into());
             vals.push(Value::string(name, span));
+
+            cols.push("type".into());
+            vals.push(Value::string(format!("{}", val_type), span));
 
             cols.push("value".into());
             vals.push(val);
