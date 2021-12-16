@@ -9,7 +9,7 @@ use miette::{IntoDiagnostic, Result};
 use nu_cli::{CliError, NuCompleter, NuHighlighter, NuValidator, NushellPrompt};
 use nu_command::create_default_context;
 use nu_engine::{env_to_values, eval_block};
-use nu_parser::parse;
+use nu_parser::{lex, parse, Token, TokenContents};
 use nu_protocol::{
     ast::Call,
     engine::{EngineState, Stack, StateWorkingSet},
@@ -127,15 +127,7 @@ fn main() -> Result<()> {
         let mut stack = nu_protocol::engine::Stack::new();
 
         // First, set up env vars as strings only
-        for (k, v) in std::env::vars() {
-            stack.add_env_var(
-                k,
-                Value::String {
-                    val: v,
-                    span: Span::unknown(),
-                },
-            );
-        }
+        gather_parent_env_vars(&mut engine_state, &mut stack);
 
         // Set up our initial config to start from
         stack.vars.insert(
@@ -254,15 +246,7 @@ fn main() -> Result<()> {
         let mut stack = nu_protocol::engine::Stack::new();
 
         // First, set up env vars as strings only
-        for (k, v) in std::env::vars() {
-            stack.add_env_var(
-                k,
-                Value::String {
-                    val: v,
-                    span: Span::unknown(),
-                },
-            );
-        }
+        gather_parent_env_vars(&mut engine_state, &mut stack);
 
         // Set up our initial config to start from
         stack.vars.insert(
@@ -420,6 +404,67 @@ fn main() -> Result<()> {
         }
 
         Ok(())
+    }
+}
+
+// This fill collect environment variables from std::env and adds them to a stack.
+//
+// In order to ensure the values have spans, it first creates a dummy file, writes the collected
+// env vars into it (in a NAME=value format, similar to the output of the Unix 'env' tool), then
+// uses the file to get the spans. The file stays in memory, no filesystem IO is done.
+fn gather_parent_env_vars(engine_state: &mut EngineState, stack: &mut Stack) {
+    let mut fake_env_file = String::new();
+    for (name, val) in std::env::vars() {
+        fake_env_file.push_str(&name);
+        fake_env_file.push('=');
+        fake_env_file.push_str(&val);
+        fake_env_file.push('\n');
+    }
+
+    let span_offset = engine_state.next_span_start();
+    engine_state.add_file(
+        "Host Environment Variables".to_string(),
+        fake_env_file.as_bytes().to_vec(),
+    );
+    let (tokens, _) = lex(fake_env_file.as_bytes(), span_offset, &[], &[], true);
+    for token in tokens {
+        if let Token {
+            contents: TokenContents::Item,
+            span: full_span,
+        } = token
+        {
+            let contents = engine_state.get_span_contents(&full_span);
+            let (parts, _) = lex(contents, full_span.start, &[], &[b'='], true);
+
+            let name = if let Some(Token {
+                contents: TokenContents::Item,
+                span,
+            }) = parts.get(0)
+            {
+                String::from_utf8_lossy(engine_state.get_span_contents(span)).to_string()
+            } else {
+                // Skip this env var if it does not have a name
+                continue;
+            };
+
+            let value = if let Some(Token {
+                contents: TokenContents::Item,
+                span,
+            }) = parts.get(2)
+            {
+                Value::String {
+                    val: String::from_utf8_lossy(engine_state.get_span_contents(span)).to_string(),
+                    span: *span,
+                }
+            } else {
+                Value::String {
+                    val: "".to_string(),
+                    span: Span::new(full_span.end, full_span.end),
+                }
+            };
+
+            stack.add_env_var(name, value);
+        }
     }
 }
 
