@@ -485,37 +485,22 @@ fn update_prompt<'prompt>(
     nu_prompt: &'prompt mut NushellPrompt,
     default_prompt: &'prompt DefaultPrompt,
 ) -> &'prompt dyn Prompt {
-    // TODO: Make PROMPT_COMMAND a block, not just a String -- allows better syntax highlighting
-    let prompt_command = match stack.get_env_var(env_variable) {
-        Some(prompt) => match prompt.as_string() {
-            Ok(s) => s,
+    let block_id = match stack.get_env_var(env_variable) {
+        Some(v) => match v.as_block() {
+            Ok(b) => b,
             Err(_) => return default_prompt as &dyn Prompt,
         },
         None => return default_prompt as &dyn Prompt,
     };
 
-    // Checking if the PROMPT_COMMAND is the same to avoid evaluating constantly
-    // the same command, thus saturating the contents in the EngineState
-    if !nu_prompt.is_new_prompt(prompt_command.as_str()) {
-        return nu_prompt as &dyn Prompt;
-    }
-
-    let block = {
-        let mut working_set = StateWorkingSet::new(engine_state);
-        let (output, err) = parse(&mut working_set, None, prompt_command.as_bytes(), false);
-        if let Some(err) = err {
-            report_error(&working_set, &err);
-            return default_prompt as &dyn Prompt;
-        }
-        output
-    };
+    let block = engine_state.get_block(block_id);
 
     let mut stack = stack.clone();
 
     let evaluated_prompt = match eval_block(
         engine_state,
         &mut stack,
-        &block,
+        block,
         PipelineData::new(Span::unknown()),
     ) {
         Ok(pipeline_data) => {
@@ -528,7 +513,7 @@ fn update_prompt<'prompt>(
         }
     };
 
-    nu_prompt.update_prompt(prompt_command, evaluated_prompt);
+    nu_prompt.update_prompt(evaluated_prompt);
 
     nu_prompt as &dyn Prompt
 }
