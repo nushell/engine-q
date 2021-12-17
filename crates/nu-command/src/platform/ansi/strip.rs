@@ -40,8 +40,8 @@ impl Command for SubCommand {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "strip ansi escape sequences from string",
-            example: "echo [(ansi gb) 'hello' (ansi reset)] | str collect | ansi strip",
-            result: None,
+            example: r#"echo [ (ansi green) (ansi cursor_on) "hello" ] | str collect | ansi strip"#,
+            result: Some(Value::test_string("hello")),
         }]
     }
 }
