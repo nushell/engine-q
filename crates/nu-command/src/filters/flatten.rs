@@ -47,7 +47,7 @@ impl Command for Flatten {
                 result: None
             },
             Example {
-                description: "flatten a table",
+                description: "flatten a table, get the first item",
                 example: "[[N, u, s, h, e, l, l]] | flatten | first",
                 result: None,
             },
