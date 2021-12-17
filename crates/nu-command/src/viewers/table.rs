@@ -1,6 +1,6 @@
-use super::color_config::style_primitive;
-use crate::viewers::color_config::get_color_config;
 use lscolors::{LsColors, Style};
+use nu_color_config::{get_color_config, style_primitive};
+use nu_engine::env_to_string;
 use nu_protocol::ast::{Call, PathMember};
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
@@ -41,7 +41,7 @@ impl Command for Table {
         input: PipelineData,
     ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
         let ctrlc = engine_state.ctrlc.clone();
-        let config = stack.get_config()?;
+        let config = stack.get_config().unwrap_or_default();
         let color_hm = get_color_config(&config);
 
         let term_width = if let Some((Width(w), Height(_h))) = terminal_size::terminal_size() {
@@ -75,7 +75,13 @@ impl Command for Table {
                         let ctrlc = ctrlc.clone();
 
                         let ls_colors = match stack.get_env_var("LS_COLORS") {
-                            Some(s) => LsColors::from_string(&s),
+                            Some(v) => LsColors::from_string(&env_to_string(
+                                "LS_COLORS",
+                                v,
+                                engine_state,
+                                stack,
+                                &config,
+                            )?),
                             None => LsColors::default(),
                         };
 

@@ -82,7 +82,7 @@ pub fn trim_quotes(bytes: &[u8]) -> &[u8] {
     }
 }
 
-fn check_call(command: Span, sig: &Signature, call: &Call) -> Option<ParseError> {
+pub fn check_call(command: Span, sig: &Signature, call: &Call) -> Option<ParseError> {
     // Allow the call to pass if they pass in the help flag
     if call.named.iter().any(|(n, _)| n.item == "help") {
         return None;
@@ -388,7 +388,7 @@ fn calculate_end_span(
     }
 }
 
-fn parse_multispan_value(
+pub fn parse_multispan_value(
     working_set: &mut StateWorkingSet,
     spans: &[Span],
     spans_idx: &mut usize,
@@ -3018,7 +3018,6 @@ pub fn parse_math_expression(
                 ty: result_ty,
                 custom_completion: None,
             });
-            // }
         }
         expr_stack.push(op);
         expr_stack.push(rhs);

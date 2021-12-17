@@ -7,7 +7,7 @@ use nu_protocol::{
 
 use crate::To;
 
-use super::{Date, From, Into, Math, Random, Split, Str, Url};
+use super::{Date, From, Into, Math, Path, Random, Split, Str, StrCollect, Url};
 
 pub fn test_examples(cmd: impl Command + 'static) {
     let examples = cmd.examples();
@@ -18,14 +18,17 @@ pub fn test_examples(cmd: impl Command + 'static) {
         // Try to keep this working set small to keep tests running as fast as possible
         let mut working_set = StateWorkingSet::new(&*engine_state);
         working_set.add_decl(Box::new(Str));
+        working_set.add_decl(Box::new(StrCollect));
         working_set.add_decl(Box::new(From));
         working_set.add_decl(Box::new(To));
         working_set.add_decl(Box::new(Into));
         working_set.add_decl(Box::new(Random));
         working_set.add_decl(Box::new(Split));
         working_set.add_decl(Box::new(Math));
+        working_set.add_decl(Box::new(Path));
         working_set.add_decl(Box::new(Date));
         working_set.add_decl(Box::new(Url));
+        working_set.add_decl(Box::new(StrCollect));
 
         use super::Echo;
         working_set.add_decl(Box::new(Echo));

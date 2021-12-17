@@ -1,8 +1,49 @@
-use crate::{ShellError, Value};
+use crate::{BlockId, ShellError, Span, Value};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 const ANIMATE_PROMPT_DEFAULT: bool = false;
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct EnvConversion {
+    pub from_string: (BlockId, Span),
+    pub to_string: (BlockId, Span),
+}
+
+impl EnvConversion {
+    pub fn from_record(value: &Value) -> Result<Self, ShellError> {
+        let record = value.as_record()?;
+
+        let mut conv_map = HashMap::new();
+
+        for (k, v) in record.0.iter().zip(record.1) {
+            if (k == "from_string") || (k == "to_string") {
+                conv_map.insert(k.as_str(), (v.as_block()?, v.span()?));
+            } else {
+                return Err(ShellError::UnsupportedConfigValue(
+                    "'from_string' and 'to_string' fields".into(),
+                    k.into(),
+                    value.span()?,
+                ));
+            }
+        }
+
+        match (conv_map.get("from_string"), conv_map.get("to_string")) {
+            (None, _) => Err(ShellError::MissingConfigValue(
+                "'from_string' field".into(),
+                value.span()?,
+            )),
+            (_, None) => Err(ShellError::MissingConfigValue(
+                "'to_string' field".into(),
+                value.span()?,
+            )),
+            (Some(from), Some(to)) => Ok(EnvConversion {
+                from_string: *from,
+                to_string: *to,
+            }),
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Config {
@@ -16,6 +57,7 @@ pub struct Config {
     pub float_precision: i64,
     pub filesize_format: String,
     pub use_ansi_coloring: bool,
+    pub env_conversions: HashMap<String, EnvConversion>,
 }
 
 impl Default for Config {
@@ -31,6 +73,7 @@ impl Default for Config {
             float_precision: 4,
             filesize_format: "auto".into(),
             use_ansi_coloring: true,
+            env_conversions: HashMap::new(), // TODO: Add default conversoins
         }
     }
 }
@@ -65,10 +108,40 @@ impl Value {
                     config.use_ls_colors = value.as_bool()?;
                 }
                 "color_config" => {
-                    let (cols, vals) = value.as_record()?;
+                    let (cols, inner_vals) = value.as_record()?;
                     let mut hm = HashMap::new();
-                    for (k, v) in cols.iter().zip(vals) {
-                        hm.insert(k.to_string(), v.as_string()?);
+                    for (k, v) in cols.iter().zip(inner_vals) {
+                        match &v {
+                            Value::Record {
+                                cols: inner_cols,
+                                vals: inner_vals,
+                                span: _,
+                            } => {
+                                // make a string from our config.color_config section that
+                                // looks like this: { fg: "#rrggbb" bg: "#rrggbb" attr: "abc", }
+                                // the real key here was to have quotes around the values but not
+                                // require them around the keys.
+
+                                // maybe there's a better way to generate this but i'm not sure
+                                // what it is.
+                                let key = k.to_string();
+                                let mut val: String = inner_cols
+                                    .iter()
+                                    .zip(inner_vals)
+                                    .map(|(x, y)| {
+                                        let clony = y.clone();
+                                        format!("{}: \"{}\" ", x, clony.into_string(", ", &config))
+                                    })
+                                    .collect();
+                                // now insert the braces at the front and the back to fake the json string
+                                val.insert(0, '{');
+                                val.push('}');
+                                hm.insert(key, val);
+                            }
+                            _ => {
+                                hm.insert(k.to_string(), v.as_string()?);
+                            }
+                        }
                     }
                     config.color_config = hm;
                 }
@@ -98,6 +171,16 @@ impl Value {
                 }
                 "filesize_format" => {
                     config.filesize_format = value.as_string()?.to_lowercase();
+                }
+                "env_conversions" => {
+                    let (env_vars, conversions) = value.as_record()?;
+                    let mut env_conversions = HashMap::new();
+
+                    for (env_var, record) in env_vars.iter().zip(conversions) {
+                        env_conversions.insert(env_var.into(), EnvConversion::from_record(record)?);
+                    }
+
+                    config.env_conversions = env_conversions;
                 }
                 _ => {}
             }

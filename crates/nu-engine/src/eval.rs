@@ -434,7 +434,7 @@ pub fn eval_subexpression(
                             // to be used later
                             // FIXME: the trimming of the end probably needs to live in a better place
 
-                            let config = stack.get_config()?;
+                            let config = stack.get_config().unwrap_or_default();
 
                             let mut s = input.collect_string("", &config);
                             if s.ends_with('\n') {
@@ -472,13 +472,7 @@ pub fn eval_variable(
 
         let env_vars = stack.get_env_vars();
         let env_columns: Vec<_> = env_vars.keys().map(|x| x.to_string()).collect();
-        let env_values: Vec<_> = env_vars
-            .values()
-            .map(|x| Value::String {
-                val: x.to_string(),
-                span,
-            })
-            .collect();
+        let env_values: Vec<_> = env_vars.values().cloned().collect();
 
         output_cols.push("env".into());
         output_vals.push(Value::Record {
@@ -852,7 +846,7 @@ pub fn eval_variable(
     }
 }
 
-pub fn compute(size: i64, unit: Unit, span: Span) -> Value {
+fn compute(size: i64, unit: Unit, span: Span) -> Value {
     match unit {
         Unit::Byte => Value::Filesize { val: size, span },
         Unit::Kilobyte => Value::Filesize {

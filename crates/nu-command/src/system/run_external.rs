@@ -2,10 +2,12 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::env;
 use std::io::{BufRead, BufReader, Write};
+use std::path::Path;
 use std::process::{Command as CommandSys, Stdio};
 use std::sync::atomic::Ordering;
 use std::sync::mpsc;
 
+use nu_engine::env_to_strings;
 use nu_protocol::engine::{EngineState, Stack};
 use nu_protocol::{ast::Call, engine::Command, ShellError, Signature, SyntaxShape, Value};
 use nu_protocol::{Category, Config, IntoInterruptiblePipelineData, PipelineData, Span, Spanned};
@@ -47,18 +49,47 @@ impl Command for External {
         call: &Call,
         input: PipelineData,
     ) -> Result<PipelineData, ShellError> {
-        let name: Spanned<String> = call.req(engine_state, stack, 0)?;
+        let mut name: Spanned<String> = call.req(engine_state, stack, 0)?;
         let args: Vec<String> = call.rest(engine_state, stack, 1)?;
         let last_expression = call.has_flag("last_expression");
-        let env_vars = stack.get_env_vars();
 
-        let config = stack.get_config()?;
+        // Translate environment variables from Values to Strings
+        let config = stack.get_config().unwrap_or_default();
+        let env_vars_str = env_to_strings(engine_state, stack, &config)?;
+
+        // Check if this is a single call to a directory, if so auto-cd
+        let path = nu_path::expand_path(&name.item);
+        let orig = name.item.clone();
+        name.item = path.to_string_lossy().to_string();
+
+        let path = Path::new(&name.item);
+        if (orig.starts_with('.')
+            || orig.starts_with('~')
+            || orig.starts_with('/')
+            || orig.starts_with('\\'))
+            && path.is_dir()
+            && args.is_empty()
+        {
+            // We have an auto-cd
+            let _ = std::env::set_current_dir(&path);
+
+            //FIXME: this only changes the current scope, but instead this environment variable
+            //should probably be a block that loads the information from the state in the overlay
+            stack.add_env_var(
+                "PWD".into(),
+                Value::String {
+                    val: name.item.clone(),
+                    span: Span::unknown(),
+                },
+            );
+            return Ok(PipelineData::new(call.head));
+        }
 
         let command = ExternalCommand {
             name,
             args,
             last_expression,
-            env_vars,
+            env_vars: env_vars_str,
             call,
         };
         command.run_with_input(engine_state, input, config)
