@@ -278,10 +278,7 @@ fn action(
             let got = format!("value is {}, not string", other.get_type().to_string());
 
             Value::Error {
-                error: ShellError::TypeMismatch(
-                    got,
-                    other.span().unwrap_or(Span { start: 0, end: 0 }),
-                ),
+                error: ShellError::TypeMismatch(got, other.span().unwrap_or(*command_span)),
             }
         }
     }
