@@ -123,7 +123,7 @@ fn command(
     let roll_type = RollType::from_str(&roll_type.item, roll_type.span)?;
 
     let rolling_opts = RollingOptions {
-        window_size: window_size,
+        window_size,
         min_periods: window_size,
         weights: None,
         center: false,
