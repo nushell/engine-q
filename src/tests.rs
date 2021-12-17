@@ -4,8 +4,6 @@ use std::io::Write;
 use std::process::Command;
 use tempfile::NamedTempFile;
 
-use nu_protocol::{Span, Value};
-
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[cfg(test)]
@@ -1265,24 +1263,8 @@ fn comment_multiline() -> TestResult {
 }
 
 #[test]
-
 fn flatten_simple_list() -> TestResult {
-    run_test(
-        "[[N, u, s, h, e, l, l]] | flatten",
-        "N\nu\ns\nh\ne\nl\nl"
-        // Value::List {
-        //     vals: vec![
-        //         Value::test_string("N"),
-        //         Value::test_string("u"),
-        //         Value::test_string("s"),
-        //         Value::test_string("h"),
-        //         Value::test_string("e"),
-        //         Value::test_string("l"),
-        //         Value::test_string("l"),
-        //     ],
-        //     span: Span::unknown(),
-        // },
-    )
+    run_test("[[N, u, s, h, e, l, l]] | flatten", "N\nu\ns\nh\ne\nl\nl")
 }
 
 #[test]
