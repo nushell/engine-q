@@ -1,38 +1,38 @@
 use super::super::values::{Column, NuDataFrame};
 
+use nu_engine::CallExt;
 use nu_protocol::{
     ast::Call,
     engine::{Command, EngineState, Stack},
-    Category, Example, PipelineData, ShellError, Signature, Span,
+    Category, Example, PipelineData, ShellError, Signature, Span, SyntaxShape,
 };
-use polars::prelude::IntoSeries;
 
 #[derive(Clone)]
-pub struct GetNanosecond;
+pub struct Shift;
 
-impl Command for GetNanosecond {
+impl Command for Shift {
     fn name(&self) -> &str {
-        "df get-nanosecond"
+        "df shift"
     }
 
     fn usage(&self) -> &str {
-        "Gets nanosecond from date"
+        "Shifts the values by a given period"
     }
 
     fn signature(&self) -> Signature {
-        Signature::build(self.name()).category(Category::Custom("dataframe".into()))
+        Signature::build(self.name())
+            .required("period", SyntaxShape::Int, "shift period")
+            .category(Category::Custom("dataframe".into()))
     }
 
     fn examples(&self) -> Vec<Example> {
         vec![Example {
-            description: "Returns nanosecond from a date",
-            example: r#"let dt = ('2020-08-04T16:39:18+00:00' | into datetime -z 'UTC');
-    let df = ([$dt $dt] | df to-df);
-    $df | df get-nanosecond"#,
+            description: "Shifts the values by a given period",
+            example: "[1 2 2 3 3] | df to-df | df shift 2 | df drop-nulls",
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "0".to_string(),
-                    vec![0.into(), 0.into()],
+                    vec![1.into(), 2.into(), 2.into()],
                 )])
                 .expect("simple df for test should not fail")
                 .into_value(Span::unknown()),
@@ -52,36 +52,28 @@ impl Command for GetNanosecond {
 }
 
 fn command(
-    _engine_state: &EngineState,
-    _stack: &mut Stack,
+    engine_state: &EngineState,
+    stack: &mut Stack,
     call: &Call,
     input: PipelineData,
 ) -> Result<PipelineData, ShellError> {
+    let period: i64 = call.req(engine_state, stack, 0)?;
+
     let df = NuDataFrame::try_from_pipeline(input, call.head)?;
-    let series = df.as_series(call.head)?;
+    let series = df.as_series(call.head)?.shift(period);
 
-    let casted = series.datetime().map_err(|e| {
-        ShellError::SpannedLabeledError(
-            "Error casting to datetime type".into(),
-            e.to_string(),
-            call.head,
-        )
-    })?;
-
-    let res = casted.nanosecond().into_series();
-
-    NuDataFrame::try_from_series(vec![res.into_series()], call.head)
+    NuDataFrame::try_from_series(vec![series], call.head)
         .map(|df| PipelineData::Value(NuDataFrame::into_value(df, call.head), None))
 }
 
 #[cfg(test)]
 mod test {
-    use super::super::super::super::IntoDatetime;
     use super::super::super::test_dataframe::test_dataframe;
+    use super::super::super::DropNulls;
     use super::*;
 
     #[test]
     fn test_examples() {
-        test_dataframe(vec![Box::new(GetNanosecond {}), Box::new(IntoDatetime {})])
+        test_dataframe(vec![Box::new(Shift {}), Box::new(DropNulls {})])
     }
 }

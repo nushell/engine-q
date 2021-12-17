@@ -1,4 +1,4 @@
-use super::super::values::{Column, NuDataFrame};
+use super::super::super::values::{Column, NuDataFrame};
 
 use nu_protocol::{
     ast::Call,
@@ -8,15 +8,15 @@ use nu_protocol::{
 use polars::prelude::IntoSeries;
 
 #[derive(Clone)]
-pub struct GetHour;
+pub struct GetSecond;
 
-impl Command for GetHour {
+impl Command for GetSecond {
     fn name(&self) -> &str {
-        "df get-hour"
+        "df get-second"
     }
 
     fn usage(&self) -> &str {
-        "Gets hour from date"
+        "Gets second from date"
     }
 
     fn signature(&self) -> Signature {
@@ -25,14 +25,14 @@ impl Command for GetHour {
 
     fn examples(&self) -> Vec<Example> {
         vec![Example {
-            description: "Returns hour from a date",
+            description: "Returns second from a date",
             example: r#"let dt = ('2020-08-04T16:39:18+00:00' | into datetime -z 'UTC');
     let df = ([$dt $dt] | df to-df);
-    $df | df get-hour"#,
+    $df | df get-second"#,
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "0".to_string(),
-                    vec![16.into(), 16.into()],
+                    vec![18.into(), 18.into()],
                 )])
                 .expect("simple df for test should not fail")
                 .into_value(Span::unknown()),
@@ -68,7 +68,7 @@ fn command(
         )
     })?;
 
-    let res = casted.hour().into_series();
+    let res = casted.second().into_series();
 
     NuDataFrame::try_from_series(vec![res.into_series()], call.head)
         .map(|df| PipelineData::Value(NuDataFrame::into_value(df, call.head), None))
@@ -76,12 +76,12 @@ fn command(
 
 #[cfg(test)]
 mod test {
-    use super::super::super::super::IntoDatetime;
-    use super::super::super::test_dataframe::test_dataframe;
+    use super::super::super::super::super::IntoDatetime;
+    use super::super::super::super::test_dataframe::test_dataframe;
     use super::*;
 
     #[test]
     fn test_examples() {
-        test_dataframe(vec![Box::new(GetHour {}), Box::new(IntoDatetime {})])
+        test_dataframe(vec![Box::new(GetSecond {}), Box::new(IntoDatetime {})])
     }
 }

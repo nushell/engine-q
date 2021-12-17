@@ -1,4 +1,4 @@
-use super::super::values::{Column, NuDataFrame};
+use super::super::super::values::{Column, NuDataFrame};
 
 use nu_engine::CallExt;
 use nu_protocol::{
@@ -9,35 +9,46 @@ use nu_protocol::{
 use polars::prelude::IntoSeries;
 
 #[derive(Clone)]
-pub struct Contains;
+pub struct ReplaceAll;
 
-impl Command for Contains {
+impl Command for ReplaceAll {
     fn name(&self) -> &str {
-        "df contains"
+        "df replace-all"
     }
 
     fn usage(&self) -> &str {
-        "Checks if a pattern is contained in a string"
+        "Replace all (sub)strings by a regex pattern"
     }
 
     fn signature(&self) -> Signature {
         Signature::build(self.name())
-            .required(
+            .required_named(
                 "pattern",
                 SyntaxShape::String,
-                "Regex pattern to be searched",
+                "Regex pattern to be matched",
+                Some('p'),
+            )
+            .required_named(
+                "replace",
+                SyntaxShape::String,
+                "replacing string",
+                Some('r'),
             )
             .category(Category::Custom("dataframe".into()))
     }
 
     fn examples(&self) -> Vec<Example> {
         vec![Example {
-            description: "Returns boolean indicating if pattern was found",
-            example: "[abc acb acb] | df to-df | df contains ab",
+            description: "Replaces string",
+            example: "[abac abac abac] | df to-df | df replace-all -p a -r A",
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "0".to_string(),
-                    vec![true.into(), false.into(), false.into()],
+                    vec![
+                        "AbAc".to_string().into(),
+                        "AbAc".to_string().into(),
+                        "AbAc".to_string().into(),
+                    ],
                 )])
                 .expect("simple df for test should not fail")
                 .into_value(Span::unknown()),
@@ -62,25 +73,32 @@ fn command(
     call: &Call,
     input: PipelineData,
 ) -> Result<PipelineData, ShellError> {
-    let df = NuDataFrame::try_from_pipeline(input, call.head)?;
-    let pattern: String = call.req(engine_state, stack, 0)?;
+    let pattern: String = call
+        .get_flag(engine_state, stack, "pattern")?
+        .expect("required value");
+    let replace: String = call
+        .get_flag(engine_state, stack, "replace")?
+        .expect("required value");
 
+    let df = NuDataFrame::try_from_pipeline(input, call.head)?;
     let series = df.as_series(call.head)?;
     let chunked = series.utf8().map_err(|e| {
         ShellError::SpannedLabeledError(
-            "The contains command only with string columns".into(),
+            "Error convertion to string".into(),
             e.to_string(),
             call.head,
         )
     })?;
 
-    let res = chunked.contains(&pattern).map_err(|e| {
+    let mut res = chunked.replace_all(&pattern, &replace).map_err(|e| {
         ShellError::SpannedLabeledError(
-            "Error searching in series".into(),
+            "Error finding pattern other".into(),
             e.to_string(),
             call.head,
         )
     })?;
+
+    res.rename(series.name());
 
     NuDataFrame::try_from_series(vec![res.into_series()], call.head)
         .map(|df| PipelineData::Value(NuDataFrame::into_value(df, call.head), None))
@@ -88,11 +106,11 @@ fn command(
 
 #[cfg(test)]
 mod test {
-    use super::super::super::test_dataframe::test_dataframe;
+    use super::super::super::super::test_dataframe::test_dataframe;
     use super::*;
 
     #[test]
     fn test_examples() {
-        test_dataframe(vec![Box::new(Contains {})])
+        test_dataframe(vec![Box::new(ReplaceAll {})])
     }
 }

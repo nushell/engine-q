@@ -5,18 +5,17 @@ use nu_protocol::{
     engine::{Command, EngineState, Stack},
     Category, Example, PipelineData, ShellError, Signature, Span,
 };
-use polars::prelude::IntoSeries;
 
 #[derive(Clone)]
-pub struct GetSecond;
+pub struct ValueCount;
 
-impl Command for GetSecond {
+impl Command for ValueCount {
     fn name(&self) -> &str {
-        "df get-second"
+        "df value-counts"
     }
 
     fn usage(&self) -> &str {
-        "Gets second from date"
+        "Returns a dataframe with the counts for unique values in series"
     }
 
     fn signature(&self) -> Signature {
@@ -25,15 +24,13 @@ impl Command for GetSecond {
 
     fn examples(&self) -> Vec<Example> {
         vec![Example {
-            description: "Returns second from a date",
-            example: r#"let dt = ('2020-08-04T16:39:18+00:00' | into datetime -z 'UTC');
-    let df = ([$dt $dt] | df to-df);
-    $df | df get-second"#,
+            description: "Calculates value counts",
+            example: "[5 5 5 5 6 6] | df to-df | df value-counts",
             result: Some(
-                NuDataFrame::try_from_columns(vec![Column::new(
-                    "0".to_string(),
-                    vec![18.into(), 18.into()],
-                )])
+                NuDataFrame::try_from_columns(vec![
+                    Column::new("0".to_string(), vec![5.into(), 6.into()]),
+                    Column::new("counts".to_string(), vec![4.into(), 2.into()]),
+                ])
                 .expect("simple df for test should not fail")
                 .into_value(Span::unknown()),
             ),
@@ -60,28 +57,28 @@ fn command(
     let df = NuDataFrame::try_from_pipeline(input, call.head)?;
     let series = df.as_series(call.head)?;
 
-    let casted = series.datetime().map_err(|e| {
-        ShellError::SpannedLabeledError(
-            "Error casting to datetime type".into(),
+    let res = series.value_counts().map_err(|e| {
+        ShellError::SpannedLabeledErrorHelp(
+            "Error calculating value counts values".into(),
             e.to_string(),
             call.head,
+            "The str-slice command can only be used with string columns".into(),
         )
     })?;
 
-    let res = casted.second().into_series();
-
-    NuDataFrame::try_from_series(vec![res.into_series()], call.head)
-        .map(|df| PipelineData::Value(NuDataFrame::into_value(df, call.head), None))
+    Ok(PipelineData::Value(
+        NuDataFrame::dataframe_into_value(res, call.head),
+        None,
+    ))
 }
 
 #[cfg(test)]
 mod test {
-    use super::super::super::super::IntoDatetime;
     use super::super::super::test_dataframe::test_dataframe;
     use super::*;
 
     #[test]
     fn test_examples() {
-        test_dataframe(vec![Box::new(GetSecond {}), Box::new(IntoDatetime {})])
+        test_dataframe(vec![Box::new(ValueCount {})])
     }
 }

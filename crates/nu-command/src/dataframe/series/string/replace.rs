@@ -1,47 +1,53 @@
-use super::super::values::{Column, NuDataFrame};
+use super::super::super::values::{Column, NuDataFrame};
 
 use nu_engine::CallExt;
 use nu_protocol::{
     ast::Call,
     engine::{Command, EngineState, Stack},
-    Category, Example, PipelineData, ShellError, Signature, Span, SyntaxShape, Value,
+    Category, Example, PipelineData, ShellError, Signature, Span, SyntaxShape,
 };
 use polars::prelude::IntoSeries;
 
 #[derive(Clone)]
-pub struct Concatenate;
+pub struct Replace;
 
-impl Command for Concatenate {
+impl Command for Replace {
     fn name(&self) -> &str {
-        "df concatenate"
+        "df replace"
     }
 
     fn usage(&self) -> &str {
-        "Concatenates strings with other array"
+        "Replace the leftmost (sub)string by a regex pattern"
     }
 
     fn signature(&self) -> Signature {
         Signature::build(self.name())
-            .required(
-                "other",
-                SyntaxShape::Any,
-                "Other array with string to be concatenated",
+            .required_named(
+                "pattern",
+                SyntaxShape::String,
+                "Regex pattern to be matched",
+                Some('p'),
+            )
+            .required_named(
+                "replace",
+                SyntaxShape::String,
+                "replacing string",
+                Some('r'),
             )
             .category(Category::Custom("dataframe".into()))
     }
 
     fn examples(&self) -> Vec<Example> {
         vec![Example {
-            description: "Concatenate string",
-            example: r#"let other = ([za xs cd] | df to-df);
-    [abc abc abc] | df to-df | df concatenate $other"#,
+            description: "Replaces string",
+            example: "[abc abc abc] | df to-df | df replace -p ab -r AB",
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "0".to_string(),
                     vec![
-                        "abcza".to_string().into(),
-                        "abcxs".to_string().into(),
-                        "abccd".to_string().into(),
+                        "ABc".to_string().into(),
+                        "ABc".to_string().into(),
+                        "ABc".to_string().into(),
                     ],
                 )])
                 .expect("simple df for test should not fail")
@@ -67,31 +73,30 @@ fn command(
     call: &Call,
     input: PipelineData,
 ) -> Result<PipelineData, ShellError> {
+    let pattern: String = call
+        .get_flag(engine_state, stack, "pattern")?
+        .expect("required value");
+    let replace: String = call
+        .get_flag(engine_state, stack, "replace")?
+        .expect("required value");
+
     let df = NuDataFrame::try_from_pipeline(input, call.head)?;
-
-    let other: Value = call.req(engine_state, stack, 0)?;
-    let other_span = other.span()?;
-    let other_df = NuDataFrame::try_from_value(other)?;
-
-    let other_series = other_df.as_series(other_span)?;
-    let other_chunked = other_series.utf8().map_err(|e| {
-        ShellError::SpannedLabeledError(
-            "The concatenate only with string columns".into(),
-            e.to_string(),
-            other_span,
-        )
-    })?;
-
     let series = df.as_series(call.head)?;
     let chunked = series.utf8().map_err(|e| {
         ShellError::SpannedLabeledError(
-            "The concatenate only with string columns".into(),
+            "Error convertion to string".into(),
             e.to_string(),
             call.head,
         )
     })?;
 
-    let mut res = chunked.concat(other_chunked);
+    let mut res = chunked.replace(&pattern, &replace).map_err(|e| {
+        ShellError::SpannedLabeledError(
+            "Error finding pattern other".into(),
+            e.to_string(),
+            call.head,
+        )
+    })?;
 
     res.rename(series.name());
 
@@ -101,11 +106,11 @@ fn command(
 
 #[cfg(test)]
 mod test {
-    use super::super::super::test_dataframe::test_dataframe;
+    use super::super::super::super::test_dataframe::test_dataframe;
     use super::*;
 
     #[test]
     fn test_examples() {
-        test_dataframe(vec![Box::new(Concatenate {})])
+        test_dataframe(vec![Box::new(Replace {})])
     }
 }

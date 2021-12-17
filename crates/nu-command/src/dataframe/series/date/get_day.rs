@@ -1,4 +1,4 @@
-use super::super::values::{Column, NuDataFrame};
+use super::super::super::values::{Column, NuDataFrame};
 
 use nu_protocol::{
     ast::Call,
@@ -8,15 +8,15 @@ use nu_protocol::{
 use polars::prelude::IntoSeries;
 
 #[derive(Clone)]
-pub struct GetWeekDay;
+pub struct GetDay;
 
-impl Command for GetWeekDay {
+impl Command for GetDay {
     fn name(&self) -> &str {
-        "df get-weekday"
+        "df get-day"
     }
 
     fn usage(&self) -> &str {
-        "Gets weekday from date"
+        "Gets day from date"
     }
 
     fn signature(&self) -> Signature {
@@ -25,14 +25,14 @@ impl Command for GetWeekDay {
 
     fn examples(&self) -> Vec<Example> {
         vec![Example {
-            description: "Returns weekday from a date",
+            description: "Returns day from a date",
             example: r#"let dt = ('2020-08-04T16:39:18+00:00' | into datetime -z 'UTC');
     let df = ([$dt $dt] | df to-df);
-    $df | df get-weekday"#,
+    $df | df get-day"#,
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "0".to_string(),
-                    vec![1.into(), 1.into()],
+                    vec![4.into(), 4.into()],
                 )])
                 .expect("simple df for test should not fail")
                 .into_value(Span::unknown()),
@@ -68,7 +68,7 @@ fn command(
         )
     })?;
 
-    let res = casted.weekday().into_series();
+    let res = casted.day().into_series();
 
     NuDataFrame::try_from_series(vec![res.into_series()], call.head)
         .map(|df| PipelineData::Value(NuDataFrame::into_value(df, call.head), None))
@@ -76,12 +76,12 @@ fn command(
 
 #[cfg(test)]
 mod test {
-    use super::super::super::super::IntoDatetime;
-    use super::super::super::test_dataframe::test_dataframe;
+    use super::super::super::super::super::IntoDatetime;
+    use super::super::super::super::test_dataframe::test_dataframe;
     use super::*;
 
     #[test]
     fn test_examples() {
-        test_dataframe(vec![Box::new(GetWeekDay {}), Box::new(IntoDatetime {})])
+        test_dataframe(vec![Box::new(GetDay {}), Box::new(IntoDatetime {})])
     }
 }

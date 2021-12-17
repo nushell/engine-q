@@ -1,4 +1,4 @@
-use super::super::values::{Column, NuDataFrame};
+use super::super::super::values::{Column, NuDataFrame};
 
 use nu_protocol::{
     ast::Call,
@@ -8,15 +8,15 @@ use nu_protocol::{
 use polars::prelude::IntoSeries;
 
 #[derive(Clone)]
-pub struct GetMonth;
+pub struct ToLowerCase;
 
-impl Command for GetMonth {
+impl Command for ToLowerCase {
     fn name(&self) -> &str {
-        "df get-month"
+        "df to-lowercase"
     }
 
     fn usage(&self) -> &str {
-        "Gets month from date"
+        "Lowercase the strings in the column"
     }
 
     fn signature(&self) -> Signature {
@@ -25,14 +25,16 @@ impl Command for GetMonth {
 
     fn examples(&self) -> Vec<Example> {
         vec![Example {
-            description: "Returns month from a date",
-            example: r#"let dt = ('2020-08-04T16:39:18+00:00' | into datetime -z 'UTC');
-    let df = ([$dt $dt] | df to-df);
-    $df | df get-month"#,
+            description: "Modifies strings to lowercase",
+            example: "[Abc aBc abC] | df to-df | df to-lowercase",
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "0".to_string(),
-                    vec![8.into(), 8.into()],
+                    vec![
+                        "abc".to_string().into(),
+                        "abc".to_string().into(),
+                        "abc".to_string().into(),
+                    ],
                 )])
                 .expect("simple df for test should not fail")
                 .into_value(Span::unknown()),
@@ -60,15 +62,17 @@ fn command(
     let df = NuDataFrame::try_from_pipeline(input, call.head)?;
     let series = df.as_series(call.head)?;
 
-    let casted = series.datetime().map_err(|e| {
-        ShellError::SpannedLabeledError(
-            "Error casting to datetime type".into(),
+    let casted = series.utf8().map_err(|e| {
+        ShellError::SpannedLabeledErrorHelp(
+            "Error casting to string".into(),
             e.to_string(),
             call.head,
+            "The str-slice command can only be used with string columns".into(),
         )
     })?;
 
-    let res = casted.month().into_series();
+    let mut res = casted.to_lowercase();
+    res.rename(series.name());
 
     NuDataFrame::try_from_series(vec![res.into_series()], call.head)
         .map(|df| PipelineData::Value(NuDataFrame::into_value(df, call.head), None))
@@ -76,12 +80,11 @@ fn command(
 
 #[cfg(test)]
 mod test {
-    use super::super::super::super::IntoDatetime;
-    use super::super::super::test_dataframe::test_dataframe;
+    use super::super::super::super::test_dataframe::test_dataframe;
     use super::*;
 
     #[test]
     fn test_examples() {
-        test_dataframe(vec![Box::new(GetMonth {}), Box::new(IntoDatetime {})])
+        test_dataframe(vec![Box::new(ToLowerCase {})])
     }
 }
