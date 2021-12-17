@@ -129,8 +129,7 @@ pub fn create_default_context() -> EngineState {
             StrStartsWith,
             StrSubstring,
             StrTrim,
-            StrUpcase,
-            Ansi
+            StrUpcase
         };
 
         // FileSystem
@@ -146,6 +145,8 @@ pub fn create_default_context() -> EngineState {
 
         // Platform
         bind_command! {
+            Ansi,
+            AnsiGradient,
             Clear,
             Kill,
             Sleep,
