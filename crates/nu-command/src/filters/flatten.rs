@@ -232,7 +232,6 @@ fn flat_value(columns: &[CellPath], item: &Value, _name_tag: Span) -> Vec<Value>
                 };
                 expanded.push(r);
             }
-
             expanded
         } else if !is_table(item) {
             if let Value::List { vals, span: _ } = item {
