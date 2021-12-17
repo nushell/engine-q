@@ -205,7 +205,6 @@ fn flat_value(columns: &[CellPath], item: &Value, _name_tag: Span) -> Vec<Value>
                             ))
                         }
                     }
-
                     _ => {
                         out.insert(column.to_string(), value.clone());
                     }
