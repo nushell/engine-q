@@ -61,7 +61,7 @@ impl Command for Flatten {
             Example {
                 description: "restrict the flattening by passing column names",
                 example: "[[origin, crate, versions]; [World, ([[name]; ['nu-cli']]), ['0.21', '0.22']]] | flatten versions | last | get versions",
-                result: None,//Some(Value::test_string("0.22")),
+                result: None,
             }
         ]
     }
@@ -136,8 +136,7 @@ fn flat_value(columns: &[CellPath], item: &Value, _name_tag: Span) -> Vec<Value>
                             }
                             continue;
                         }
-                        println!("{:?}", out);
-
+                        
                         let cols = cs.into_iter().flat_map(|f| f.to_vec());
                         let vals = vs.into_iter().flat_map(|f| f.to_vec());
 
@@ -211,7 +210,7 @@ fn flat_value(columns: &[CellPath], item: &Value, _name_tag: Span) -> Vec<Value>
             
 
             let mut expanded = vec![];
-            println!("{:?}", out);
+            
             if let Some(TableInside::Entries(column, _, entries)) = a_table {
                 for entry in entries {
                     let mut base = out.clone();
@@ -227,7 +226,6 @@ fn flat_value(columns: &[CellPath], item: &Value, _name_tag: Span) -> Vec<Value>
         
         } else if !is_table(item) {
             if let Value::List { vals, span:_ } = item {
-                //vals.iter().cloned().collect::<Vec<_>>().to_vec()
                 vals.to_vec()
             } else {
                 vec![]

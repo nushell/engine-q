@@ -4,6 +4,8 @@ use std::io::Write;
 use std::process::Command;
 use tempfile::NamedTempFile;
 
+use nu_protocol::{Span, Value};
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[cfg(test)]
@@ -1259,5 +1261,47 @@ fn comment_multiline() -> TestResult {
         $x + $y
     }; foo"#,
         "10",
+    )
+}
+
+#[test]
+
+fn flatten_simple_list() -> TestResult {
+    run_test(
+        "[[N, u, s, h, e, l, l]] | flatten",
+        "N\nu\ns\nh\ne\nl\nl"
+        // Value::List {
+        //     vals: vec![
+        //         Value::test_string("N"),
+        //         Value::test_string("u"),
+        //         Value::test_string("s"),
+        //         Value::test_string("h"),
+        //         Value::test_string("e"),
+        //         Value::test_string("l"),
+        //         Value::test_string("l"),
+        //     ],
+        //     span: Span::unknown(),
+        // },
+    )
+}
+
+#[test]
+fn flatten_get_simple_list() -> TestResult {
+    run_test("[[N, u, s, h, e, l, l]] | flatten | get 0", "N")
+}
+
+#[test]
+fn flatten_table_get() -> TestResult {
+    run_test(
+        "[[origin, people]; [Ecuador, ([[name, meal]; ['Andres', 'arepa']])]] | flatten | get meal",
+        "arepa",
+    )
+}
+
+#[test]
+fn flatten_table_column_get_last() -> TestResult {
+    run_test(
+        "[[origin, crate, versions]; [World, ([[name]; ['nu-cli']]), ['0.21', '0.22']]] | flatten versions | last | get versions",
+        "0.22",
     )
 }
