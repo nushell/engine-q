@@ -12,7 +12,7 @@ pub struct GetSecond;
 
 impl Command for GetSecond {
     fn name(&self) -> &str {
-        "df get-second"
+        "dfr get-second"
     }
 
     fn usage(&self) -> &str {
@@ -27,8 +27,8 @@ impl Command for GetSecond {
         vec![Example {
             description: "Returns second from a date",
             example: r#"let dt = ('2020-08-04T16:39:18+00:00' | into datetime -z 'UTC');
-    let df = ([$dt $dt] | df to-df);
-    $df | df get-second"#,
+    let df = ([$dt $dt] | dfr to-df);
+    $df | dfr get-second"#,
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "0".to_string(),

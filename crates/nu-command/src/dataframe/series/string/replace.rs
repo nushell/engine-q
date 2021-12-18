@@ -13,7 +13,7 @@ pub struct Replace;
 
 impl Command for Replace {
     fn name(&self) -> &str {
-        "df replace"
+        "dfr replace"
     }
 
     fn usage(&self) -> &str {
@@ -40,7 +40,7 @@ impl Command for Replace {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "Replaces string",
-            example: "[abc abc abc] | df to-df | df replace -p ab -r AB",
+            example: "[abc abc abc] | dfr to-df | dfr replace -p ab -r AB",
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "0".to_string(),

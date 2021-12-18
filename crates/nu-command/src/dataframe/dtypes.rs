@@ -10,7 +10,7 @@ pub struct DataTypes;
 
 impl Command for DataTypes {
     fn name(&self) -> &str {
-        "df dtypes"
+        "dfr dtypes"
     }
 
     fn usage(&self) -> &str {
@@ -24,7 +24,7 @@ impl Command for DataTypes {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "Dataframe dtypes",
-            example: "[[a b]; [1 2] [3 4]] | df to-df | df dtypes",
+            example: "[[a b]; [1 2] [3 4]] | dfr to-df | dfr dtypes",
             result: Some(
                 NuDataFrame::try_from_columns(vec![
                     Column::new(

@@ -1,4 +1,4 @@
-use super::super::values::{Column, NuDataFrame};
+use super::super::super::values::{Column, NuDataFrame};
 
 use nu_engine::CallExt;
 use nu_protocol::{
@@ -9,39 +9,39 @@ use nu_protocol::{
 use polars::prelude::{ChunkSet, DataType, IntoSeries};
 
 #[derive(Clone)]
-pub struct SetWithIndex;
+pub struct SetSeries;
 
-impl Command for SetWithIndex {
+impl Command for SetSeries {
     fn name(&self) -> &str {
-        "df set-with-idx"
+        "dfr set"
     }
 
     fn usage(&self) -> &str {
-        "Sets value in the given index"
+        "Sets value where given mask is true"
     }
 
     fn signature(&self) -> Signature {
         Signature::build(self.name())
             .required("value", SyntaxShape::Any, "value to be inserted in series")
             .required_named(
-                "indices",
+                "mask",
                 SyntaxShape::Any,
-                "list of indices indicating where to set the value",
-                Some('i'),
+                "mask indicating insertions",
+                Some('m'),
             )
             .category(Category::Custom("dataframe".into()))
     }
 
     fn examples(&self) -> Vec<Example> {
         vec![Example {
-            description: "Set value in selected rows from series",
-            example: r#"let series = ([4 1 5 2 4 3] | df to-df);
-    let indices = ([0 2] | df to-df);
-    $series | df set-with-idx 6 -i $indices"#,
+            description: "Shifts the values by a given period",
+            example: r#"let s = ([1 2 2 3 3] | dfr to-df | dfr shift 2);
+    let mask = ($s | dfr is-null);
+    $s | dfr set 0 --mask $mask"#,
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "0".to_string(),
-                    vec![6.into(), 1.into(), 6.into(), 2.into(), 4.into(), 3.into()],
+                    vec![0.into(), 0.into(), 1.into(), 2.into(), 2.into()],
                 )])
                 .expect("simple df for test should not fail")
                 .into_value(Span::unknown()),
@@ -68,41 +68,26 @@ fn command(
 ) -> Result<PipelineData, ShellError> {
     let value: Value = call.req(engine_state, stack, 0)?;
 
-    let indices_value: Value = call
-        .get_flag(engine_state, stack, "indices")?
+    let mask_value: Value = call
+        .get_flag(engine_state, stack, "mask")?
         .expect("required named value");
-    let indices_span = indices_value.span()?;
-    let indices = NuDataFrame::try_from_value(indices_value)?.as_series(indices_span)?;
+    let mask_span = mask_value.span()?;
+    let mask = NuDataFrame::try_from_value(mask_value)?.as_series(mask_span)?;
 
-    let casted = match indices.dtype() {
-        DataType::UInt32 | DataType::UInt64 | DataType::Int32 | DataType::Int64 => {
-            indices.as_ref().cast(&DataType::UInt32).map_err(|e| {
-                ShellError::SpannedLabeledError(
-                    "Error casting indices".into(),
-                    e.to_string(),
-                    indices_span,
-                )
-            })
-        }
-        _ => Err(ShellError::SpannedLabeledErrorHelp(
+    let bool_mask = match mask.dtype() {
+        DataType::Boolean => mask.bool().map_err(|e| {
+            ShellError::SpannedLabeledError(
+                "Error casting to bool".into(),
+                e.to_string(),
+                mask_span,
+            )
+        }),
+        _ => Err(ShellError::SpannedLabeledError(
             "Incorrect type".into(),
-            "Series with incorrect type".into(),
-            indices_span,
-            "Consider using a Series with type int type".into(),
+            "can only use bool series as mask".into(),
+            mask_span,
         )),
     }?;
-
-    let indices = casted
-        .u32()
-        .map_err(|e| {
-            ShellError::SpannedLabeledError(
-                "Error casting indices".into(),
-                e.to_string(),
-                indices_span,
-            )
-        })?
-        .into_iter()
-        .filter_map(|val| val.map(|v| v as usize));
 
     let df = NuDataFrame::try_from_pipeline(input, call.head)?;
     let series = df.as_series(call.head)?;
@@ -113,7 +98,7 @@ fn command(
                 ShellError::SpannedLabeledError("Error casting to i64".into(), e.to_string(), span)
             })?;
 
-            let res = chunked.set_at_idx(indices, Some(val)).map_err(|e| {
+            let res = chunked.set(bool_mask, Some(val)).map_err(|e| {
                 ShellError::SpannedLabeledError("Error setting value".into(), e.to_string(), span)
             })?;
 
@@ -124,7 +109,7 @@ fn command(
                 ShellError::SpannedLabeledError("Error casting to f64".into(), e.to_string(), span)
             })?;
 
-            let res = chunked.set_at_idx(indices, Some(val)).map_err(|e| {
+            let res = chunked.set(bool_mask, Some(val)).map_err(|e| {
                 ShellError::SpannedLabeledError("Error setting value".into(), e.to_string(), span)
             })?;
 
@@ -139,15 +124,9 @@ fn command(
                 )
             })?;
 
-            let res = chunked
-                .set_at_idx(indices, Some(val.as_ref()))
-                .map_err(|e| {
-                    ShellError::SpannedLabeledError(
-                        "Error setting value".into(),
-                        e.to_string(),
-                        span,
-                    )
-                })?;
+            let res = chunked.set(bool_mask, Some(val.as_ref())).map_err(|e| {
+                ShellError::SpannedLabeledError("Error setting value".into(), e.to_string(), span)
+            })?;
 
             let mut res = res.into_series();
             res.rename("string");
@@ -169,11 +148,16 @@ fn command(
 
 #[cfg(test)]
 mod test {
-    use super::super::super::test_dataframe::test_dataframe;
+    use super::super::super::super::test_dataframe::test_dataframe;
+    use super::super::super::{IsNull, Shift};
     use super::*;
 
     #[test]
     fn test_examples() {
-        test_dataframe(vec![Box::new(SetWithIndex {})])
+        test_dataframe(vec![
+            Box::new(SetSeries {}),
+            Box::new(IsNull {}),
+            Box::new(Shift {}),
+        ])
     }
 }

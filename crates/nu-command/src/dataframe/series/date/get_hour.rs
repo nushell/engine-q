@@ -12,7 +12,7 @@ pub struct GetHour;
 
 impl Command for GetHour {
     fn name(&self) -> &str {
-        "df get-hour"
+        "dfr get-hour"
     }
 
     fn usage(&self) -> &str {
@@ -27,8 +27,8 @@ impl Command for GetHour {
         vec![Example {
             description: "Returns hour from a date",
             example: r#"let dt = ('2020-08-04T16:39:18+00:00' | into datetime -z 'UTC');
-    let df = ([$dt $dt] | df to-df);
-    $df | df get-hour"#,
+    let df = ([$dt $dt] | dfr to-df);
+    $df | dfr get-hour"#,
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "0".to_string(),

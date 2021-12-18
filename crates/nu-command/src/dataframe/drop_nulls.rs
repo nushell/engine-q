@@ -13,7 +13,7 @@ pub struct DropNulls;
 
 impl Command for DropNulls {
     fn name(&self) -> &str {
-        "df drop-nulls"
+        "dfr drop-nulls"
     }
 
     fn usage(&self) -> &str {
@@ -34,10 +34,10 @@ impl Command for DropNulls {
         vec![
             Example {
                 description: "drop null values in dataframe",
-                example: r#"let df = ([[a b]; [1 2] [3 0] [1 2]] | df to-df);
+                example: r#"let df = ([[a b]; [1 2] [3 0] [1 2]] | dfr to-df);
     let res = ($df.b / $df.b);
-    let a = ($df | df with-column $res --name res);
-    $a | df drop-nulls"#,
+    let a = ($df | dfr with-column $res --name res);
+    $a | dfr drop-nulls"#,
                 result: Some(
                     NuDataFrame::try_from_columns(vec![
                         Column::new("a".to_string(), vec![1.into(), 1.into()]),
@@ -50,8 +50,8 @@ impl Command for DropNulls {
             },
             Example {
                 description: "drop null values in dataframe",
-                example: r#"let s = ([1 2 0 0 3 4] | df to-df);
-    ($s / $s) | df drop-nulls"#,
+                example: r#"let s = ([1 2 0 0 3 4] | dfr to-df);
+    ($s / $s) | dfr drop-nulls"#,
                 result: Some(
                     NuDataFrame::try_from_columns(vec![Column::new(
                         "div_0_0".to_string(),

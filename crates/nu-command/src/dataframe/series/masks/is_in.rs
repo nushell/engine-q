@@ -1,4 +1,4 @@
-use super::super::values::{Column, NuDataFrame};
+use super::super::super::values::{Column, NuDataFrame};
 
 use nu_engine::CallExt;
 use nu_protocol::{
@@ -13,7 +13,7 @@ pub struct IsIn;
 
 impl Command for IsIn {
     fn name(&self) -> &str {
-        "df is-in"
+        "dfr is-in"
     }
 
     fn usage(&self) -> &str {
@@ -29,8 +29,8 @@ impl Command for IsIn {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "Checks if elements from a series are contained in right series",
-            example: r#"let other = ([1 3 6] | df to-df);
-    [5 6 6 6 8 8 8] | df to-df | df is-in $other"#,
+            example: r#"let other = ([1 3 6] | dfr to-df);
+    [5 6 6 6 8 8 8] | dfr to-df | dfr is-in $other"#,
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "is_in".to_string(),
@@ -94,7 +94,7 @@ fn command(
 
 #[cfg(test)]
 mod test {
-    use super::super::super::test_dataframe::test_dataframe;
+    use super::super::super::super::test_dataframe::test_dataframe;
     use super::*;
 
     #[test]

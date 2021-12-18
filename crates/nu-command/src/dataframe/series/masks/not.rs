@@ -1,4 +1,4 @@
-use super::super::values::{Column, NuDataFrame};
+use super::super::super::values::{Column, NuDataFrame};
 
 use nu_protocol::{
     ast::Call,
@@ -7,16 +7,18 @@ use nu_protocol::{
 };
 use polars::prelude::IntoSeries;
 
-#[derive(Clone)]
-pub struct IsNull;
+use std::ops::Not;
 
-impl Command for IsNull {
+#[derive(Clone)]
+pub struct NotSeries;
+
+impl Command for NotSeries {
     fn name(&self) -> &str {
-        "df is-null"
+        "dfr not"
     }
 
     fn usage(&self) -> &str {
-        "Creates mask where value is null"
+        "Inverts boolean mask"
     }
 
     fn signature(&self) -> Signature {
@@ -25,14 +27,12 @@ impl Command for IsNull {
 
     fn examples(&self) -> Vec<Example> {
         vec![Example {
-            description: "Create mask where values are null",
-            example: r#"let s = ([5 6 0 8] | df to-df);
-    let res = ($s / $s);
-    $res | df is-null"#,
+            description: "Inverts boolean mask",
+            example: "[$true $false $true] | dfr to-df | dfr not",
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
-                    "is_null".to_string(),
-                    vec![false.into(), false.into(), true.into(), false.into()],
+                    "0".to_string(),
+                    vec![false.into(), true.into(), false.into()],
                 )])
                 .expect("simple df for test should not fail")
                 .into_value(Span::unknown()),
@@ -58,9 +58,13 @@ fn command(
     input: PipelineData,
 ) -> Result<PipelineData, ShellError> {
     let df = NuDataFrame::try_from_pipeline(input, call.head)?;
+    let series = df.as_series(call.head)?;
 
-    let mut res = df.as_series(call.head)?.is_null();
-    res.rename("is_null");
+    let bool = series.bool().map_err(|e| {
+        ShellError::SpannedLabeledError("Error inverting mask".into(), e.to_string(), call.head)
+    })?;
+
+    let res = bool.not();
 
     NuDataFrame::try_from_series(vec![res.into_series()], call.head)
         .map(|df| PipelineData::Value(NuDataFrame::into_value(df, call.head), None))
@@ -68,11 +72,11 @@ fn command(
 
 #[cfg(test)]
 mod test {
-    use super::super::super::test_dataframe::test_dataframe;
+    use super::super::super::super::test_dataframe::test_dataframe;
     use super::*;
 
     #[test]
     fn test_examples() {
-        test_dataframe(vec![Box::new(IsNull {})])
+        test_dataframe(vec![Box::new(NotSeries {})])
     }
 }

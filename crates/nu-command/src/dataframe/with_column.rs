@@ -12,7 +12,7 @@ pub struct WithColumn;
 
 impl Command for WithColumn {
     fn name(&self) -> &str {
-        "df with-column"
+        "dfr with-column"
     }
 
     fn usage(&self) -> &str {
@@ -29,7 +29,8 @@ impl Command for WithColumn {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "Adds a series to the dataframe",
-            example: "[[a b]; [1 2] [3 4]] | df to-df | df with-column ([5 6] | df to-df) --name c",
+            example:
+                "[[a b]; [1 2] [3 4]] | dfr to-df | dfr with-column ([5 6] | dfr to-df) --name c",
             result: Some(
                 NuDataFrame::try_from_columns(vec![
                     Column::new("a".to_string(), vec![1.into(), 3.into()]),

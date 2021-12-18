@@ -12,7 +12,7 @@ pub struct Unique;
 
 impl Command for Unique {
     fn name(&self) -> &str {
-        "df unique"
+        "dfr unique"
     }
 
     fn usage(&self) -> &str {
@@ -26,7 +26,7 @@ impl Command for Unique {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "Returns unique values from a series",
-            example: "[2 2 2 2 2] | df to-df | df unique",
+            example: "[2 2 2 2 2] | dfr to-df | dfr unique",
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new("0".to_string(), vec![2.into()])])
                     .expect("simple df for test should not fail")

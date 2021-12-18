@@ -11,7 +11,7 @@ pub struct NUnique;
 
 impl Command for NUnique {
     fn name(&self) -> &str {
-        "df count-unique"
+        "dfr count-unique"
     }
 
     fn usage(&self) -> &str {
@@ -25,7 +25,7 @@ impl Command for NUnique {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "Counts unique values",
-            example: "[1 1 2 2 3 3 4] | df to-df | df count-unique",
+            example: "[1 1 2 2 3 3 4] | dfr to-df | dfr count-unique",
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "count_unique".to_string(),

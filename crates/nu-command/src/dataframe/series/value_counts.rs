@@ -11,7 +11,7 @@ pub struct ValueCount;
 
 impl Command for ValueCount {
     fn name(&self) -> &str {
-        "df value-counts"
+        "dfr value-counts"
     }
 
     fn usage(&self) -> &str {
@@ -25,7 +25,7 @@ impl Command for ValueCount {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "Calculates value counts",
-            example: "[5 5 5 5 6 6] | df to-df | df value-counts",
+            example: "[5 5 5 5 6 6] | dfr to-df | dfr value-counts",
             result: Some(
                 NuDataFrame::try_from_columns(vec![
                     Column::new("0".to_string(), vec![5.into(), 6.into()]),

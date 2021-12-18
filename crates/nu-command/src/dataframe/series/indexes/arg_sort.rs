@@ -1,4 +1,4 @@
-use super::super::values::{Column, NuDataFrame};
+use super::super::super::values::{Column, NuDataFrame};
 
 use nu_protocol::{
     ast::Call,
@@ -12,7 +12,7 @@ pub struct ArgSort;
 
 impl Command for ArgSort {
     fn name(&self) -> &str {
-        "df arg-sort"
+        "dfr arg-sort"
     }
 
     fn usage(&self) -> &str {
@@ -29,7 +29,7 @@ impl Command for ArgSort {
         vec![
             Example {
                 description: "Returns indexes for a sorted series",
-                example: "[1 2 2 3 3] | df to-df | df arg-sort",
+                example: "[1 2 2 3 3] | dfr to-df | dfr arg-sort",
                 result: Some(
                     NuDataFrame::try_from_columns(vec![Column::new(
                         "arg_sort".to_string(),
@@ -41,7 +41,7 @@ impl Command for ArgSort {
             },
             Example {
                 description: "Returns indexes for a sorted series",
-                example: "[1 2 2 3 3] | df to-df | df arg-sort -r",
+                example: "[1 2 2 3 3] | dfr to-df | dfr arg-sort -r",
                 result: Some(
                     NuDataFrame::try_from_columns(vec![Column::new(
                         "arg_sort".to_string(),
@@ -85,7 +85,7 @@ fn command(
 
 #[cfg(test)]
 mod test {
-    use super::super::super::test_dataframe::test_dataframe;
+    use super::super::super::super::test_dataframe::test_dataframe;
     use super::*;
 
     #[test]

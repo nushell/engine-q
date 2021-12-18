@@ -13,7 +13,7 @@ pub struct DropDF;
 
 impl Command for DropDF {
     fn name(&self) -> &str {
-        "df drop"
+        "dfr drop"
     }
 
     fn usage(&self) -> &str {
@@ -29,7 +29,7 @@ impl Command for DropDF {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "drop column a",
-            example: "[[a b]; [1 2] [3 4]] | df to-df | df drop a",
+            example: "[[a b]; [1 2] [3 4]] | dfr to-df | dfr drop a",
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "b".to_string(),

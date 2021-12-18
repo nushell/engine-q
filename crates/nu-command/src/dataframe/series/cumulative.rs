@@ -43,7 +43,7 @@ pub struct Cumulative;
 
 impl Command for Cumulative {
     fn name(&self) -> &str {
-        "df cum"
+        "dfr cum"
     }
 
     fn usage(&self) -> &str {
@@ -60,7 +60,7 @@ impl Command for Cumulative {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "Cumulative sum for a series",
-            example: "[1 2 3 4 5] | df to-df | df cum sum",
+            example: "[1 2 3 4 5] | dfr to-df | dfr cum sum",
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "0_cum_sum".to_string(),

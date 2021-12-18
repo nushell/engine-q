@@ -13,7 +13,7 @@ pub struct Contains;
 
 impl Command for Contains {
     fn name(&self) -> &str {
-        "df contains"
+        "dfr contains"
     }
 
     fn usage(&self) -> &str {
@@ -33,7 +33,7 @@ impl Command for Contains {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "Returns boolean indicating if pattern was found",
-            example: "[abc acb acb] | df to-df | df contains ab",
+            example: "[abc acb acb] | dfr to-df | dfr contains ab",
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "0".to_string(),

@@ -1,4 +1,4 @@
-use super::super::values::{Column, NuDataFrame};
+use super::super::super::values::{Column, NuDataFrame};
 
 use nu_protocol::{
     ast::Call,
@@ -7,18 +7,16 @@ use nu_protocol::{
 };
 use polars::prelude::IntoSeries;
 
-use std::ops::Not;
-
 #[derive(Clone)]
-pub struct NotSeries;
+pub struct ArgUnique;
 
-impl Command for NotSeries {
+impl Command for ArgUnique {
     fn name(&self) -> &str {
-        "df not"
+        "dfr arg-unique"
     }
 
     fn usage(&self) -> &str {
-        "Inverts boolean mask"
+        "Returns indexes for unique values"
     }
 
     fn signature(&self) -> Signature {
@@ -27,12 +25,12 @@ impl Command for NotSeries {
 
     fn examples(&self) -> Vec<Example> {
         vec![Example {
-            description: "Inverts boolean mask",
-            example: "[$true $false $true] | df to-df | df not",
+            description: "Returns indexes for unique values",
+            example: "[1 2 2 3 3] | dfr to-df | dfr arg-unique",
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
-                    "0".to_string(),
-                    vec![false.into(), true.into(), false.into()],
+                    "arg_unique".to_string(),
+                    vec![0.into(), 1.into(), 3.into()],
                 )])
                 .expect("simple df for test should not fail")
                 .into_value(Span::unknown()),
@@ -58,25 +56,31 @@ fn command(
     input: PipelineData,
 ) -> Result<PipelineData, ShellError> {
     let df = NuDataFrame::try_from_pipeline(input, call.head)?;
-    let series = df.as_series(call.head)?;
 
-    let bool = series.bool().map_err(|e| {
-        ShellError::SpannedLabeledError("Error inverting mask".into(), e.to_string(), call.head)
-    })?;
+    let mut res = df
+        .as_series(call.head)?
+        .arg_unique()
+        .map_err(|e| {
+            ShellError::SpannedLabeledError(
+                "Error extracting unique values".into(),
+                e.to_string(),
+                call.head,
+            )
+        })?
+        .into_series();
+    res.rename("arg_unique");
 
-    let res = bool.not();
-
-    NuDataFrame::try_from_series(vec![res.into_series()], call.head)
+    NuDataFrame::try_from_series(vec![res], call.head)
         .map(|df| PipelineData::Value(NuDataFrame::into_value(df, call.head), None))
 }
 
 #[cfg(test)]
 mod test {
-    use super::super::super::test_dataframe::test_dataframe;
+    use super::super::super::super::test_dataframe::test_dataframe;
     use super::*;
 
     #[test]
     fn test_examples() {
-        test_dataframe(vec![Box::new(NotSeries {})])
+        test_dataframe(vec![Box::new(ArgUnique {})])
     }
 }

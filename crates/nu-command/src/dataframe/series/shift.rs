@@ -12,7 +12,7 @@ pub struct Shift;
 
 impl Command for Shift {
     fn name(&self) -> &str {
-        "df shift"
+        "dfr shift"
     }
 
     fn usage(&self) -> &str {
@@ -28,7 +28,7 @@ impl Command for Shift {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "Shifts the values by a given period",
-            example: "[1 2 2 3 3] | df to-df | df shift 2 | df drop-nulls",
+            example: "[1 2 2 3 3] | dfr to-df | dfr shift 2 | dfr drop-nulls",
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "0".to_string(),

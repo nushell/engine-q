@@ -13,7 +13,7 @@ pub struct StrFTime;
 
 impl Command for StrFTime {
     fn name(&self) -> &str {
-        "df strftime"
+        "dfr strftime"
     }
 
     fn usage(&self) -> &str {
@@ -30,8 +30,8 @@ impl Command for StrFTime {
         vec![Example {
             description: "Formats date",
             example: r#"let dt = ('2020-08-04T16:39:18+00:00' | into datetime -z 'UTC');
-    let df = ([$dt $dt] | df to-df);
-    $df | df strftime "%Y/%m/%d""#,
+    let df = ([$dt $dt] | dfr to-df);
+    $df | dfr strftime "%Y/%m/%d""#,
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "0".to_string(),

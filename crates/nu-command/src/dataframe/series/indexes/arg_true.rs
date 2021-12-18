@@ -1,4 +1,4 @@
-use super::super::values::{Column, NuDataFrame};
+use super::super::super::values::{Column, NuDataFrame};
 
 use nu_protocol::{
     ast::Call,
@@ -12,7 +12,7 @@ pub struct ArgTrue;
 
 impl Command for ArgTrue {
     fn name(&self) -> &str {
-        "df arg-true"
+        "dfr arg-true"
     }
 
     fn usage(&self) -> &str {
@@ -26,7 +26,7 @@ impl Command for ArgTrue {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "Returns indexes where values are true",
-            example: "[$false $true $false] | df to-df | df arg-true",
+            example: "[$false $true $false] | dfr to-df | dfr arg-true",
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "arg_true".to_string(),
@@ -75,7 +75,7 @@ fn command(
 
 #[cfg(test)]
 mod test {
-    use super::super::super::test_dataframe::test_dataframe;
+    use super::super::super::super::test_dataframe::test_dataframe;
     use super::*;
 
     #[test]

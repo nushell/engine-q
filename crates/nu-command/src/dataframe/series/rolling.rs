@@ -46,7 +46,7 @@ pub struct Rolling;
 
 impl Command for Rolling {
     fn name(&self) -> &str {
-        "df rolling"
+        "dfr rolling"
     }
 
     fn usage(&self) -> &str {
@@ -64,7 +64,7 @@ impl Command for Rolling {
         vec![
             Example {
                 description: "Rolling sum for a series",
-                example: "[1 2 3 4 5] | df to-df | df rolling sum 2 | df drop-nulls",
+                example: "[1 2 3 4 5] | dfr to-df | dfr rolling sum 2 | dfr drop-nulls",
                 result: Some(
                     NuDataFrame::try_from_columns(vec![Column::new(
                         "0_rolling_sum".to_string(),
@@ -76,7 +76,7 @@ impl Command for Rolling {
             },
             Example {
                 description: "Rolling max for a series",
-                example: "[1 2 3 4 5] | df to-df | df rolling max 2 | df drop-nulls",
+                example: "[1 2 3 4 5] | dfr to-df | dfr rolling max 2 | dfr drop-nulls",
                 result: Some(
                     NuDataFrame::try_from_columns(vec![Column::new(
                         "0_rolling_max".to_string(),

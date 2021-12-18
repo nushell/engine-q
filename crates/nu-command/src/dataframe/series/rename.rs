@@ -12,7 +12,7 @@ pub struct Rename;
 
 impl Command for Rename {
     fn name(&self) -> &str {
-        "df rename"
+        "dfr rename"
     }
 
     fn usage(&self) -> &str {
@@ -28,7 +28,7 @@ impl Command for Rename {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "Renames a series",
-            example: "[5 6 7 8] | df to-df | df rename new_name",
+            example: "[5 6 7 8] | dfr to-df | dfr rename new_name",
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "new_name".to_string(),
