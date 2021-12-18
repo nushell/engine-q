@@ -89,6 +89,24 @@ fn into_bool(
     )
 }
 
+fn string_to_boolean(s: &str, span: Span) -> Result<bool, ShellError> {
+    match s.trim() {
+        "true" => Ok(true),
+        "false" => Ok(false),
+        o => {
+            let val = o.parse::<f64>();
+            match val {
+                Ok(f) => Ok(f != 0.0),
+                Err(e) => Err(ShellError::CantConvert(
+                    "boolean".to_string(),
+                    "string".to_string(),
+                    span,
+                )),
+            }
+        }
+    }
+}
+
 fn action(input: &Value, span: Span) -> Value {
     match input {
         Value::Int { val, .. } => Value::Bool {
@@ -98,6 +116,10 @@ fn action(input: &Value, span: Span) -> Value {
         Value::Float { val, .. } => Value::Bool {
             val: *val != 0.0,
             span,
+        },
+        Value::String { val, .. } => match string_to_boolean(val, span) {
+            Ok(val) => Value::Bool { val, span },
+            Err(error) => Value::Error { error },
         },
         _ => Value::Error {
             error: ShellError::UnsupportedInput(
