@@ -12,7 +12,7 @@ pub struct ColumnDF;
 
 impl Command for ColumnDF {
     fn name(&self) -> &str {
-        "dataframe column"
+        "dfr column"
     }
 
     fn usage(&self) -> &str {
@@ -28,7 +28,7 @@ impl Command for ColumnDF {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "Returns the selected column as series",
-            example: "[[a b]; [1 2] [3 4]] | dataframe to-df | dataframe column a",
+            example: "[[a b]; [1 2] [3 4]] | dfr to-df | dfr column a",
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "a".to_string(),
@@ -76,6 +76,6 @@ mod test {
 
     #[test]
     fn test_examples() {
-        test_dataframe(ColumnDF {})
+        test_dataframe(vec![Box::new(ColumnDF {})])
     }
 }
