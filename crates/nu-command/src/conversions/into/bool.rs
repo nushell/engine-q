@@ -18,7 +18,7 @@ impl Command for SubCommand {
             .rest(
                 "rest",
                 SyntaxShape::CellPath,
-                "column paths to convert to binary (for table input)",
+                "column paths to convert to boolean (for table input)",
             )
             .category(Category::Conversions)
     }
