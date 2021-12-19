@@ -1,14 +1,20 @@
+#[cfg(test)]
 use nu_engine::eval_block;
+#[cfg(test)]
 use nu_parser::parse;
+#[cfg(test)]
 use nu_protocol::{
     engine::{Command, EngineState, Stack, StateWorkingSet},
     PipelineData, Span, Value, CONFIG_VARIABLE_ID,
 };
 
+#[cfg(test)]
 use crate::To;
 
-use super::{Date, From, Into, Math, Path, Random, Split, Str, Url};
+#[cfg(test)]
+use super::{Ansi, Date, From, Into, Math, Path, Random, Split, Str, StrCollect, Url};
 
+#[cfg(test)]
 pub fn test_examples(cmd: impl Command + 'static) {
     let examples = cmd.examples();
     let mut engine_state = Box::new(EngineState::new());
@@ -18,6 +24,7 @@ pub fn test_examples(cmd: impl Command + 'static) {
         // Try to keep this working set small to keep tests running as fast as possible
         let mut working_set = StateWorkingSet::new(&*engine_state);
         working_set.add_decl(Box::new(Str));
+        working_set.add_decl(Box::new(StrCollect));
         working_set.add_decl(Box::new(From));
         working_set.add_decl(Box::new(To));
         working_set.add_decl(Box::new(Into));
@@ -27,6 +34,7 @@ pub fn test_examples(cmd: impl Command + 'static) {
         working_set.add_decl(Box::new(Path));
         working_set.add_decl(Box::new(Date));
         working_set.add_decl(Box::new(Url));
+        working_set.add_decl(Box::new(Ansi));
 
         use super::Echo;
         working_set.add_decl(Box::new(Echo));
@@ -66,7 +74,7 @@ pub fn test_examples(cmd: impl Command + 'static) {
             Value::Record {
                 cols: vec![],
                 vals: vec![],
-                span: Span::unknown(),
+                span: Span::test_data(),
             },
         );
 
@@ -74,11 +82,11 @@ pub fn test_examples(cmd: impl Command + 'static) {
             &engine_state,
             &mut stack,
             &block,
-            PipelineData::new(Span::unknown()),
+            PipelineData::new(Span::test_data()),
         ) {
             Err(err) => panic!("test eval error in `{}`: {:?}", example.example, err),
             Ok(result) => {
-                let result = result.into_value(Span::unknown());
+                let result = result.into_value(Span::test_data());
                 println!("input: {}", example.example);
                 println!("result: {:?}", result);
                 println!("done: {:?}", start.elapsed());

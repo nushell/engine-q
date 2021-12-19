@@ -12,8 +12,9 @@ use std::collections::{HashMap, HashSet};
 use crate::{
     lex, lite_parse,
     parser::{
-        check_call, check_name, garbage, garbage_statement, parse, parse_block_expression,
-        parse_import_pattern, parse_internal_call, parse_signature, parse_string, trim_quotes,
+        check_name, garbage, garbage_statement, parse, parse_block_expression,
+        parse_import_pattern, parse_internal_call, parse_multispan_value, parse_signature,
+        parse_string, parse_var_with_opt_type, trim_quotes,
     },
     ParseError,
 };
@@ -203,8 +204,7 @@ pub fn parse_alias(
         }
 
         if let Some(decl_id) = working_set.find_decl(b"alias") {
-            let (call, call_span, _) =
-                parse_internal_call(working_set, spans[0], &spans[1..], decl_id);
+            let (call, _) = parse_internal_call(working_set, spans[0], &spans[1..], decl_id);
 
             if spans.len() >= 4 {
                 let alias_name = working_set.get_span_contents(spans[1]);
@@ -227,7 +227,7 @@ pub fn parse_alias(
             return (
                 Statement::Pipeline(Pipeline::from_vec(vec![Expression {
                     expr: Expr::Call(call),
-                    span: call_span,
+                    span: span(spans),
                     ty: Type::Unknown,
                     custom_completion: None,
                 }])),
@@ -956,28 +956,68 @@ pub fn parse_let(
         }
 
         if let Some(decl_id) = working_set.find_decl(b"let") {
-            let (call, call_span, err) =
-                parse_internal_call(working_set, spans[0], &spans[1..], decl_id);
+            if spans.len() >= 4 {
+                // This is a bit of by-hand parsing to get around the issue where we want to parse in the reverse order
+                // so that the var-id created by the variable isn't visible in the expression that init it
+                for span in spans.iter().enumerate() {
+                    let item = working_set.get_span_contents(*span.1);
+                    if item == b"=" && spans.len() > (span.0 + 1) {
+                        let mut error = None;
 
-            // Update the variable to the known type if we can.
-            if err.is_none() {
-                let var_id = call.positional[0]
-                    .as_var()
-                    .expect("internal error: expected variable");
-                let rhs_type = call.positional[1].ty.clone();
+                        let mut idx = span.0;
+                        let (rvalue, err) = parse_multispan_value(
+                            working_set,
+                            spans,
+                            &mut idx,
+                            &SyntaxShape::Keyword(b"=".to_vec(), Box::new(SyntaxShape::Expression)),
+                        );
+                        error = error.or(err);
 
-                if var_id != CONFIG_VARIABLE_ID {
-                    working_set.set_variable_type(var_id, rhs_type);
+                        let mut idx = 0;
+                        let (lvalue, err) =
+                            parse_var_with_opt_type(working_set, &spans[1..(span.0)], &mut idx);
+                        error = error.or(err);
+
+                        let var_id = lvalue.as_var();
+
+                        let rhs_type = rvalue.ty.clone();
+
+                        if let Some(var_id) = var_id {
+                            if var_id != CONFIG_VARIABLE_ID {
+                                working_set.set_variable_type(var_id, rhs_type);
+                            }
+                        }
+
+                        let call = Box::new(Call {
+                            decl_id,
+                            head: spans[0],
+                            positional: vec![lvalue, rvalue],
+                            named: vec![],
+                        });
+
+                        return (
+                            Statement::Pipeline(Pipeline::from_vec(vec![Expression {
+                                expr: Expr::Call(call),
+                                span: nu_protocol::span(spans),
+                                ty: Type::Unknown,
+                                custom_completion: None,
+                            }])),
+                            error,
+                        );
+                    }
                 }
             }
+            let (call, err) = parse_internal_call(working_set, spans[0], &spans[1..], decl_id);
 
             return (
-                Statement::Pipeline(Pipeline::from_vec(vec![Expression {
-                    expr: Expr::Call(call),
-                    span: call_span,
-                    ty: Type::Unknown,
-                    custom_completion: None,
-                }])),
+                Statement::Pipeline(Pipeline {
+                    expressions: vec![Expression {
+                        expr: Expr::Call(call),
+                        span: nu_protocol::span(spans),
+                        ty: Type::Unknown,
+                        custom_completion: None,
+                    }],
+                }),
                 err,
             );
         }
@@ -1002,8 +1042,7 @@ pub fn parse_source(
         if let Some(decl_id) = working_set.find_decl(b"source") {
             // Is this the right call to be using here?
             // Some of the others (`parse_let`) use it, some of them (`parse_hide`) don't.
-            let (call, call_span, err) =
-                parse_internal_call(working_set, spans[0], &spans[1..], decl_id);
+            let (call, err) = parse_internal_call(working_set, spans[0], &spans[1..], decl_id);
             error = error.or(err);
 
             // Command and one file name
@@ -1051,7 +1090,7 @@ pub fn parse_source(
                                 return (
                                     Statement::Pipeline(Pipeline::from_vec(vec![Expression {
                                         expr: Expr::Call(call_with_block),
-                                        span: call_span,
+                                        span: span(spans),
                                         ty: Type::Unknown,
                                         custom_completion: None,
                                     }])),
@@ -1072,7 +1111,7 @@ pub fn parse_source(
             return (
                 Statement::Pipeline(Pipeline::from_vec(vec![Expression {
                     expr: Expr::Call(call),
-                    span: call_span,
+                    span: span(spans),
                     ty: Type::Unknown,
                     custom_completion: None,
                 }])),
@@ -1094,6 +1133,7 @@ pub fn parse_register(
     working_set: &mut StateWorkingSet,
     spans: &[Span],
 ) -> (Statement, Option<ParseError>) {
+    use crate::parser::check_call;
     use nu_plugin::{get_signature, EncodingType, PluginDeclaration};
     use nu_protocol::Signature;
 
@@ -1123,9 +1163,10 @@ pub fn parse_register(
             )
         }
         Some(decl_id) => {
-            let (call, call_span, mut err) =
-                parse_internal_call(working_set, spans[0], &spans[1..], decl_id);
+            let (call, mut err) = parse_internal_call(working_set, spans[0], &spans[1..], decl_id);
             let decl = working_set.get_decl(decl_id);
+
+            let call_span = span(spans);
 
             err = check_call(call_span, &decl.signature(), &call).or(err);
             if err.is_some() || call.has_flag("help") {
@@ -1153,7 +1194,7 @@ pub fn parse_register(
         .map(|expr| {
             let name_expr = working_set.get_span_contents(expr.span);
             String::from_utf8(name_expr.to_vec())
-                .map_err(|_| ParseError::NonUtf8(spans[1]))
+                .map_err(|_| ParseError::NonUtf8(expr.span))
                 .and_then(|name| {
                     canonicalize(&name).map_err(|_| ParseError::FileNotFound(name, expr.span))
                 })
@@ -1182,7 +1223,7 @@ pub fn parse_register(
                 .map(|encoding| (path, encoding))
         });
 
-    // Signature is the only optional value from the call and will be used to decide if
+    // Signature is an optional value from the call and will be used to decide if
     // the plugin is called to get the signatures or to use the given signature
     let signature = call.positional.get(1).map(|expr| {
         let signature = working_set.get_span_contents(expr.span);
@@ -1195,16 +1236,52 @@ pub fn parse_register(
         })
     });
 
+    // Shell is another optional value used as base to call shell to plugins
+    let shell = call.get_flag_expr("shell").map(|expr| {
+        let shell_expr = working_set.get_span_contents(expr.span);
+
+        String::from_utf8(shell_expr.to_vec())
+            .map_err(|_| ParseError::NonUtf8(expr.span))
+            .and_then(|name| {
+                canonicalize(&name).map_err(|_| ParseError::FileNotFound(name, expr.span))
+            })
+            .and_then(|path| {
+                if path.exists() & path.is_file() {
+                    Ok(path)
+                } else {
+                    Err(ParseError::FileNotFound(format!("{:?}", path), expr.span))
+                }
+            })
+    });
+
+    let shell = match shell {
+        None => None,
+        Some(path) => match path {
+            Ok(path) => Some(path),
+            Err(err) => {
+                return (
+                    Statement::Pipeline(Pipeline::from_vec(vec![Expression {
+                        expr: Expr::Call(call),
+                        span: call_span,
+                        ty: Type::Unknown,
+                        custom_completion: None,
+                    }])),
+                    Some(err),
+                );
+            }
+        },
+    };
+
     let error = match signature {
         Some(signature) => arguments.and_then(|(path, encoding)| {
             signature.map(|signature| {
-                let plugin_decl = PluginDeclaration::new(path, signature, encoding);
+                let plugin_decl = PluginDeclaration::new(path, signature, encoding, shell);
                 working_set.add_decl(Box::new(plugin_decl));
                 working_set.mark_plugins_file_dirty();
             })
         }),
         None => arguments.and_then(|(path, encoding)| {
-            get_signature(path.as_path(), &encoding)
+            get_signature(path.as_path(), &encoding, &shell)
                 .map_err(|err| {
                     ParseError::LabeledError(
                         "Error getting signatures".into(),
@@ -1216,8 +1293,12 @@ pub fn parse_register(
                     for signature in signatures {
                         // create plugin command declaration (need struct impl Command)
                         // store declaration in working set
-                        let plugin_decl =
-                            PluginDeclaration::new(path.clone(), signature, encoding.clone());
+                        let plugin_decl = PluginDeclaration::new(
+                            path.clone(),
+                            signature,
+                            encoding.clone(),
+                            shell.clone(),
+                        );
 
                         working_set.add_decl(Box::new(plugin_decl));
                     }

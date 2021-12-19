@@ -67,7 +67,7 @@ fn eval_call(
             let span = if let Some(rest_item) = rest_items.first() {
                 rest_item.span()?
             } else {
-                Span::unknown()
+                call.head
             };
 
             stack.add_var(
@@ -152,7 +152,7 @@ fn eval_external(
         call.named.push((
             Spanned {
                 item: "last_expression".into(),
-                span: Span::unknown(),
+                span: *name_span,
             },
             None,
         ))
@@ -191,25 +191,19 @@ pub fn eval_expression(
             let from = if let Some(f) = from {
                 eval_expression(engine_state, stack, f)?
             } else {
-                Value::Nothing {
-                    span: Span::unknown(),
-                }
+                Value::Nothing { span: expr.span }
             };
 
             let next = if let Some(s) = next {
                 eval_expression(engine_state, stack, s)?
             } else {
-                Value::Nothing {
-                    span: Span::unknown(),
-                }
+                Value::Nothing { span: expr.span }
             };
 
             let to = if let Some(t) = to {
                 eval_expression(engine_state, stack, t)?
             } else {
-                Value::Nothing {
-                    span: Span::unknown(),
-                }
+                Value::Nothing { span: expr.span }
             };
 
             Ok(Value::Range {
@@ -228,9 +222,7 @@ pub fn eval_expression(
 
             value.follow_cell_path(&cell_path.tail)
         }
-        Expr::ImportPattern(_) => Ok(Value::Nothing {
-            span: Span::unknown(),
-        }),
+        Expr::ImportPattern(_) => Ok(Value::Nothing { span: expr.span }),
         Expr::Call(call) => {
             // FIXME: protect this collect with ctrl-c
             Ok(
@@ -472,13 +464,7 @@ pub fn eval_variable(
 
         let env_vars = stack.get_env_vars();
         let env_columns: Vec<_> = env_vars.keys().map(|x| x.to_string()).collect();
-        let env_values: Vec<_> = env_vars
-            .values()
-            .map(|x| Value::String {
-                val: x.to_string(),
-                span,
-            })
-            .collect();
+        let env_values: Vec<_> = env_vars.values().cloned().collect();
 
         output_cols.push("env".into());
         output_vals.push(Value::Record {
@@ -852,7 +838,7 @@ pub fn eval_variable(
     }
 }
 
-pub fn compute(size: i64, unit: Unit, span: Span) -> Value {
+fn compute(size: i64, unit: Unit, span: Span) -> Value {
     match unit {
         Unit::Byte => Value::Filesize { val: size, span },
         Unit::Kilobyte => Value::Filesize {

@@ -1,6 +1,7 @@
 // use super::icons::{icon_for_file, iconify_style_ansi_to_nu};
 use super::icons::icon_for_file;
 use lscolors::{LsColors, Style};
+use nu_engine::env_to_string;
 use nu_engine::CallExt;
 use nu_protocol::{
     ast::{Call, PathMember},
@@ -61,13 +62,16 @@ prints out the list properly."#
         let color_param: bool = call.has_flag("color");
         let separator_param: Option<String> = call.get_flag(engine_state, stack, "separator")?;
         let config = stack.get_config().unwrap_or_default();
-        let env_str = stack.get_env_var("LS_COLORS");
+        let env_str = match stack.get_env_var("LS_COLORS") {
+            Some(v) => Some(env_to_string("LS_COLORS", v, engine_state, stack, &config)?),
+            None => None,
+        };
         let use_grid_icons = config.use_grid_icons;
 
         match input {
             PipelineData::Value(Value::List { vals, .. }, ..) => {
                 // dbg!("value::list");
-                let data = convert_to_list(vals, &config);
+                let data = convert_to_list(vals, &config, call.head);
                 if let Some(items) = data {
                     Ok(create_grid_output(
                         items,
@@ -84,7 +88,7 @@ prints out the list properly."#
             }
             PipelineData::Stream(stream, ..) => {
                 // dbg!("value::stream");
-                let data = convert_to_list(stream, &config);
+                let data = convert_to_list(stream, &config, call.head);
                 if let Some(items) = data {
                     Ok(create_grid_output(
                         items,
@@ -174,7 +178,7 @@ fn create_grid_output(
                 if use_grid_icons {
                     let no_ansi = strip_ansi(&value);
                     let path = std::path::Path::new(&no_ansi);
-                    let icon = icon_for_file(path)?;
+                    let icon = icon_for_file(path, call.head)?;
                     let ls_colors_style = ls_colors.style_for_path(path);
                     // eprintln!("ls_colors_style: {:?}", &ls_colors_style);
 
@@ -232,6 +236,7 @@ fn create_grid_output(
 fn convert_to_list(
     iter: impl IntoIterator<Item = Value>,
     config: &Config,
+    head: Span,
 ) -> Option<Vec<(usize, String, String)>> {
     let mut iter = iter.into_iter().peekable();
 
@@ -255,7 +260,7 @@ fn convert_to_list(
                         Value::Record { .. } => {
                             item.clone().follow_cell_path(&[PathMember::String {
                                 val: header.into(),
-                                span: Span::unknown(),
+                                span: head,
                             }])
                         }
                         _ => Ok(item.clone()),

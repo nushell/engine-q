@@ -91,7 +91,7 @@ pub enum ShellError {
     #[diagnostic(code(nu::shell::nushell_failed), url(docsrs))]
     NushellFailed(String),
 
-    #[error("Variable not found!!!")]
+    #[error("Variable not found")]
     #[diagnostic(code(nu::shell::variable_not_found), url(docsrs))]
     VariableNotFoundAtRuntime(#[label = "variable not found"] Span),
 
@@ -99,10 +99,9 @@ pub enum ShellError {
     #[diagnostic(code(nu::shell::variable_not_found), url(docsrs))]
     EnvVarNotFoundAtRuntime(#[label = "environment variable not found"] Span),
 
-    #[error("Environment variable is not a string")]
-    #[diagnostic(code(nu::shell::variable_not_found), url(docsrs))]
-    EnvVarNotAString(#[label = "does not evaluate to a string"] Span),
-
+    // #[error("Environment variable is not a string")]
+    // #[diagnostic(code(nu::shell::variable_not_found), url(docsrs))]
+    // EnvVarNotAString(#[label = "does not evaluate to a string"] Span),
     #[error("Not found.")]
     #[diagnostic(code(nu::parser::not_found), url(docsrs))]
     NotFound(#[label = "did not find anything under this name"] Span),
@@ -169,15 +168,15 @@ pub enum ShellError {
     #[diagnostic(code(nu::shell::file_not_found), url(docsrs))]
     FileNotFoundCustom(String, #[label("{0}")] Span),
 
-    #[error("Plugin failed to load")]
+    #[error("Plugin failed to load: {0}")]
     #[diagnostic(code(nu::shell::plugin_failed_to_load), url(docsrs))]
     PluginFailedToLoad(String),
 
-    #[error("Plugin failed to encode")]
+    #[error("Plugin failed to encode: {0}")]
     #[diagnostic(code(nu::shell::plugin_failed_to_encode), url(docsrs))]
     PluginFailedToEncode(String),
 
-    #[error("Plugin failed to decode")]
+    #[error("Plugin failed to decode: {0}")]
     #[diagnostic(code(nu::shell::plugin_failed_to_decode), url(docsrs))]
     PluginFailedToDecode(String),
 
@@ -235,9 +234,21 @@ pub enum ShellError {
     #[diagnostic(code(nu::shell::downcast_not_possible), url(docsrs))]
     DowncastNotPossible(String, #[label("{0}")] Span),
 
+    #[error("Unsupported config value")]
+    #[diagnostic(code(nu::shell::unsupported_config_value), url(docsrs))]
+    UnsupportedConfigValue(String, String, #[label = "expected {0}, got {1}"] Span),
+
+    #[error("Missing config value")]
+    #[diagnostic(code(nu::shell::missing_config_value), url(docsrs))]
+    MissingConfigValue(String, #[label = "missing {0}"] Span),
+
     #[error("{0}")]
     #[diagnostic()]
     SpannedLabeledError(String, String, #[label("{1}")] Span),
+
+    #[error("{0}")]
+    #[diagnostic(help("{3}"))]
+    SpannedLabeledErrorHelp(String, String, #[label("{1}")] Span, String),
 
     #[error("{0}")]
     #[diagnostic()]

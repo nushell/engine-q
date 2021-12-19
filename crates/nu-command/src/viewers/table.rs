@@ -1,6 +1,6 @@
-use super::color_config::style_primitive;
-use crate::viewers::color_config::get_color_config;
 use lscolors::{LsColors, Style};
+use nu_color_config::{get_color_config, style_primitive};
+use nu_engine::env_to_string;
 use nu_protocol::ast::{Call, PathMember};
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
@@ -52,7 +52,7 @@ impl Command for Table {
 
         match input {
             PipelineData::Value(Value::List { vals, .. }, ..) => {
-                let table = convert_to_table(0, vals, ctrlc, &config)?;
+                let table = convert_to_table(0, vals, ctrlc, &config, call.head)?;
 
                 if let Some(table) = table {
                     let result = nu_table::draw_table(&table, term_width, &color_hm, &config);
@@ -75,7 +75,13 @@ impl Command for Table {
                         let ctrlc = ctrlc.clone();
 
                         let ls_colors = match stack.get_env_var("LS_COLORS") {
-                            Some(s) => LsColors::from_string(&s),
+                            Some(v) => LsColors::from_string(&env_to_string(
+                                "LS_COLORS",
+                                v,
+                                engine_state,
+                                stack,
+                                &config,
+                            )?),
                             None => LsColors::default(),
                         };
 
@@ -214,6 +220,7 @@ fn convert_to_table(
     iter: impl IntoIterator<Item = Value>,
     ctrlc: Option<Arc<AtomicBool>>,
     config: &Config,
+    head: Span,
 ) -> Result<Option<nu_table::Table>, ShellError> {
     let mut iter = iter.into_iter().peekable();
     let color_hm = get_color_config(config);
@@ -251,7 +258,7 @@ fn convert_to_table(
                         Value::Record { .. } => {
                             item.clone().follow_cell_path(&[PathMember::String {
                                 val: header.into(),
-                                span: Span::unknown(),
+                                span: head,
                             }])
                         }
                         _ => Ok(item.clone()),
@@ -393,6 +400,7 @@ impl Iterator for PagingTableCreator {
             batch.into_iter(),
             self.ctrlc.clone(),
             &self.config,
+            self.head,
         );
         self.row_offset += idx;
 

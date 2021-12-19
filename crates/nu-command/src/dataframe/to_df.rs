@@ -3,7 +3,7 @@ use super::values::{Column, NuDataFrame};
 use nu_protocol::{
     ast::Call,
     engine::{Command, EngineState, Stack},
-    Category, Example, PipelineData, ShellError, Signature, Span,
+    Category, Example, PipelineData, ShellError, Signature, Span, Value,
 };
 
 #[derive(Clone)]
@@ -11,7 +11,7 @@ pub struct ToDataFrame;
 
 impl Command for ToDataFrame {
     fn name(&self) -> &str {
-        "dataframe to-df"
+        "dfr to-df"
     }
 
     fn usage(&self) -> &str {
@@ -26,62 +26,78 @@ impl Command for ToDataFrame {
         vec![
             Example {
                 description: "Takes a dictionary and creates a dataframe",
-                example: "[[a b];[1 2] [3 4]] | dataframe to-df",
+                example: "[[a b];[1 2] [3 4]] | dfr to-df",
                 result: Some(
                     NuDataFrame::try_from_columns(vec![
-                        Column::new("a".to_string(), vec![1.into(), 3.into()]),
-                        Column::new("b".to_string(), vec![2.into(), 4.into()]),
+                        Column::new(
+                            "a".to_string(),
+                            vec![Value::test_int(1), Value::test_int(3)],
+                        ),
+                        Column::new(
+                            "b".to_string(),
+                            vec![Value::test_int(2), Value::test_int(4)],
+                        ),
                     ])
                     .expect("simple df for test should not fail")
-                    .into_value(Span::unknown()),
+                    .into_value(Span::test_data()),
                 ),
             },
             Example {
                 description: "Takes a list of tables and creates a dataframe",
-                example: "[[1 2 a] [3 4 b] [5 6 c]] | dataframe to-df",
+                example: "[[1 2 a] [3 4 b] [5 6 c]] | dfr to-df",
                 result: Some(
                     NuDataFrame::try_from_columns(vec![
-                        Column::new("0".to_string(), vec![1.into(), 3.into(), 5.into()]),
-                        Column::new("1".to_string(), vec![2.into(), 4.into(), 6.into()]),
+                        Column::new(
+                            "0".to_string(),
+                            vec![Value::test_int(1), Value::test_int(3), Value::test_int(5)],
+                        ),
+                        Column::new(
+                            "1".to_string(),
+                            vec![Value::test_int(2), Value::test_int(4), Value::test_int(6)],
+                        ),
                         Column::new(
                             "2".to_string(),
                             vec![
-                                "a".to_string().into(),
-                                "b".to_string().into(),
-                                "c".to_string().into(),
+                                Value::test_string("a"),
+                                Value::test_string("b"),
+                                Value::test_string("c"),
                             ],
                         ),
                     ])
                     .expect("simple df for test should not fail")
-                    .into_value(Span::unknown()),
+                    .into_value(Span::test_data()),
                 ),
             },
             Example {
                 description: "Takes a list and creates a dataframe",
-                example: "[a b c] | dataframe to-df",
+                example: "[a b c] | dfr to-df",
                 result: Some(
                     NuDataFrame::try_from_columns(vec![Column::new(
                         "0".to_string(),
                         vec![
-                            "a".to_string().into(),
-                            "b".to_string().into(),
-                            "c".to_string().into(),
+                            Value::test_string("a"),
+                            Value::test_string("b"),
+                            Value::test_string("c"),
                         ],
                     )])
                     .expect("simple df for test should not fail")
-                    .into_value(Span::unknown()),
+                    .into_value(Span::test_data()),
                 ),
             },
             Example {
                 description: "Takes a list of booleans and creates a dataframe",
-                example: "[$true $true $false] | dataframe to-df",
+                example: "[$true $true $false] | dfr to-df",
                 result: Some(
                     NuDataFrame::try_from_columns(vec![Column::new(
                         "0".to_string(),
-                        vec![true.into(), true.into(), false.into()],
+                        vec![
+                            Value::test_bool(true),
+                            Value::test_bool(true),
+                            Value::test_bool(false),
+                        ],
                     )])
                     .expect("simple df for test should not fail")
-                    .into_value(Span::unknown()),
+                    .into_value(Span::test_data()),
                 ),
             },
         ]
@@ -106,6 +122,6 @@ mod test {
 
     #[test]
     fn test_examples() {
-        test_dataframe(ToDataFrame {})
+        test_dataframe(vec![Box::new(ToDataFrame {})])
     }
 }

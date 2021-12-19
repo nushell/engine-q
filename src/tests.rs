@@ -1067,11 +1067,6 @@ fn shorthand_env_3() -> TestResult {
 }
 
 #[test]
-fn shorthand_env_4() -> TestResult {
-    fail_test(r#"FOO=BAZ FOO= $nu.env.FOO"#, "did you mean")
-}
-
-#[test]
 fn update_cell_path_1() -> TestResult {
     run_test(
         r#"[[name, size]; [a, 1.1]] | into int size | get size.0"#,
@@ -1248,4 +1243,60 @@ fn command_drop_column_1() -> TestResult {
 #[test]
 fn chained_operator_typecheck() -> TestResult {
     run_test("1 != 2 && 3 != 4 && 5 != 6", "true")
+}
+
+#[test]
+fn proper_shadow() -> TestResult {
+    run_test("let x = 10; let x = $x + 9; $x", "19")
+}
+
+#[test]
+fn comment_multiline() -> TestResult {
+    run_test(
+        r#"def foo [] {
+        let x = 1 + 2 # comment
+        let y = 3 + 4 # another comment
+        $x + $y
+    }; foo"#,
+        "10",
+    )
+}
+
+#[test]
+fn flatten_simple_list() -> TestResult {
+    run_test("[[N, u, s, h, e, l, l]] | flatten", "N\nu\ns\nh\ne\nl\nl")
+}
+
+#[test]
+fn flatten_get_simple_list() -> TestResult {
+    run_test("[[N, u, s, h, e, l, l]] | flatten | get 0", "N")
+}
+
+#[test]
+fn flatten_table_get() -> TestResult {
+    run_test(
+        "[[origin, people]; [Ecuador, ([[name, meal]; ['Andres', 'arepa']])]] | flatten | get meal",
+        "arepa",
+    )
+}
+
+#[test]
+fn flatten_table_column_get_last() -> TestResult {
+    run_test(
+        "[[origin, crate, versions]; [World, ([[name]; ['nu-cli']]), ['0.21', '0.22']]] | flatten versions | last | get versions",
+        "0.22",
+    )
+}
+
+#[test]
+fn get_table_columns_1() -> TestResult {
+    run_test(
+        "[[name, age, grade]; [paul,21,a]] | columns | first",
+        "name",
+    )
+}
+
+#[test]
+fn get_table_columns_2() -> TestResult {
+    run_test("[[name, age, grade]; [paul,21,a]] | columns | nth 1", "age")
 }

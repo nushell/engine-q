@@ -49,11 +49,17 @@ pub fn create_default_context() -> EngineState {
             Any,
             Append,
             Collect,
+            Columns,
             Drop,
             DropColumn,
+            DropNth,
             Each,
             First,
+            Flatten,
             Get,
+            Keep,
+            KeepUntil,
+            KeepWhile,
             Last,
             Length,
             Lines,
@@ -100,6 +106,7 @@ pub fn create_default_context() -> EngineState {
         // Strings
         bind_command! {
             BuildString,
+            Char,
             Format,
             Parse,
             Size,
@@ -127,7 +134,7 @@ pub fn create_default_context() -> EngineState {
             StrStartsWith,
             StrSubstring,
             StrTrim,
-            StrUpcase,
+            StrUpcase
         };
 
         // FileSystem
@@ -143,6 +150,9 @@ pub fn create_default_context() -> EngineState {
 
         // Platform
         bind_command! {
+            Ansi,
+            AnsiGradient,
+            AnsiStrip,
             Clear,
             Kill,
             Sleep,
@@ -221,6 +231,7 @@ pub fn create_default_context() -> EngineState {
         bind_command! {
             LetEnv,
             WithEnv,
+            Env,
         };
 
         // Math
