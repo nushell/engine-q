@@ -135,7 +135,7 @@ fn string_to_boolean(s: &str, span: Span) -> Result<bool, ShellError> {
         o => {
             let val = o.parse::<f64>();
             match val {
-                Ok(f) => Ok(f.abs() < f64::EPSILON),
+                Ok(f) => Ok(f.abs() >= f64::EPSILON),
                 Err(_) => Err(ShellError::CantConvert(
                     "boolean".to_string(),
                     "string".to_string(),
@@ -154,7 +154,7 @@ fn action(input: &Value, span: Span) -> Value {
             span,
         },
         Value::Float { val, .. } => Value::Bool {
-            val: val.abs() < f64::EPSILON,
+            val: val.abs() >= f64::EPSILON,
             span,
         },
         Value::String { val, .. } => match string_to_boolean(val, span) {
