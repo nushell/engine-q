@@ -11,6 +11,7 @@ build = "build.rs"
 nu-engine = { path = "../nu-engine" }
 nu-json = { path = "../nu-json" }
 nu-path = { path = "../nu-path" }
+nu-pretty-hex = { path = "../nu-pretty-hex" }
 nu-protocol = { path = "../nu-protocol" }
 nu-table = { path = "../nu-table" }
 nu-term-grid = { path = "../nu-term-grid" }

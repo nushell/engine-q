@@ -17,7 +17,7 @@ use itertools::Itertools;
 use nu_engine::CallExt;
 use regex::Regex;
 
-const OUTPUT_BUFFER_SIZE: usize = 8192;
+const OUTPUT_BUFFER_SIZE: usize = 10;
 
 #[derive(Clone)]
 pub struct External;

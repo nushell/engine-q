@@ -71,7 +71,7 @@ fn getcol(
                 .into_iter()
                 .into_pipeline_data(engine_state.ctrlc.clone()))
         }
-        PipelineData::Stream(stream, ..) => {
+        PipelineData::ListStream(stream, ..) => {
             let v: Vec<_> = stream.into_iter().collect();
             let input_cols = get_input_cols(v);
 
@@ -79,7 +79,7 @@ fn getcol(
                 .into_iter()
                 .into_pipeline_data(engine_state.ctrlc.clone()))
         }
-        PipelineData::Value(_v, ..) => {
+        PipelineData::Value(..) | PipelineData::StringStream(..) | PipelineData::ByteStream(..) => {
             let cols = vec![];
             let vals = vec![];
             Ok(Value::Record { cols, vals, span }.into_pipeline_data())

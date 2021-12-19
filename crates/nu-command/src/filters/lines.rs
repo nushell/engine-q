@@ -50,7 +50,7 @@ impl Command for Lines {
 
                 Ok(iter.into_pipeline_data(engine_state.ctrlc.clone()))
             }
-            PipelineData::Stream(stream, ..) => {
+            PipelineData::ListStream(stream, ..) => {
                 let iter = stream
                     .into_iter()
                     .filter_map(|value| {
@@ -78,8 +78,34 @@ impl Command for Lines {
 
                 Ok(iter.into_pipeline_data(engine_state.ctrlc.clone()))
             }
+            PipelineData::StringStream(stream, span, ..) => {
+                let iter = stream
+                    .into_iter()
+                    .map(move |value| {
+                        value
+                            .split(SPLIT_CHAR)
+                            .filter_map(|s| {
+                                if !s.is_empty() {
+                                    Some(Value::String {
+                                        val: s.into(),
+                                        span,
+                                    })
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<Value>>()
+                    })
+                    .flatten();
+
+                Ok(iter.into_pipeline_data(engine_state.ctrlc.clone()))
+            }
             PipelineData::Value(val, ..) => Err(ShellError::UnsupportedInput(
                 format!("Not supported input: {}", val.as_string()?),
+                call.head,
+            )),
+            PipelineData::ByteStream(..) => Err(ShellError::UnsupportedInput(
+                "Byte stream not supported for `lines`".into(),
                 call.head,
             )),
         }

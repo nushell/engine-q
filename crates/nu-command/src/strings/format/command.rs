@@ -154,14 +154,14 @@ fn format(
                 }
             }
 
-            Ok(PipelineData::Stream(
+            Ok(PipelineData::ListStream(
                 ValueStream::from_stream(list.into_iter(), None),
                 None,
             ))
         }
         _ => Err(ShellError::UnsupportedInput(
             "Input data is not supported by this command.".to_string(),
-            Span::unknown(),
+            span,
         )),
     }
 }

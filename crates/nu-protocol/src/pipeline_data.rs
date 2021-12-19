@@ -1,6 +1,8 @@
 use std::sync::{atomic::AtomicBool, Arc};
 
-use crate::{ast::PathMember, Config, ShellError, Span, Value, ValueStream};
+use crate::{
+    ast::PathMember, ByteStream, Config, ShellError, Span, StringStream, Value, ValueStream,
+};
 
 /// The foundational abstraction for input and output to commands
 ///
@@ -34,7 +36,9 @@ use crate::{ast::PathMember, Config, ShellError, Span, Value, ValueStream};
 #[derive(Debug)]
 pub enum PipelineData {
     Value(Value, Option<PipelineMetadata>),
-    Stream(ValueStream, Option<PipelineMetadata>),
+    ListStream(ValueStream, Option<PipelineMetadata>),
+    StringStream(StringStream, Span, Option<PipelineMetadata>),
+    ByteStream(ByteStream, Span, Option<PipelineMetadata>),
 }
 
 #[derive(Debug)]
@@ -55,8 +59,16 @@ impl PipelineData {
     pub fn into_value(self, span: Span) -> Value {
         match self {
             PipelineData::Value(v, ..) => v,
-            PipelineData::Stream(s, ..) => Value::List {
+            PipelineData::ListStream(s, ..) => Value::List {
                 vals: s.collect(),
+                span, // FIXME?
+            },
+            PipelineData::StringStream(s, ..) => Value::String {
+                val: s.collect(),
+                span, // FIXME?
+            },
+            PipelineData::ByteStream(s, ..) => Value::Binary {
+                val: s.flatten().collect(),
                 span, // FIXME?
             },
         }
@@ -65,7 +77,7 @@ impl PipelineData {
     pub fn into_interruptible_iter(self, ctrlc: Option<Arc<AtomicBool>>) -> PipelineIterator {
         let mut iter = self.into_iter();
 
-        if let PipelineIterator(PipelineData::Stream(s, ..)) = &mut iter {
+        if let PipelineIterator(PipelineData::ListStream(s, ..)) = &mut iter {
             s.ctrlc = ctrlc;
         }
 
@@ -75,19 +87,24 @@ impl PipelineData {
     pub fn collect_string(self, separator: &str, config: &Config) -> String {
         match self {
             PipelineData::Value(v, ..) => v.into_string(separator, config),
-            PipelineData::Stream(s, ..) => s.into_string(separator, config),
+            PipelineData::ListStream(s, ..) => s.into_string(separator, config),
+            PipelineData::StringStream(s, ..) => s.into_string(separator),
+            PipelineData::ByteStream(s, ..) => {
+                String::from_utf8_lossy(&s.flatten().collect::<Vec<_>>()).to_string()
+            }
         }
     }
 
     pub fn follow_cell_path(self, cell_path: &[PathMember]) -> Result<Value, ShellError> {
         match self {
             // FIXME: there are probably better ways of doing this
-            PipelineData::Stream(stream, ..) => Value::List {
+            PipelineData::ListStream(stream, ..) => Value::List {
                 vals: stream.collect(),
                 span: Span::unknown(),
             }
             .follow_cell_path(cell_path),
             PipelineData::Value(v, ..) => v.follow_cell_path(cell_path),
+            _ => Err(ShellError::IOError("can't follow stream paths".into())),
         }
     }
 
@@ -98,12 +115,13 @@ impl PipelineData {
     ) -> Result<(), ShellError> {
         match self {
             // FIXME: there are probably better ways of doing this
-            PipelineData::Stream(stream, ..) => Value::List {
+            PipelineData::ListStream(stream, ..) => Value::List {
                 vals: stream.collect(),
                 span: Span::unknown(),
             }
             .update_cell_path(cell_path, callback),
             PipelineData::Value(v, ..) => v.update_cell_path(cell_path, callback),
+            _ => Ok(()),
         }
     }
 
@@ -121,7 +139,7 @@ impl PipelineData {
             PipelineData::Value(Value::List { vals, .. }, ..) => {
                 Ok(vals.into_iter().map(f).into_pipeline_data(ctrlc))
             }
-            PipelineData::Stream(stream, ..) => Ok(stream.map(f).into_pipeline_data(ctrlc)),
+            PipelineData::ListStream(stream, ..) => Ok(stream.map(f).into_pipeline_data(ctrlc)),
             PipelineData::Value(Value::Range { val, .. }, ..) => {
                 Ok(val.into_range_iter()?.map(f).into_pipeline_data(ctrlc))
             }
@@ -129,6 +147,9 @@ impl PipelineData {
                 Value::Error { error } => Err(error),
                 v => Ok(v.into_pipeline_data()),
             },
+            _ => Err(ShellError::NushellFailed(
+                "Streams don't support simple mapping".into(),
+            )),
         }
     }
 
@@ -148,7 +169,7 @@ impl PipelineData {
             PipelineData::Value(Value::List { vals, .. }, ..) => {
                 Ok(vals.into_iter().map(f).flatten().into_pipeline_data(ctrlc))
             }
-            PipelineData::Stream(stream, ..) => {
+            PipelineData::ListStream(stream, ..) => {
                 Ok(stream.map(f).flatten().into_pipeline_data(ctrlc))
             }
             PipelineData::Value(Value::Range { val, .. }, ..) => match val.into_range_iter() {
@@ -156,6 +177,9 @@ impl PipelineData {
                 Err(error) => Err(error),
             },
             PipelineData::Value(v, ..) => Ok(f(v).into_iter().into_pipeline_data(ctrlc)),
+            _ => Err(ShellError::NushellFailed(
+                "Streams don't support simple mapping".into(),
+            )),
         }
     }
 
@@ -172,7 +196,7 @@ impl PipelineData {
             PipelineData::Value(Value::List { vals, .. }, ..) => {
                 Ok(vals.into_iter().filter(f).into_pipeline_data(ctrlc))
             }
-            PipelineData::Stream(stream, ..) => Ok(stream.filter(f).into_pipeline_data(ctrlc)),
+            PipelineData::ListStream(stream, ..) => Ok(stream.filter(f).into_pipeline_data(ctrlc)),
             PipelineData::Value(Value::Range { val, .. }, ..) => {
                 Ok(val.into_range_iter()?.filter(f).into_pipeline_data(ctrlc))
             }
@@ -183,6 +207,9 @@ impl PipelineData {
                     Ok(Value::Nothing { span: v.span()? }.into_pipeline_data())
                 }
             }
+            _ => Err(ShellError::NushellFailed(
+                "Streams don't support simple mapping".into(),
+            )),
         }
     }
 }
@@ -203,7 +230,7 @@ impl IntoIterator for PipelineData {
     fn into_iter(self) -> Self::IntoIter {
         match self {
             PipelineData::Value(Value::List { vals, .. }, metadata) => {
-                PipelineIterator(PipelineData::Stream(
+                PipelineIterator(PipelineData::ListStream(
                     ValueStream {
                         stream: Box::new(vals.into_iter()),
                         ctrlc: None,
@@ -213,14 +240,14 @@ impl IntoIterator for PipelineData {
             }
             PipelineData::Value(Value::Range { val, .. }, metadata) => {
                 match val.into_range_iter() {
-                    Ok(iter) => PipelineIterator(PipelineData::Stream(
+                    Ok(iter) => PipelineIterator(PipelineData::ListStream(
                         ValueStream {
                             stream: Box::new(iter),
                             ctrlc: None,
                         },
                         metadata,
                     )),
-                    Err(error) => PipelineIterator(PipelineData::Stream(
+                    Err(error) => PipelineIterator(PipelineData::ListStream(
                         ValueStream {
                             stream: Box::new(std::iter::once(Value::Error { error })),
                             ctrlc: None,
@@ -241,7 +268,15 @@ impl Iterator for PipelineIterator {
         match &mut self.0 {
             PipelineData::Value(Value::Nothing { .. }, ..) => None,
             PipelineData::Value(v, ..) => Some(std::mem::take(v)),
-            PipelineData::Stream(stream, ..) => stream.next(),
+            PipelineData::ListStream(stream, ..) => stream.next(),
+            PipelineData::StringStream(stream, span, ..) => stream.next().map(|x| Value::String {
+                val: x,
+                span: *span,
+            }),
+            PipelineData::ByteStream(stream, span, ..) => stream.next().map(|x| Value::Binary {
+                val: x,
+                span: *span,
+            }),
         }
     }
 }
@@ -275,7 +310,7 @@ where
     <I::IntoIter as Iterator>::Item: Into<Value>,
 {
     fn into_pipeline_data(self, ctrlc: Option<Arc<AtomicBool>>) -> PipelineData {
-        PipelineData::Stream(
+        PipelineData::ListStream(
             ValueStream {
                 stream: Box::new(self.into_iter().map(Into::into)),
                 ctrlc,
@@ -289,7 +324,7 @@ where
         metadata: PipelineMetadata,
         ctrlc: Option<Arc<AtomicBool>>,
     ) -> PipelineData {
-        PipelineData::Stream(
+        PipelineData::ListStream(
             ValueStream {
                 stream: Box::new(self.into_iter().map(Into::into)),
                 ctrlc,

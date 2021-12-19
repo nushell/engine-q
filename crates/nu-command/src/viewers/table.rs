@@ -51,6 +51,16 @@ impl Command for Table {
         };
 
         match input {
+            PipelineData::ByteStream(stream, span, ..) => Ok(stream
+                .map(move |x| {
+                    println!("******");
+                    let x = nu_pretty_hex::pretty_hex(&x);
+                    Value::String { val: x, span }
+                })
+                .into_pipeline_data(ctrlc)),
+            PipelineData::StringStream(stream, span, ..) => Ok(stream
+                .map(move |x| Value::String { val: x, span })
+                .into_pipeline_data(ctrlc)),
             PipelineData::Value(Value::List { vals, .. }, ..) => {
                 let table = convert_to_table(0, vals, ctrlc, &config)?;
 
@@ -66,7 +76,7 @@ impl Command for Table {
                     Ok(PipelineData::new(call.head))
                 }
             }
-            PipelineData::Stream(stream, metadata) => {
+            PipelineData::ListStream(stream, metadata) => {
                 let stream = match metadata {
                     Some(PipelineMetadata {
                         data_source: DataSource::Ls,
@@ -160,20 +170,6 @@ impl Command for Table {
                     stream,
                 }
                 .into_pipeline_data(ctrlc))
-
-                // let table = convert_to_table(stream, ctrlc, &config)?;
-
-                // if let Some(table) = table {
-                //     let result = nu_table::draw_table(&table, term_width, &color_hm, &config);
-
-                //     Ok(Value::String {
-                //         val: result,
-                //         span: call.head,
-                //     }
-                //     .into_pipeline_data())
-                // } else {
-                //     Ok(PipelineData::new(call.head))
-                // }
             }
             PipelineData::Value(Value::Record { cols, vals, .. }, ..) => {
                 let mut output = vec![];
