@@ -50,7 +50,7 @@ impl Command for Empty {
                 example: "'' | empty?",
                 result: Some(Value::Bool {
                     val: true,
-                    span: Span::unknown(),
+                    span: Span::test_data(),
                 }),
             },
             Example {
@@ -60,14 +60,14 @@ impl Command for Empty {
                     Value::List {
                         vals: vec![
                             Value::Record{cols: vec!["meal".to_string(), "size".to_string()], vals: vec![
-                                Value::Bool{val: false, span: Span::unknown()},
-                                Value::Bool{val: false, span: Span::unknown()}
-                            ], span: Span::unknown()},
+                                Value::Bool{val: false, span: Span::test_data()},
+                                Value::Bool{val: false, span: Span::test_data()}
+                            ], span: Span::test_data()},
                             Value::Record{cols: vec!["meal".to_string(), "size".to_string()], vals: vec![
-                                Value::Bool{val: false, span: Span::unknown()},
-                                Value::Bool{val: true, span: Span::unknown()}
-                            ], span: Span::unknown()}
-                        ], span: Span::unknown()
+                                Value::Bool{val: false, span: Span::test_data()},
+                                Value::Bool{val: true, span: Span::test_data()}
+                            ], span: Span::test_data()}
+                        ], span: Span::test_data()
                     })
             },
             Example {
@@ -80,17 +80,17 @@ impl Command for Empty {
                             cols: vec!["2020/04/16".to_string(), "2020/07/10".to_string(), "2020/11/16".to_string()], 
                             vals: vec![
                                 Value::List{vals: vec![
-                                    Value::Int{val: 33, span: Span::unknown()},
-                                    Value::Int{val: 37, span: Span::unknown()}
-                                ], span: Span::unknown()},
+                                    Value::Int{val: 33, span: Span::test_data()},
+                                    Value::Int{val: 37, span: Span::test_data()}
+                                ], span: Span::test_data()},
                                 Value::List{vals: vec![
-                                    Value::Int{val: 27, span: Span::unknown()},
-                                ], span: Span::unknown()},
+                                    Value::Int{val: 27, span: Span::test_data()},
+                                ], span: Span::test_data()},
                                 Value::List{vals: vec![
-                                    Value::Int{val: 37, span: Span::unknown()},
-                                ], span: Span::unknown()},
-                            ], span: Span::unknown()}
-                        ], span: Span::unknown()
+                                    Value::Int{val: 37, span: Span::test_data()},
+                                ], span: Span::test_data()},
+                            ], span: Span::test_data()}
+                        ], span: Span::test_data()
                     }
                 )
             }
