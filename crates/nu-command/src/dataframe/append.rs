@@ -12,7 +12,7 @@ pub struct AppendDF;
 
 impl Command for AppendDF {
     fn name(&self) -> &str {
-        "dataframe append"
+        "dfr append"
     }
 
     fn usage(&self) -> &str {
@@ -30,37 +30,58 @@ impl Command for AppendDF {
         vec![
             Example {
                 description: "Appends a dataframe as new columns",
-                example: r#"let a = ([[a b]; [1 2] [3 4]] | dataframe to-df);
-$a | dataframe append $a"#,
-                result: Some(
-                    NuDataFrame::try_from_columns(vec![
-                        Column::new("a".to_string(), vec![1.into(), 3.into()]),
-                        Column::new("b".to_string(), vec![2.into(), 4.into()]),
-                        Column::new("a_x".to_string(), vec![1.into(), 3.into()]),
-                        Column::new("b_x".to_string(), vec![2.into(), 4.into()]),
-                    ])
-                    .expect("simple df for test should not fail")
-                    .into_value(Span::unknown()),
-                ),
-            },
-            Example {
-                description: "Appends a dataframe merging at the end of columns",
-                //example: r#"let a = ([[a b]; [1 2] [3 4]] | to df); $a | append-df $a -col"#,
-                example: r#"let a = ([[a b]; [1 2] [3 4]] | dataframe to-df);
-$a | dataframe append $a --col"#,
+                example: r#"let a = ([[a b]; [1 2] [3 4]] | dfr to-df);
+    $a | dfr append $a"#,
                 result: Some(
                     NuDataFrame::try_from_columns(vec![
                         Column::new(
                             "a".to_string(),
-                            vec![1.into(), 3.into(), 1.into(), 3.into()],
+                            vec![Value::test_int(1), Value::test_int(3)],
                         ),
                         Column::new(
                             "b".to_string(),
-                            vec![2.into(), 4.into(), 2.into(), 4.into()],
+                            vec![Value::test_int(2), Value::test_int(4)],
+                        ),
+                        Column::new(
+                            "a_x".to_string(),
+                            vec![Value::test_int(1), Value::test_int(3)],
+                        ),
+                        Column::new(
+                            "b_x".to_string(),
+                            vec![Value::test_int(2), Value::test_int(4)],
                         ),
                     ])
                     .expect("simple df for test should not fail")
-                    .into_value(Span::unknown()),
+                    .into_value(Span::test_data()),
+                ),
+            },
+            Example {
+                description: "Appends a dataframe merging at the end of columns",
+                example: r#"let a = ([[a b]; [1 2] [3 4]] | dfr to-df);
+    $a | dfr append $a --col"#,
+                result: Some(
+                    NuDataFrame::try_from_columns(vec![
+                        Column::new(
+                            "a".to_string(),
+                            vec![
+                                Value::test_int(1),
+                                Value::test_int(3),
+                                Value::test_int(1),
+                                Value::test_int(3),
+                            ],
+                        ),
+                        Column::new(
+                            "b".to_string(),
+                            vec![
+                                Value::test_int(2),
+                                Value::test_int(4),
+                                Value::test_int(2),
+                                Value::test_int(4),
+                            ],
+                        ),
+                    ])
+                    .expect("simple df for test should not fail")
+                    .into_value(Span::test_data()),
                 ),
             },
         ]
@@ -104,6 +125,6 @@ mod test {
 
     #[test]
     fn test_examples() {
-        test_dataframe(AppendDF {})
+        test_dataframe(vec![Box::new(AppendDF {})])
     }
 }

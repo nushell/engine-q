@@ -3,7 +3,7 @@ use super::values::{Column, NuDataFrame};
 use nu_protocol::{
     ast::Call,
     engine::{Command, EngineState, Stack},
-    Category, Example, PipelineData, ShellError, Signature, Span,
+    Category, Example, PipelineData, ShellError, Signature, Span, Value,
 };
 use polars::{
     chunked_array::ChunkedArray,
@@ -17,7 +17,7 @@ pub struct DescribeDF;
 
 impl Command for DescribeDF {
     fn name(&self) -> &str {
-        "dataframe describe"
+        "dfr describe"
     }
 
     fn usage(&self) -> &str {
@@ -31,57 +31,57 @@ impl Command for DescribeDF {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "dataframe description",
-            example: "[[a b]; [1 1] [1 1]] | dataframe to-df | dataframe describe",
+            example: "[[a b]; [1 1] [1 1]] | dfr to-df | dfr describe",
             result: Some(
                 NuDataFrame::try_from_columns(vec![
                     Column::new(
                         "descriptor".to_string(),
                         vec![
-                            "count".to_string().into(),
-                            "sum".to_string().into(),
-                            "mean".to_string().into(),
-                            "median".to_string().into(),
-                            "std".to_string().into(),
-                            "min".to_string().into(),
-                            "25%".to_string().into(),
-                            "50%".to_string().into(),
-                            "75%".to_string().into(),
-                            "max".to_string().into(),
+                            Value::test_string("count"),
+                            Value::test_string("sum"),
+                            Value::test_string("mean"),
+                            Value::test_string("median"),
+                            Value::test_string("std"),
+                            Value::test_string("min"),
+                            Value::test_string("25%"),
+                            Value::test_string("50%"),
+                            Value::test_string("75%"),
+                            Value::test_string("max"),
                         ],
                     ),
                     Column::new(
                         "a (i64)".to_string(),
                         vec![
-                            2.0.into(),
-                            2.0.into(),
-                            1.0.into(),
-                            1.0.into(),
-                            0.0.into(),
-                            1.0.into(),
-                            1.0.into(),
-                            1.0.into(),
-                            1.0.into(),
-                            1.0.into(),
+                            Value::test_float(2.0),
+                            Value::test_float(2.0),
+                            Value::test_float(1.0),
+                            Value::test_float(1.0),
+                            Value::test_float(0.0),
+                            Value::test_float(1.0),
+                            Value::test_float(1.0),
+                            Value::test_float(1.0),
+                            Value::test_float(1.0),
+                            Value::test_float(1.0),
                         ],
                     ),
                     Column::new(
                         "b (i64)".to_string(),
                         vec![
-                            2.0.into(),
-                            2.0.into(),
-                            1.0.into(),
-                            1.0.into(),
-                            0.0.into(),
-                            1.0.into(),
-                            1.0.into(),
-                            1.0.into(),
-                            1.0.into(),
-                            1.0.into(),
+                            Value::test_float(2.0),
+                            Value::test_float(2.0),
+                            Value::test_float(1.0),
+                            Value::test_float(1.0),
+                            Value::test_float(0.0),
+                            Value::test_float(1.0),
+                            Value::test_float(1.0),
+                            Value::test_float(1.0),
+                            Value::test_float(1.0),
+                            Value::test_float(1.0),
                         ],
                     ),
                 ])
                 .expect("simple df for test should not fail")
-                .into_value(Span::unknown()),
+                .into_value(Span::test_data()),
             ),
         }]
     }
@@ -236,6 +236,6 @@ mod test {
 
     #[test]
     fn test_examples() {
-        test_dataframe(DescribeDF {})
+        test_dataframe(vec![Box::new(DescribeDF {})])
     }
 }
