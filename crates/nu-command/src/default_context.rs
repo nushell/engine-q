@@ -54,6 +54,7 @@ pub fn create_default_context() -> EngineState {
             DropColumn,
             DropNth,
             Each,
+            Empty,
             First,
             Flatten,
             Get,
@@ -218,6 +219,7 @@ pub fn create_default_context() -> EngineState {
         // Conversions
         bind_command! {
             Into,
+            IntoBool,
             IntoBinary,
             IntoDatetime,
             IntoDecimal,
