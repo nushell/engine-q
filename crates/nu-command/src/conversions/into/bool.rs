@@ -38,31 +38,61 @@ impl Command for SubCommand {
     }
 
     fn examples(&self) -> Vec<Example> {
+        let span = Span::unknown();
         vec![
             Example {
-                description: "Convert string to boolean in table",
-                example: "echo [[num]; ['false'] ['1'] [0] [1.0]] | into int num",
-                result: None,
+                description: "Convert value to boolean in table",
+                example: "echo [[value]; ['false'] ['1'] [0] [1.0] [$true]] | into bool value",
+                result: Some(Value::List {
+                    vals: vec![
+                        Value::Record {
+                            cols: vec!["value".to_string()],
+                            vals: vec![Value::boolean(false, span)],
+                            span,
+                        },
+                        Value::Record {
+                            cols: vec!["value".to_string()],
+                            vals: vec![Value::boolean(true, span)],
+                            span,
+                        },
+                        Value::Record {
+                            cols: vec!["value".to_string()],
+                            vals: vec![Value::boolean(false, span)],
+                            span,
+                        },
+                        Value::Record {
+                            cols: vec!["value".to_string()],
+                            vals: vec![Value::boolean(true, span)],
+                            span,
+                        },
+                        Value::Record {
+                            cols: vec!["value".to_string()],
+                            vals: vec![Value::boolean(true, span)],
+                            span,
+                        },
+                    ],
+                    span,
+                }),
+            },
+            Example {
+                description: "Convert bool to boolean",
+                example: "$true | into bool",
+                result: Some(Value::boolean(true, span)),
             },
             Example {
                 description: "convert decimal to boolean",
                 example: "1 | into bool",
-                result: Some(Value::boolean(true, Span::unknown())),
+                result: Some(Value::boolean(true, span)),
             },
             Example {
                 description: "convert decimal string to boolean",
                 example: "'0.0' | into bool",
-                result: Some(Value::boolean(false, Span::unknown())),
+                result: Some(Value::boolean(false, span)),
             },
             Example {
                 description: "convert string to boolean",
                 example: "'true' | into bool",
-                result: Some(Value::boolean(true, Span::unknown())),
-            },
-            Example {
-                description: "convert a file exists to boolean",
-                example: "ls LICENSE | into bool",
-                result: None,
+                result: Some(Value::boolean(true, span)),
             },
         ]
     }
@@ -82,7 +112,16 @@ fn into_bool(
             if column_paths.is_empty() {
                 action(&v, head)
             } else {
-                unimplemented!()
+                let mut ret = v;
+                for path in &column_paths {
+                    let r =
+                        ret.update_cell_path(&path.members, Box::new(move |old| action(old, head)));
+                    if let Err(error) = r {
+                        return Value::Error { error };
+                    }
+                }
+
+                ret
             }
         },
         engine_state.ctrlc.clone(),
@@ -90,14 +129,14 @@ fn into_bool(
 }
 
 fn string_to_boolean(s: &str, span: Span) -> Result<bool, ShellError> {
-    match s.trim() {
+    match s.trim().to_lowercase().as_str() {
         "true" => Ok(true),
         "false" => Ok(false),
         o => {
             let val = o.parse::<f64>();
             match val {
                 Ok(f) => Ok(f != 0.0),
-                Err(e) => Err(ShellError::CantConvert(
+                Err(_) => Err(ShellError::CantConvert(
                     "boolean".to_string(),
                     "string".to_string(),
                     span,
@@ -109,6 +148,7 @@ fn string_to_boolean(s: &str, span: Span) -> Result<bool, ShellError> {
 
 fn action(input: &Value, span: Span) -> Value {
     match input {
+        Value::Bool { .. } => input.clone(),
         Value::Int { val, .. } => Value::Bool {
             val: *val != 0,
             span,
