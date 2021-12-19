@@ -5,7 +5,7 @@ use nu_protocol::{
     Category, Example, PipelineData, ShellError, Signature, Span, SyntaxShape, Value,
 };
 
-use super::values::utils::convert_columns;
+use super::values::utils::convert_columns_string;
 use super::values::{Column, NuDataFrame};
 
 #[derive(Clone)]
@@ -101,11 +101,7 @@ fn command(
 
     let (subset, col_span) = match columns {
         Some(cols) => {
-            let (agg_string, col_span) = convert_columns(cols, call.head)?;
-            let agg_string = agg_string
-                .into_iter()
-                .map(|col| col.item)
-                .collect::<Vec<String>>();
+            let (agg_string, col_span) = convert_columns_string(cols, call.head)?;
             (Some(agg_string), col_span)
         }
         None => (None, call.head),

@@ -8,6 +8,7 @@ mod describe;
 mod drop;
 mod drop_nulls;
 mod dtypes;
+mod groupby;
 mod open;
 mod to_df;
 mod with_column;
@@ -21,6 +22,7 @@ pub use describe::DescribeDF;
 pub use drop::DropDF;
 pub use drop_nulls::DropNulls;
 pub use dtypes::DataTypes;
+pub use groupby::CreateGroupBy;
 pub use open::OpenDataFrame;
 pub use to_df::ToDataFrame;
 pub use with_column::WithColumn;
@@ -87,6 +89,7 @@ pub fn add_dataframe_decls(working_set: &mut StateWorkingSet) {
     bind_command!(
         AppendDF,
         ColumnDF,
+        CreateGroupBy,
         Dataframe,
         DataTypes,
         DescribeDF,
