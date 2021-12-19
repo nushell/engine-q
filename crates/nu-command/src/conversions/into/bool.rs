@@ -38,7 +38,6 @@ impl Command for SubCommand {
     }
 
     fn examples(&self) -> Vec<Example> {
-        let span = Span::unknown();
         vec![
             Example {
                 description: "Convert value to boolean in table",
@@ -47,52 +46,52 @@ impl Command for SubCommand {
                     vals: vec![
                         Value::Record {
                             cols: vec!["value".to_string()],
-                            vals: vec![Value::boolean(false, span)],
-                            span,
+                            vals: vec![Value::boolean(false, Span::unknown())],
+                            span: Span::unknown(),
                         },
                         Value::Record {
                             cols: vec!["value".to_string()],
-                            vals: vec![Value::boolean(true, span)],
-                            span,
+                            vals: vec![Value::boolean(true, Span::unknown())],
+                            span: Span::unknown(),
                         },
                         Value::Record {
                             cols: vec!["value".to_string()],
-                            vals: vec![Value::boolean(false, span)],
-                            span,
+                            vals: vec![Value::boolean(false, Span::unknown())],
+                            span: Span::unknown(),
                         },
                         Value::Record {
                             cols: vec!["value".to_string()],
-                            vals: vec![Value::boolean(true, span)],
-                            span,
+                            vals: vec![Value::boolean(true, Span::unknown())],
+                            span: Span::unknown(),
                         },
                         Value::Record {
                             cols: vec!["value".to_string()],
-                            vals: vec![Value::boolean(true, span)],
-                            span,
+                            vals: vec![Value::boolean(true, Span::unknown())],
+                            span: Span::unknown(),
                         },
                     ],
-                    span,
+                    span: Span::unknown(),
                 }),
             },
             Example {
                 description: "Convert bool to boolean",
                 example: "$true | into bool",
-                result: Some(Value::boolean(true, span)),
+                result: Some(Value::boolean(true, Span::unknown())),
             },
             Example {
                 description: "convert decimal to boolean",
                 example: "1 | into bool",
-                result: Some(Value::boolean(true, span)),
+                result: Some(Value::boolean(true, Span::unknown())),
             },
             Example {
                 description: "convert decimal string to boolean",
                 example: "'0.0' | into bool",
-                result: Some(Value::boolean(false, span)),
+                result: Some(Value::boolean(false, Span::unknown())),
             },
             Example {
                 description: "convert string to boolean",
                 example: "'true' | into bool",
-                result: Some(Value::boolean(true, span)),
+                result: Some(Value::boolean(true, Span::unknown())),
             },
         ]
     }
