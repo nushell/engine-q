@@ -1,7 +1,7 @@
 mod custom_value;
 
 use nu_protocol::{ShellError, Span, Value};
-use polars::frame::groupby::GroupTuples;
+use polars::frame::groupby::{GroupBy, GroupTuples};
 use polars::prelude::DataFrame;
 use serde::{Deserialize, Serialize};
 
@@ -59,13 +59,13 @@ impl NuGroupBy {
     //     NuGroupBy::try_from_value(value)
     // }
 
-    // pub fn to_groupby(&self) -> Result<GroupBy, ShellError> {
-    //     let by = self.dataframe.select_series(&self.by).map_err(|e| {
-    //         ShellError::LabeledError("Error creating groupby".into(), e.to_string())
-    //     })?;
+    pub fn to_groupby(&self) -> Result<GroupBy, ShellError> {
+        let by = self.dataframe.select_series(&self.by).map_err(|e| {
+            ShellError::LabeledError("Error creating groupby".into(), e.to_string())
+        })?;
 
-    //     Ok(GroupBy::new(&self.dataframe, by, self.groups.clone(), None))
-    // }
+        Ok(GroupBy::new(&self.dataframe, by, self.groups.clone(), None))
+    }
 
     pub fn print(&self, span: Span) -> Result<Vec<Value>, ShellError> {
         let values = self
@@ -75,7 +75,7 @@ impl NuGroupBy {
                 let cols = vec!["group by".to_string()];
                 let vals = vec![Value::String {
                     val: col.into(),
-                    span: span.clone(),
+                    span,
                 }];
 
                 Value::Record { cols, vals, span }

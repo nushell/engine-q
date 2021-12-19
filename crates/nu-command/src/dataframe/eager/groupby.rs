@@ -5,7 +5,7 @@ use nu_protocol::{
     Category, Example, PipelineData, ShellError, Signature, SyntaxShape, Value,
 };
 
-use super::values::{utils::convert_columns_string, NuDataFrame, NuGroupBy};
+use super::super::values::{utils::convert_columns_string, NuDataFrame, NuGroupBy};
 
 #[derive(Clone)]
 pub struct CreateGroupBy;

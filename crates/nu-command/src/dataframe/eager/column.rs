@@ -5,7 +5,7 @@ use nu_protocol::{
     Category, Example, PipelineData, ShellError, Signature, Span, Spanned, SyntaxShape, Value,
 };
 
-use super::values::{Column, NuDataFrame};
+use super::super::values::{Column, NuDataFrame};
 
 #[derive(Clone)]
 pub struct ColumnDF;
@@ -71,7 +71,7 @@ fn command(
 
 #[cfg(test)]
 mod test {
-    use super::super::test_dataframe::test_dataframe;
+    use super::super::super::test_dataframe::test_dataframe;
     use super::*;
 
     #[test]
