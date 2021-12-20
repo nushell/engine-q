@@ -5,6 +5,7 @@ use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::Category;
 use nu_protocol::Spanned;
 use nu_protocol::{Example, PipelineData, ShellError, Signature, Span, SyntaxShape, Value};
+use ropey::str_utils::byte_to_char_idx;
 use std::sync::Arc;
 
 struct Arguments {
@@ -104,7 +105,6 @@ fn operate(
     input: PipelineData,
 ) -> Result<PipelineData, ShellError> {
     let pattern: Spanned<String> = call.req(engine_state, stack, 0)?;
-
     let options = Arc::new(Arguments {
         pattern: pattern.item,
         range: call.get_flag(engine_state, stack, "range")?,
@@ -112,6 +112,7 @@ fn operate(
         column_paths: call.rest(engine_state, stack, 1)?,
     });
     let head = call.head;
+
     input.map(
         move |v| {
             if options.column_paths.is_empty() {
@@ -124,6 +125,7 @@ fn operate(
                         &path.members,
                         Box::new(move |old| action(old, &opt, head)),
                     );
+
                     if let Err(error) = r {
                         return Value::Error { error };
                     }
@@ -164,8 +166,10 @@ fn action(
 
             if *end {
                 if let Some(result) = s[start_index..end_index].rfind(&**pattern) {
+                    // find returns a byte index. lets convert that to a char index
+                    let char_idx = byte_to_char_idx(&s[start_index..end_index], result);
                     Value::Int {
-                        val: result as i64 + start_index as i64,
+                        val: char_idx as i64 + start_index as i64,
                         span: head,
                     }
                 } else {
@@ -175,8 +179,11 @@ fn action(
                     }
                 }
             } else if let Some(result) = s[start_index..end_index].find(&**pattern) {
+                // find returns a byte index. lets convert that to a char index
+                let char_idx = byte_to_char_idx(&s[start_index..end_index], result);
+
                 Value::Int {
-                    val: result as i64 + start_index as i64,
+                    val: char_idx as i64 + start_index as i64,
                     span: head,
                 }
             } else {
@@ -204,7 +211,7 @@ fn process_range(
     head: Span,
 ) -> Result<IndexOfOptionalBounds, ShellError> {
     let input_len = match input {
-        Value::String { val: s, .. } => s.len(),
+        Value::String { val: s, .. } => s.chars().count(),
         _ => 0,
     };
     let min_index_str = String::from("0");
@@ -212,9 +219,7 @@ fn process_range(
     let r = match range {
         Value::String { val: s, .. } => {
             let indexes: Vec<&str> = s.split(',').collect();
-
             let start_index = indexes.get(0).unwrap_or(&&min_index_str[..]).to_string();
-
             let end_index = indexes.get(1).unwrap_or(&&max_index_str[..]).to_string();
 
             Ok((start_index, end_index))
@@ -281,6 +286,50 @@ mod tests {
     }
 
     #[test]
+    fn returns_index_of_unicode_substring_from_start() {
+        let search_string = Value::String {
+            val: String::from("[Rust 程序设计语言](title-page.md)"),
+            span: Span::test_data(),
+        };
+
+        let options = Arguments {
+            pattern: String::from("("),
+            range: Some(Value::String {
+                val: String::from(""),
+                span: Span::test_data(),
+            }),
+            column_paths: vec![],
+            end: false,
+        };
+
+        let actual = action(&search_string, &options, Span::test_data());
+
+        assert_eq!(actual, Value::test_int(13));
+    }
+
+    #[test]
+    fn returns_index_of_unicode_substring_from_end() {
+        let search_string = Value::String {
+            val: String::from("[Rust -程序设计语言]-(title-page.md)"),
+            span: Span::test_data(),
+        };
+
+        let options = Arguments {
+            pattern: String::from("-"),
+            range: Some(Value::String {
+                val: String::from(""),
+                span: Span::test_data(),
+            }),
+            column_paths: vec![],
+            end: true,
+        };
+
+        let actual = action(&search_string, &options, Span::test_data());
+
+        assert_eq!(actual, Value::test_int(14));
+    }
+
+    #[test]
     fn returns_index_of_substring() {
         let word = Value::String {
             val: String::from("Cargo.tomL"),
@@ -302,6 +351,7 @@ mod tests {
 
         assert_eq!(actual, Value::test_int(5));
     }
+
     #[test]
     fn index_of_does_not_exist_in_string() {
         let word = Value::String {

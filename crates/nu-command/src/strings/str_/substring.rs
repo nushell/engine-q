@@ -129,7 +129,7 @@ fn operate(
 fn action(input: &Value, options: &Substring, head: Span) -> Value {
     match input {
         Value::String { val: s, .. } => {
-            let len: isize = s.len() as isize;
+            let len: isize = s.chars().count() as isize;
 
             let start: isize = if options.0 < 0 {
                 options.0 + len
