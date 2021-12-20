@@ -239,12 +239,14 @@ fn convert_to_table(
     head: Span,
 ) -> Result<Option<nu_table::Table>, ShellError> {
     let mut headers = get_columns(input);
-    let input = input.iter().peekable();
+    let mut input = input.iter().peekable();
     let color_hm = get_color_config(config);
     let float_precision = config.float_precision as usize;
 
-    if !headers.is_empty() {
-        headers.insert(0, "#".into());
+    if input.peek().is_some() {
+        if !headers.is_empty() {
+            headers.insert(0, "#".into());
+        }
 
         // Vec of Vec of String1, String2 where String1 is datatype and String2 is value
         let mut data: Vec<Vec<(String, String)>> = Vec::new();
@@ -276,7 +278,7 @@ fn convert_to_table(
                         (&value.get_type()).to_string(),
                         value.into_abbreviated_string(config),
                     )),
-                    Err(_) => row.push(("empty".to_string(), "❓".into())),
+                    Err(_) => row.push(("empty".to_string(), "❎".into())),
                 }
             }
 
