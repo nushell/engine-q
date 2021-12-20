@@ -463,6 +463,21 @@ impl Value {
         }
     }
 
+    /// Check if the content is empty
+    pub fn is_empty(self) -> bool {
+        match self {
+            Value::String { val, .. } => val.is_empty(),
+            Value::List { vals, .. } => {
+                vals.is_empty() && vals.iter().all(|v| v.clone().is_empty())
+            }
+            Value::Record { cols, vals, .. } => {
+                cols.iter().all(|v| v.is_empty()) && vals.iter().all(|v| v.clone().is_empty())
+            }
+            Value::Nothing { .. } => true,
+            _ => false,
+        }
+    }
+
     /// Create a new `Nothing` value
     pub fn nothing(span: Span) -> Value {
         Value::Nothing { span }
@@ -1126,13 +1141,18 @@ impl Value {
                 val: matches!(ordering, Ordering::Equal),
                 span,
             }),
-            None => Err(ShellError::OperatorMismatch {
-                op_span: op,
-                lhs_ty: self.get_type(),
-                lhs_span: self.span()?,
-                rhs_ty: rhs.get_type(),
-                rhs_span: rhs.span()?,
-            }),
+            None => match (self, rhs) {
+                (Value::Nothing { .. }, _) | (_, Value::Nothing { .. }) => {
+                    Ok(Value::Bool { val: false, span })
+                }
+                _ => Err(ShellError::OperatorMismatch {
+                    op_span: op,
+                    lhs_ty: self.get_type(),
+                    lhs_span: self.span()?,
+                    rhs_ty: rhs.get_type(),
+                    rhs_span: rhs.span()?,
+                }),
+            },
         }
     }
     pub fn ne(&self, op: Span, rhs: &Value) -> Result<Value, ShellError> {
@@ -1147,13 +1167,18 @@ impl Value {
                 val: !matches!(ordering, Ordering::Equal),
                 span,
             }),
-            None => Err(ShellError::OperatorMismatch {
-                op_span: op,
-                lhs_ty: self.get_type(),
-                lhs_span: self.span()?,
-                rhs_ty: rhs.get_type(),
-                rhs_span: rhs.span()?,
-            }),
+            None => match (self, rhs) {
+                (Value::Nothing { .. }, _) | (_, Value::Nothing { .. }) => {
+                    Ok(Value::Bool { val: true, span })
+                }
+                _ => Err(ShellError::OperatorMismatch {
+                    op_span: op,
+                    lhs_ty: self.get_type(),
+                    lhs_span: self.span()?,
+                    rhs_ty: rhs.get_type(),
+                    rhs_span: rhs.span()?,
+                }),
+            },
         }
     }
 
