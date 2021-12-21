@@ -52,7 +52,7 @@ impl Command for Table {
 
         match input {
             PipelineData::Value(Value::List { vals, .. }, ..) => {
-                let table = convert_to_table(0, vals, ctrlc, &config, call.head)?;
+                let table = convert_to_table(0, &vals, ctrlc, &config, call.head)?;
 
                 if let Some(table) = table {
                     let result = nu_table::draw_table(&table, term_width, &color_hm, &config);
@@ -215,20 +215,35 @@ impl Command for Table {
     }
 }
 
+fn get_columns(input: &[Value]) -> Vec<String> {
+    let mut columns = vec![];
+
+    for item in input {
+        if let Value::Record { cols, vals: _, .. } = item {
+            for col in cols {
+                if !columns.contains(col) {
+                    columns.push(col.to_string());
+                }
+            }
+        }
+    }
+
+    columns
+}
+
 fn convert_to_table(
     row_offset: usize,
-    iter: impl IntoIterator<Item = Value>,
+    input: &[Value],
     ctrlc: Option<Arc<AtomicBool>>,
     config: &Config,
     head: Span,
 ) -> Result<Option<nu_table::Table>, ShellError> {
-    let mut iter = iter.into_iter().peekable();
+    let mut headers = get_columns(input);
+    let mut input = input.iter().peekable();
     let color_hm = get_color_config(config);
     let float_precision = config.float_precision as usize;
 
-    if let Some(first) = iter.peek() {
-        let mut headers = first.columns();
-
+    if input.peek().is_some() {
         if !headers.is_empty() {
             headers.insert(0, "#".into());
         }
@@ -236,14 +251,14 @@ fn convert_to_table(
         // Vec of Vec of String1, String2 where String1 is datatype and String2 is value
         let mut data: Vec<Vec<(String, String)>> = Vec::new();
 
-        for (row_num, item) in iter.enumerate() {
+        for (row_num, item) in input.enumerate() {
             if let Some(ctrlc) = &ctrlc {
                 if ctrlc.load(Ordering::SeqCst) {
                     return Ok(None);
                 }
             }
             if let Value::Error { error } = item {
-                return Err(error);
+                return Err(error.clone());
             }
             // String1 = datatype, String2 = value as string
             let mut row: Vec<(String, String)> =
@@ -269,7 +284,7 @@ fn convert_to_table(
                             (&value.get_type()).to_string(),
                             value.into_abbreviated_string(config),
                         )),
-                        Err(_) => row.push(("empty".to_string(), String::new())),
+                        Err(_) => row.push(("empty".to_string(), "❎".into())),
                     }
                 }
             }
@@ -397,7 +412,7 @@ impl Iterator for PagingTableCreator {
 
         let table = convert_to_table(
             self.row_offset,
-            batch.into_iter(),
+            &batch,
             self.ctrlc.clone(),
             &self.config,
             self.head,

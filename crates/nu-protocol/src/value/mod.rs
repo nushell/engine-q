@@ -195,6 +195,17 @@ impl Value {
         }
     }
 
+    pub fn as_list(&self) -> Result<&[Value], ShellError> {
+        match self {
+            Value::List { vals, .. } => Ok(vals),
+            x => Err(ShellError::CantConvert(
+                "list".into(),
+                x.get_type().to_string(),
+                self.span()?,
+            )),
+        }
+    }
+
     pub fn as_bool(&self) -> Result<bool, ShellError> {
         match self {
             Value::Bool { val, .. } => Ok(*val),
@@ -375,22 +386,22 @@ impl Value {
     }
 
     /// Convert Value into string. Note that Streams will be consumed.
-    pub fn into_abbreviated_string(self, config: &Config) -> String {
+    pub fn into_abbreviated_string(&self, config: &Config) -> String {
         match self {
             Value::Bool { val, .. } => val.to_string(),
             Value::Int { val, .. } => val.to_string(),
             Value::Float { val, .. } => val.to_string(),
-            Value::Filesize { val, .. } => format_filesize(val, config),
-            Value::Duration { val, .. } => format_duration(val),
-            Value::Date { val, .. } => HumanTime::from(val).to_string(),
+            Value::Filesize { val, .. } => format_filesize(*val, config),
+            Value::Duration { val, .. } => format_duration(*val),
+            Value::Date { val, .. } => HumanTime::from(*val).to_string(),
             Value::Range { val, .. } => {
                 format!(
                     "{}..{}",
-                    val.from.into_string(", ", config),
-                    val.to.into_string(", ", config)
+                    val.from.clone().into_string(", ", config),
+                    val.to.clone().into_string(", ", config)
                 )
             }
-            Value::String { val, .. } => val,
+            Value::String { val, .. } => val.to_string(),
             Value::List { ref vals, .. } => match &vals[..] {
                 [Value::Record { .. }, _end @ ..] => format!(
                     "[table {} row{}]",
