@@ -85,34 +85,34 @@ pub enum SyntaxShape {
 impl SyntaxShape {
     pub fn to_type(&self) -> Type {
         match self {
-            SyntaxShape::Any => Type::Unknown,
+            SyntaxShape::Any => Type::Any,
             SyntaxShape::Block(_) => Type::Block,
-            SyntaxShape::CellPath => Type::Unknown,
+            SyntaxShape::CellPath => Type::CellPath,
             SyntaxShape::Custom(custom, _) => custom.to_type(),
             SyntaxShape::Duration => Type::Duration,
-            SyntaxShape::Expression => Type::Unknown,
+            SyntaxShape::Expression => Type::Expression,
             SyntaxShape::Filepath => Type::String,
             SyntaxShape::Filesize => Type::Filesize,
-            SyntaxShape::FullCellPath => Type::Unknown,
+            SyntaxShape::FullCellPath => Type::FullCellPath,
             SyntaxShape::GlobPattern => Type::String,
-            SyntaxShape::ImportPattern => Type::Unknown,
+            SyntaxShape::ImportPattern => Type::ImportPattern,
             SyntaxShape::Int => Type::Int,
             SyntaxShape::List(x) => {
                 let contents = x.to_type();
                 Type::List(Box::new(contents))
             }
             SyntaxShape::Keyword(_, expr) => expr.to_type(),
-            SyntaxShape::MathExpression => Type::Unknown,
+            SyntaxShape::MathExpression => Type::MathExpression,
             SyntaxShape::Number => Type::Number,
-            SyntaxShape::Operator => Type::Unknown,
-            SyntaxShape::Range => Type::Unknown,
+            SyntaxShape::Operator => Type::Operator,
+            SyntaxShape::Range => Type::Range,
             SyntaxShape::RowCondition => Type::Bool,
             SyntaxShape::Boolean => Type::Bool,
-            SyntaxShape::Signature => Type::Unknown,
+            SyntaxShape::Signature => Type::Signature,
             SyntaxShape::String => Type::String,
             SyntaxShape::Table => Type::List(Box::new(Type::Unknown)), // FIXME: Tables should have better types
-            SyntaxShape::VarWithOptType => Type::Unknown,
-            SyntaxShape::Variable => Type::Unknown,
+            SyntaxShape::VarWithOptType => Type::VarWithOptType,
+            SyntaxShape::Variable => Type::Variable,
         }
     }
 }
