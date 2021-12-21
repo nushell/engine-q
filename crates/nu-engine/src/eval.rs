@@ -470,8 +470,17 @@ pub fn eval_variable(
         let mut output_vals = vec![];
 
         let env_vars = stack.get_env_vars();
-        let env_columns: Vec<_> = env_vars.keys().map(|x| x.to_string()).collect();
-        let env_values: Vec<_> = env_vars.values().cloned().collect();
+        let env_columns: Vec<String> = env_vars.keys().map(|x| x.to_string()).collect();
+        let env_values: Vec<Value> = env_vars.values().cloned().collect();
+
+        let mut pairs = env_columns
+            .into_iter()
+            .zip(env_values.into_iter())
+            .collect::<Vec<(String, Value)>>();
+
+        pairs.sort_by(|a, b| a.0.cmp(&b.0));
+
+        let (env_columns, env_values) = pairs.into_iter().unzip();
 
         output_cols.push("env".into());
         output_vals.push(Value::Record {
@@ -614,7 +623,7 @@ pub fn eval_variable(
                             Value::string(&signature.name, span),
                             Value::string(req.name, span),
                             Value::string("positional", span),
-                            Value::string(req.shape.to_type().to_string(), span),
+                            Value::string(req.shape.to_string(), span),
                             Value::boolean(false, span),
                             Value::nothing(span),
                             Value::string(req.desc, span),
@@ -633,7 +642,7 @@ pub fn eval_variable(
                             Value::string(&signature.name, span),
                             Value::string(opt.name, span),
                             Value::string("positional", span),
-                            Value::string(opt.shape.to_type().to_string(), span),
+                            Value::string(opt.shape.to_string(), span),
                             Value::boolean(true, span),
                             Value::nothing(span),
                             Value::string(opt.desc, span),
@@ -648,42 +657,39 @@ pub fn eval_variable(
 
                     {
                         // rest_positional
-                        let (name, shape, desc) = if let Some(rest) = signature.rest_positional {
-                            (
+                        if let Some(rest) = signature.rest_positional {
+                            let sig_vals = vec![
+                                Value::string(&signature.name, span),
                                 Value::string(rest.name, span),
-                                Value::string(rest.shape.to_type().to_string(), span),
+                                Value::string("rest", span),
+                                Value::string(rest.shape.to_string(), span),
+                                Value::boolean(true, span),
+                                Value::nothing(span),
                                 Value::string(rest.desc, span),
-                            )
-                        } else {
-                            (
-                                Value::nothing(span),
-                                Value::nothing(span),
-                                Value::nothing(span),
-                            )
-                        };
+                            ];
 
-                        let sig_vals = vec![
-                            Value::string(&signature.name, span),
-                            name,
-                            Value::string("rest", span),
-                            shape,
-                            Value::boolean(false, span),
-                            Value::nothing(span),
-                            desc,
-                        ];
-
-                        sig_records.push(Value::Record {
-                            cols: sig_cols.clone(),
-                            vals: sig_vals,
-                            span,
-                        });
+                            sig_records.push(Value::Record {
+                                cols: sig_cols.clone(),
+                                vals: sig_vals,
+                                span,
+                            });
+                        }
                     }
 
                     // named flags
                     for named in signature.named {
+                        let flag_type;
+
+                        // Skip the help flag
+                        if named.long == "help" {
+                            continue;
+                        }
+
                         let shape = if let Some(arg) = named.arg {
-                            Value::string(arg.to_type().to_string(), span)
+                            flag_type = Value::string("named", span);
+                            Value::string(arg.to_string(), span)
                         } else {
+                            flag_type = Value::string("switch", span);
                             Value::nothing(span)
                         };
 
@@ -696,7 +702,7 @@ pub fn eval_variable(
                         let sig_vals = vec![
                             Value::string(&signature.name, span),
                             Value::string(named.long, span),
-                            Value::string("named", span),
+                            flag_type,
                             shape,
                             Value::boolean(!named.required, span),
                             short_flag,
