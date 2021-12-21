@@ -1,6 +1,6 @@
 mod custom_value;
 
-use nu_protocol::{ShellError, Span, Value};
+use nu_protocol::{PipelineData, ShellError, Span, Value};
 use polars::frame::groupby::{GroupBy, GroupTuples};
 use polars::prelude::DataFrame;
 use serde::{Deserialize, Serialize};
@@ -28,36 +28,32 @@ impl NuGroupBy {
         }
     }
 
-    // pub fn by(&self) -> &[String] {
-    //     &self.by
-    // }
+    pub fn try_from_value(value: Value) -> Result<Self, ShellError> {
+        match value {
+            Value::CustomValue { val, span } => match val.as_any().downcast_ref::<NuGroupBy>() {
+                Some(groupby) => Ok(NuGroupBy {
+                    dataframe: groupby.dataframe.clone(),
+                    by: groupby.by.clone(),
+                    groups: groupby.groups.clone(),
+                }),
+                None => Err(ShellError::CantConvert(
+                    "groupby".into(),
+                    "non-dataframe".into(),
+                    span,
+                )),
+            },
+            x => Err(ShellError::CantConvert(
+                "groupby".into(),
+                x.get_type().to_string(),
+                x.span()?,
+            )),
+        }
+    }
 
-    // pub fn try_from_value(value: Value) -> Result<Self, ShellError> {
-    //     match value {
-    //         Value::CustomValue { val, span } => match val.as_any().downcast_ref::<NuGroupBy>() {
-    //             Some(groupby) => Ok(NuGroupBy {
-    //                 dataframe: groupby.dataframe.clone(),
-    //                 by: groupby.by.clone(),
-    //                 groups: groupby.groups.clone(),
-    //             }),
-    //             None => Err(ShellError::CantConvert(
-    //                 "groupby".into(),
-    //                 "non-dataframe".into(),
-    //                 span,
-    //             )),
-    //         },
-    //         x => Err(ShellError::CantConvert(
-    //             "groupby".into(),
-    //             x.get_type().to_string(),
-    //             x.span()?,
-    //         )),
-    //     }
-    // }
-
-    // pub fn try_from_pipeline<T>(input: PipelineData, span: Span) -> Result<NuGroupBy, ShellError> {
-    //     let value = input.into_value(span);
-    //     NuGroupBy::try_from_value(value)
-    // }
+    pub fn try_from_pipeline(input: PipelineData, span: Span) -> Result<NuGroupBy, ShellError> {
+        let value = input.into_value(span);
+        NuGroupBy::try_from_value(value)
+    }
 
     pub fn to_groupby(&self) -> Result<GroupBy, ShellError> {
         let by = self.dataframe.select_series(&self.by).map_err(|e| {

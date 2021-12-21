@@ -15,7 +15,17 @@ mod join;
 mod last;
 mod melt;
 mod open;
+mod pivot;
+mod rename;
+mod sample;
+mod shape;
+mod slice;
+mod sort;
+mod take;
+mod to_csv;
 mod to_df;
+mod to_nu;
+mod to_parquet;
 mod with_column;
 
 use nu_protocol::engine::StateWorkingSet;
@@ -37,7 +47,17 @@ pub use join::JoinDF;
 pub use last::LastDF;
 pub use melt::MeltDF;
 pub use open::OpenDataFrame;
+pub use pivot::PivotDF;
+pub use rename::RenameDF;
+pub use sample::SampleDF;
+pub use shape::ShapeDF;
+pub use slice::SliceDF;
+pub use sort::SortDF;
+pub use take::TakeDF;
+pub use to_csv::ToCSV;
 pub use to_df::ToDataFrame;
+pub use to_nu::ToNu;
+pub use to_parquet::ToParquet;
 pub use with_column::WithColumn;
 
 pub fn add_eager_decls(working_set: &mut StateWorkingSet) {
@@ -69,7 +89,17 @@ pub fn add_eager_decls(working_set: &mut StateWorkingSet) {
         LastDF,
         MeltDF,
         OpenDataFrame,
+        PivotDF,
+        RenameDF,
+        SampleDF,
+        ShapeDF,
+        SliceDF,
+        SortDF,
+        TakeDF,
+        ToCSV,
         ToDataFrame,
+        ToNu,
+        ToParquet,
         WithColumn
     );
 }
