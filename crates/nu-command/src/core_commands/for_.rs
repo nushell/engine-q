@@ -178,7 +178,7 @@ impl Command for For {
                             span,
                         },
                         Value::String {
-                            val: "0 is fred".into(),
+                            val: "1 is fred".into(),
                             span,
                         },
                     ],
