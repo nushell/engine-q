@@ -5,7 +5,7 @@ use nu_protocol::ast::{Call, PathMember};
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
     Category, Config, DataSource, IntoInterruptiblePipelineData, IntoPipelineData, PipelineData,
-    PipelineMetadata, ShellError, Signature, Span, Value, ValueStream, SyntaxShape,
+    PipelineMetadata, ShellError, Signature, Span, SyntaxShape, Value, ValueStream,
 };
 use nu_table::{StyledString, TextStyle, Theme};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -30,12 +30,14 @@ impl Command for Table {
     }
 
     fn signature(&self) -> nu_protocol::Signature {
-        Signature::build("table").named(
-            "start_number",
-            SyntaxShape::Int,
-            "row number to start viewing from",
-            Some('n'),
-        ).category(Category::Viewers)
+        Signature::build("table")
+            .named(
+                "start_number",
+                SyntaxShape::Int,
+                "row number to start viewing from",
+                Some('n'),
+            )
+            .category(Category::Viewers)
     }
 
     fn run(
@@ -167,7 +169,6 @@ impl Command for Table {
                     stream,
                 }
                 .into_pipeline_data(ctrlc))
-
             }
             PipelineData::Value(Value::Record { cols, vals, .. }, ..) => {
                 let mut output = vec![];
