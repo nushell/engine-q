@@ -48,11 +48,11 @@ impl Command for Compact {
             },
             Example {
                 description: "Filter out all records where 'World' is null (Returns the table)",
-                example: r#"echo [["Hello" "World"]; [2 $nothing]]| compact Hello"#,
+                example: r#"echo [["Hello" "World"]; [$nothing 3]]| compact World"#,
                 result: Some(Value::List {
                     vals: vec![Value::Record {
                         cols: vec!["Hello".into(), "World".into()],
-                        vals: vec![Value::test_int(2), Value::nothing(Span::test_data())],
+                        vals: vec![Value::nothing(Span::test_data()), Value::test_int(3)],
                         span: Span::test_data(),
                     }],
                     span: Span::test_data(),
