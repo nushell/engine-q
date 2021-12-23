@@ -37,21 +37,35 @@ impl Command for Compact {
     }
 
     fn examples(&self) -> Vec<Example> {
-        vec![Example {
-            description: "Filter out all records where 'Hello' is null (returns nothing)",
-            example: r#""[{"Hello": null,"World": 1}]" | from json | compact Hello"#,
-            result: Some(Value::List {
-                vals: vec![],
-                span: Span { start: 0, end: 0 },
-            }),
-        },
-        Example {
-            description: "Filter out all records where 'World' is null (Returns the table)",
-            example: r#""[{"Hello": null,"World": 1}]" | from json | compact Hello"#,
-            result: Some(Value::List {
-                vals: vec![],
-                span: Span { start: 0, end: 0 },
-            }),
+        vec![
+            Example {
+                description: "Filter out all records where 'Hello' is null (returns nothing)",
+                example: r#"echo [["Hello" "World"]; [$nothing 3]]| compact Hello"#,
+                result: Some(Value::List {
+                    vals: vec![],
+                    span: Span::test_data(),
+                }),
+            },
+            Example {
+                description: "Filter out all records where 'World' is null (Returns the table)",
+                example: r#"echo [["Hello" "World"]; [2 $nothing]]| compact Hello"#,
+                result: Some(Value::List {
+                    vals: vec![Value::Record {
+                        cols: vec!["Hello".into(), "World".into()],
+                        vals: vec![Value::test_int(2), Value::nothing(Span::test_data())],
+                        span: Span::test_data(),
+                    }],
+                    span: Span::test_data(),
+                }),
+            },
+            Example {
+                description: "Filter out all instances of nothing from a list (Returns [1,2]",
+                example: r#"echo [1, $nothing, 2] | compact"#,
+                result: Some(Value::List {
+                    vals: vec![Value::test_int(1), Value::test_int(2)],
+                    span: Span::test_data(),
+                }),
+            },
         ]
     }
 }
@@ -63,22 +77,20 @@ pub fn compact(
     input: PipelineData,
 ) -> Result<nu_protocol::PipelineData, ShellError> {
     let columns: Vec<String> = call.rest(engine_state, stack, 0)?;
-    println!("Columns {:?}", columns);
     input.filter(
         move |item| {
-            println!("{:?}", item);
             match item {
                 // Nothing is filtered out
                 Value::Nothing { .. } => false,
                 Value::Record { .. } => {
                     for column in columns.iter() {
-                        println!("got data: {:?}", item.get_data_by_key(column));
                         match item.get_data_by_key(column) {
                             None => return false,
-                            Some(x) => match x {
-                                Value::Nothing { .. } => return false,
-                                _ => (),
-                            },
+                            Some(x) => {
+                                if let Value::Nothing { .. } = x {
+                                    return false;
+                                }
+                            }
                         }
                     }
                     // No defined columns contained Nothing

@@ -2,11 +2,8 @@ mod all;
 mod any;
 mod append;
 mod collect;
-<<<<<<< HEAD
 mod columns;
-=======
 mod compact;
->>>>>>> Interm work porting compact to engine-q
 mod drop;
 mod each;
 mod empty;
@@ -36,11 +33,8 @@ pub use all::All;
 pub use any::Any;
 pub use append::Append;
 pub use collect::Collect;
-<<<<<<< HEAD
 pub use columns::Columns;
-=======
 pub use compact::Compact;
->>>>>>> Interm work porting compact to engine-q
 pub use drop::*;
 pub use each::Each;
 pub use empty::Empty;
