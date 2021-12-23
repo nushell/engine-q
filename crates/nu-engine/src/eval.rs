@@ -39,18 +39,24 @@ fn eval_call(
         let block = engine_state.get_block(block_id);
 
         let mut stack = stack.collect_captures(&block.captures);
-        for (arg, param) in call.positional.iter().zip(
-            decl.signature()
-                .required_positional
-                .iter()
-                .chain(decl.signature().optional_positional.iter()),
-        ) {
-            let result = eval_expression(engine_state, &mut stack, arg)?;
+
+        for (param_idx, param) in decl
+            .signature()
+            .required_positional
+            .iter()
+            .chain(decl.signature().optional_positional.iter())
+            .enumerate()
+        {
             let var_id = param
                 .var_id
                 .expect("internal error: all custom parameters must have var_ids");
 
-            stack.add_var(var_id, result);
+            if let Some(arg) = call.positional.get(param_idx) {
+                let result = eval_expression(engine_state, &mut stack, arg)?;
+                stack.add_var(var_id, result);
+            } else {
+                stack.add_var(var_id, Value::nothing(call.head));
+            }
         }
 
         if let Some(rest_positional) = decl.signature().rest_positional {
@@ -67,7 +73,7 @@ fn eval_call(
             let span = if let Some(rest_item) = rest_items.first() {
                 rest_item.span()?
             } else {
-                Span::unknown()
+                call.head
             };
 
             stack.add_var(
@@ -152,7 +158,7 @@ fn eval_external(
         call.named.push((
             Spanned {
                 item: "last_expression".into(),
-                span: Span::unknown(),
+                span: *name_span,
             },
             None,
         ))
@@ -191,25 +197,19 @@ pub fn eval_expression(
             let from = if let Some(f) = from {
                 eval_expression(engine_state, stack, f)?
             } else {
-                Value::Nothing {
-                    span: Span::unknown(),
-                }
+                Value::Nothing { span: expr.span }
             };
 
             let next = if let Some(s) = next {
                 eval_expression(engine_state, stack, s)?
             } else {
-                Value::Nothing {
-                    span: Span::unknown(),
-                }
+                Value::Nothing { span: expr.span }
             };
 
             let to = if let Some(t) = to {
                 eval_expression(engine_state, stack, t)?
             } else {
-                Value::Nothing {
-                    span: Span::unknown(),
-                }
+                Value::Nothing { span: expr.span }
             };
 
             Ok(Value::Range {
@@ -228,9 +228,7 @@ pub fn eval_expression(
 
             value.follow_cell_path(&cell_path.tail)
         }
-        Expr::ImportPattern(_) => Ok(Value::Nothing {
-            span: Span::unknown(),
-        }),
+        Expr::ImportPattern(_) => Ok(Value::Nothing { span: expr.span }),
         Expr::Call(call) => {
             // FIXME: protect this collect with ctrl-c
             Ok(
@@ -354,6 +352,7 @@ pub fn eval_expression(
         }),
         Expr::Signature(_) => Ok(Value::Nothing { span: expr.span }),
         Expr::Garbage => Ok(Value::Nothing { span: expr.span }),
+        Expr::Nothing => Ok(Value::Nothing { span: expr.span }),
     }
 }
 
@@ -471,8 +470,17 @@ pub fn eval_variable(
         let mut output_vals = vec![];
 
         let env_vars = stack.get_env_vars();
-        let env_columns: Vec<_> = env_vars.keys().map(|x| x.to_string()).collect();
-        let env_values: Vec<_> = env_vars.values().cloned().collect();
+        let env_columns = env_vars.keys();
+        let env_values = env_vars.values();
+
+        let mut pairs = env_columns
+            .map(|x| x.to_string())
+            .zip(env_values.cloned())
+            .collect::<Vec<(String, Value)>>();
+
+        pairs.sort_by(|a, b| a.0.cmp(&b.0));
+
+        let (env_columns, env_values) = pairs.into_iter().unzip();
 
         output_cols.push("env".into());
         output_vals.push(Value::Record {
@@ -615,7 +623,7 @@ pub fn eval_variable(
                             Value::string(&signature.name, span),
                             Value::string(req.name, span),
                             Value::string("positional", span),
-                            Value::string(req.shape.to_type().to_string(), span),
+                            Value::string(req.shape.to_string(), span),
                             Value::boolean(false, span),
                             Value::nothing(span),
                             Value::string(req.desc, span),
@@ -634,7 +642,7 @@ pub fn eval_variable(
                             Value::string(&signature.name, span),
                             Value::string(opt.name, span),
                             Value::string("positional", span),
-                            Value::string(opt.shape.to_type().to_string(), span),
+                            Value::string(opt.shape.to_string(), span),
                             Value::boolean(true, span),
                             Value::nothing(span),
                             Value::string(opt.desc, span),
@@ -649,42 +657,39 @@ pub fn eval_variable(
 
                     {
                         // rest_positional
-                        let (name, shape, desc) = if let Some(rest) = signature.rest_positional {
-                            (
+                        if let Some(rest) = signature.rest_positional {
+                            let sig_vals = vec![
+                                Value::string(&signature.name, span),
                                 Value::string(rest.name, span),
-                                Value::string(rest.shape.to_type().to_string(), span),
+                                Value::string("rest", span),
+                                Value::string(rest.shape.to_string(), span),
+                                Value::boolean(true, span),
+                                Value::nothing(span),
                                 Value::string(rest.desc, span),
-                            )
-                        } else {
-                            (
-                                Value::nothing(span),
-                                Value::nothing(span),
-                                Value::nothing(span),
-                            )
-                        };
+                            ];
 
-                        let sig_vals = vec![
-                            Value::string(&signature.name, span),
-                            name,
-                            Value::string("rest", span),
-                            shape,
-                            Value::boolean(false, span),
-                            Value::nothing(span),
-                            desc,
-                        ];
-
-                        sig_records.push(Value::Record {
-                            cols: sig_cols.clone(),
-                            vals: sig_vals,
-                            span,
-                        });
+                            sig_records.push(Value::Record {
+                                cols: sig_cols.clone(),
+                                vals: sig_vals,
+                                span,
+                            });
+                        }
                     }
 
                     // named flags
                     for named in signature.named {
+                        let flag_type;
+
+                        // Skip the help flag
+                        if named.long == "help" {
+                            continue;
+                        }
+
                         let shape = if let Some(arg) = named.arg {
-                            Value::string(arg.to_type().to_string(), span)
+                            flag_type = Value::string("named", span);
+                            Value::string(arg.to_string(), span)
                         } else {
+                            flag_type = Value::string("switch", span);
                             Value::nothing(span)
                         };
 
@@ -697,7 +702,7 @@ pub fn eval_variable(
                         let sig_vals = vec![
                             Value::string(&signature.name, span),
                             Value::string(named.long, span),
-                            Value::string("named", span),
+                            flag_type,
                             shape,
                             Value::boolean(!named.required, span),
                             short_flag,

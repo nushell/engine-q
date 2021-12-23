@@ -195,6 +195,17 @@ impl Value {
         }
     }
 
+    pub fn as_list(&self) -> Result<&[Value], ShellError> {
+        match self {
+            Value::List { vals, .. } => Ok(vals),
+            x => Err(ShellError::CantConvert(
+                "list".into(),
+                x.get_type().to_string(),
+                self.span()?,
+            )),
+        }
+    }
+
     pub fn as_bool(&self) -> Result<bool, ShellError> {
         match self {
             Value::Bool { val, .. } => Ok(*val),
@@ -375,22 +386,22 @@ impl Value {
     }
 
     /// Convert Value into string. Note that Streams will be consumed.
-    pub fn into_abbreviated_string(self, config: &Config) -> String {
+    pub fn into_abbreviated_string(&self, config: &Config) -> String {
         match self {
             Value::Bool { val, .. } => val.to_string(),
             Value::Int { val, .. } => val.to_string(),
             Value::Float { val, .. } => val.to_string(),
-            Value::Filesize { val, .. } => format_filesize(val, config),
-            Value::Duration { val, .. } => format_duration(val),
-            Value::Date { val, .. } => HumanTime::from(val).to_string(),
+            Value::Filesize { val, .. } => format_filesize(*val, config),
+            Value::Duration { val, .. } => format_duration(*val),
+            Value::Date { val, .. } => HumanTime::from(*val).to_string(),
             Value::Range { val, .. } => {
                 format!(
                     "{}..{}",
-                    val.from.into_string(", ", config),
-                    val.to.into_string(", ", config)
+                    val.from.clone().into_string(", ", config),
+                    val.to.clone().into_string(", ", config)
                 )
             }
-            Value::String { val, .. } => val,
+            Value::String { val, .. } => val.to_string(),
             Value::List { ref vals, .. } => match &vals[..] {
                 [Value::Record { .. }, _end @ ..] => format!(
                     "[table {} row{}]",
@@ -460,6 +471,21 @@ impl Value {
             Value::Binary { val, .. } => format!("{:?}", val),
             Value::CellPath { val, .. } => val.into_string(),
             Value::CustomValue { val, .. } => val.value_string(),
+        }
+    }
+
+    /// Check if the content is empty
+    pub fn is_empty(self) -> bool {
+        match self {
+            Value::String { val, .. } => val.is_empty(),
+            Value::List { vals, .. } => {
+                vals.is_empty() && vals.iter().all(|v| v.clone().is_empty())
+            }
+            Value::Record { cols, vals, .. } => {
+                cols.iter().all(|v| v.is_empty()) && vals.iter().all(|v| v.clone().is_empty())
+            }
+            Value::Nothing { .. } => true,
+            _ => false,
         }
     }
 
@@ -673,27 +699,35 @@ impl Value {
         Value::Bool { val, span }
     }
 
-    // Only use these for test data. Span::unknown() should not be used in user data
+    // Only use these for test data. Should not be used in user data
     pub fn test_string(s: impl Into<String>) -> Value {
         Value::String {
             val: s.into(),
-            span: Span::unknown(),
+            span: Span::test_data(),
         }
     }
 
-    // Only use these for test data. Span::unknown() should not be used in user data
+    // Only use these for test data. Should not be used in user data
     pub fn test_int(val: i64) -> Value {
         Value::Int {
             val,
-            span: Span::unknown(),
+            span: Span::test_data(),
         }
     }
 
-    // Only use these for test data. Span::unknown() should not be used in user data
+    // Only use these for test data. Should not be used in user data
     pub fn test_float(val: f64) -> Value {
         Value::Float {
             val,
-            span: Span::unknown(),
+            span: Span::test_data(),
+        }
+    }
+
+    // Only use these for test data. Should not be used in user data
+    pub fn test_bool(val: bool) -> Value {
+        Value::Bool {
+            val,
+            span: Span::test_data(),
         }
     }
 }
@@ -701,7 +735,7 @@ impl Value {
 impl Default for Value {
     fn default() -> Self {
         Value::Nothing {
-            span: Span::unknown(),
+            span: Span { start: 0, end: 0 },
         }
     }
 }
@@ -1118,13 +1152,18 @@ impl Value {
                 val: matches!(ordering, Ordering::Equal),
                 span,
             }),
-            None => Err(ShellError::OperatorMismatch {
-                op_span: op,
-                lhs_ty: self.get_type(),
-                lhs_span: self.span()?,
-                rhs_ty: rhs.get_type(),
-                rhs_span: rhs.span()?,
-            }),
+            None => match (self, rhs) {
+                (Value::Nothing { .. }, _) | (_, Value::Nothing { .. }) => {
+                    Ok(Value::Bool { val: false, span })
+                }
+                _ => Err(ShellError::OperatorMismatch {
+                    op_span: op,
+                    lhs_ty: self.get_type(),
+                    lhs_span: self.span()?,
+                    rhs_ty: rhs.get_type(),
+                    rhs_span: rhs.span()?,
+                }),
+            },
         }
     }
     pub fn ne(&self, op: Span, rhs: &Value) -> Result<Value, ShellError> {
@@ -1139,13 +1178,18 @@ impl Value {
                 val: !matches!(ordering, Ordering::Equal),
                 span,
             }),
-            None => Err(ShellError::OperatorMismatch {
-                op_span: op,
-                lhs_ty: self.get_type(),
-                lhs_span: self.span()?,
-                rhs_ty: rhs.get_type(),
-                rhs_span: rhs.span()?,
-            }),
+            None => match (self, rhs) {
+                (Value::Nothing { .. }, _) | (_, Value::Nothing { .. }) => {
+                    Ok(Value::Bool { val: true, span })
+                }
+                _ => Err(ShellError::OperatorMismatch {
+                    op_span: op,
+                    lhs_ty: self.get_type(),
+                    lhs_span: self.span()?,
+                    rhs_ty: rhs.get_type(),
+                    rhs_span: rhs.span()?,
+                }),
+            },
         }
     }
 

@@ -7,15 +7,18 @@ use dialoguer::{
 };
 use miette::{IntoDiagnostic, Result};
 use nu_cli::{CliError, NuCompleter, NuHighlighter, NuValidator, NushellPrompt};
+use nu_color_config::get_color_config;
 use nu_command::create_default_context;
-use nu_engine::{env_to_values, eval_block};
-use nu_parser::{lex, parse, Token, TokenContents};
+use nu_engine::{convert_env_values, eval_block};
+use nu_parser::{lex, parse, trim_quotes, Token, TokenContents};
 use nu_protocol::{
     ast::Call,
     engine::{EngineState, Stack, StateWorkingSet},
     Config, PipelineData, ShellError, Span, Value, CONFIG_VARIABLE_ID,
 };
-use reedline::{Completer, CompletionActionHandler, DefaultPrompt, LineBuffer, Prompt};
+use reedline::{
+    Completer, CompletionActionHandler, DefaultHinter, DefaultPrompt, LineBuffer, Prompt, Vi,
+};
 use std::{
     io::Write,
     sync::{
@@ -135,7 +138,7 @@ fn main() -> Result<()> {
             Value::Record {
                 cols: vec![],
                 vals: vec![],
-                span: Span::unknown(),
+                span: Span { start: 0, end: 0 },
             },
         );
 
@@ -150,7 +153,7 @@ fn main() -> Result<()> {
         };
 
         // Translate environment variables from Strings to Values
-        if let Some(e) = env_to_values(&engine_state, &mut stack, &config) {
+        if let Some(e) = convert_env_values(&engine_state, &mut stack, &config) {
             let working_set = StateWorkingSet::new(&engine_state);
             report_error(&working_set, &e);
             std::process::exit(1);
@@ -160,7 +163,7 @@ fn main() -> Result<()> {
             &engine_state,
             &mut stack,
             &block,
-            PipelineData::new(Span::unknown()),
+            PipelineData::new(Span::new(0, 0)), // Don't try this at home, 0 span is ignored
         ) {
             Ok(pipeline_data) => {
                 for item in pipeline_data {
@@ -203,7 +206,7 @@ fn main() -> Result<()> {
                     &engine_state,
                     &mut stack,
                     &block,
-                    PipelineData::new(Span::unknown()),
+                    PipelineData::new(Span::new(0, 0)), // Don't try this at home, 0 span is ignored
                 ) {
                     Ok(pipeline_data) => {
                         for item in pipeline_data {
@@ -254,7 +257,7 @@ fn main() -> Result<()> {
             Value::Record {
                 cols: vec![],
                 vals: vec![],
-                span: Span::unknown(),
+                span: Span::new(0, 0),
             },
         );
 
@@ -286,7 +289,7 @@ fn main() -> Result<()> {
         };
 
         // Translate environment variables from Strings to Values
-        if let Some(e) = env_to_values(&engine_state, &mut stack, &config) {
+        if let Some(e) = convert_env_values(&engine_state, &mut stack, &config) {
             let working_set = StateWorkingSet::new(&engine_state);
             report_error(&working_set, &e);
         }
@@ -352,13 +355,37 @@ fn main() -> Result<()> {
             //FIXME: if config.use_ansi_coloring is false then we should
             // turn off the hinter but I don't see any way to do that yet.
 
-            let mut line_editor = if let Some(history_path) = history_path.clone() {
-                line_editor
-                    .with_history(Box::new(
-                        FileBackedHistory::with_file(1000, history_path.clone())
+            let color_hm = get_color_config(&config);
+
+            let line_editor = if let Some(history_path) = history_path.clone() {
+                let history = std::fs::read_to_string(&history_path);
+                if history.is_ok() {
+                    line_editor
+                        .with_hinter(Box::new(
+                            DefaultHinter::default()
+                                .with_history()
+                                .with_style(color_hm["hints"]),
+                        ))
+                        .with_history(Box::new(
+                            FileBackedHistory::with_file(
+                                config.max_history_size as usize,
+                                history_path.clone(),
+                            )
                             .into_diagnostic()?,
-                    ))
-                    .into_diagnostic()?
+                        ))
+                        .into_diagnostic()?
+                } else {
+                    line_editor
+                }
+            } else {
+                line_editor
+            };
+
+            // The line editor default mode is emacs mode. For the moment we only
+            // need to check for vi mode
+            let mut line_editor = if config.edit_mode == "vi" {
+                let edit_mode = Box::new(Vi::default());
+                line_editor.with_edit_mode(edit_mode)
             } else {
                 line_editor
             };
@@ -410,25 +437,66 @@ fn main() -> Result<()> {
 // This fill collect environment variables from std::env and adds them to a stack.
 //
 // In order to ensure the values have spans, it first creates a dummy file, writes the collected
-// env vars into it (in a NAME=value format, similar to the output of the Unix 'env' tool), then
-// uses the file to get the spans. The file stays in memory, no filesystem IO is done.
+// env vars into it (in a "NAME"="value" format, quite similar to the output of the Unix 'env'
+// tool), then uses the file to get the spans. The file stays in memory, no filesystem IO is done.
 fn gather_parent_env_vars(engine_state: &mut EngineState, stack: &mut Stack) {
+    fn get_surround_char(s: &str) -> Option<char> {
+        if s.contains('"') {
+            if s.contains('\'') {
+                None
+            } else {
+                Some('\'')
+            }
+        } else {
+            Some('"')
+        }
+    }
+
+    fn report_capture_error(engine_state: &EngineState, env_str: &str, msg: &str) {
+        let working_set = StateWorkingSet::new(engine_state);
+        report_error(
+            &working_set,
+            &ShellError::LabeledError(
+                format!("Environment variable was not captured: {}", env_str),
+                msg.into(),
+            ),
+        );
+    }
+
     let mut fake_env_file = String::new();
     for (name, val) in std::env::vars() {
+        let (c_name, c_val) =
+            if let (Some(cn), Some(cv)) = (get_surround_char(&name), get_surround_char(&val)) {
+                (cn, cv)
+            } else {
+                // environment variable with its name or value containing both ' and " is ignored
+                report_capture_error(
+                    engine_state,
+                    &format!("{}={}", name, val),
+                    "Name or value should not contain both ' and \" at the same time.",
+                );
+                continue;
+            };
+
+        fake_env_file.push(c_name);
         fake_env_file.push_str(&name);
+        fake_env_file.push(c_name);
         fake_env_file.push('=');
-        fake_env_file.push('"');
+        fake_env_file.push(c_val);
         fake_env_file.push_str(&val);
-        fake_env_file.push('"');
+        fake_env_file.push(c_val);
         fake_env_file.push('\n');
     }
 
     let span_offset = engine_state.next_span_start();
+
     engine_state.add_file(
         "Host Environment Variables".to_string(),
         fake_env_file.as_bytes().to_vec(),
     );
+
     let (tokens, _) = lex(fake_env_file.as_bytes(), span_offset, &[], &[], true);
+
     for token in tokens {
         if let Token {
             contents: TokenContents::Item,
@@ -443,9 +511,27 @@ fn gather_parent_env_vars(engine_state: &mut EngineState, stack: &mut Stack) {
                 span,
             }) = parts.get(0)
             {
-                String::from_utf8_lossy(engine_state.get_span_contents(span)).to_string()
+                let bytes = engine_state.get_span_contents(span);
+
+                if bytes.len() < 2 {
+                    report_capture_error(
+                        engine_state,
+                        &String::from_utf8_lossy(contents),
+                        "Got empty name.",
+                    );
+
+                    continue;
+                }
+
+                let bytes = trim_quotes(bytes);
+                String::from_utf8_lossy(bytes).to_string()
             } else {
-                // Skip this env var if it does not have a name
+                report_capture_error(
+                    engine_state,
+                    &String::from_utf8_lossy(contents),
+                    "Got empty name.",
+                );
+
                 continue;
             };
 
@@ -455,18 +541,31 @@ fn gather_parent_env_vars(engine_state: &mut EngineState, stack: &mut Stack) {
             }) = parts.get(2)
             {
                 let bytes = engine_state.get_span_contents(span);
-                let bytes = bytes.strip_prefix(&[b'"']).unwrap_or(bytes);
-                let bytes = bytes.strip_suffix(&[b'"']).unwrap_or(bytes);
+
+                if bytes.len() < 2 {
+                    report_capture_error(
+                        engine_state,
+                        &String::from_utf8_lossy(contents),
+                        "Got empty value.",
+                    );
+
+                    continue;
+                }
+
+                let bytes = trim_quotes(bytes);
 
                 Value::String {
                     val: String::from_utf8_lossy(bytes).to_string(),
                     span: *span,
                 }
             } else {
-                Value::String {
-                    val: "".to_string(),
-                    span: Span::new(full_span.end, full_span.end),
-                }
+                report_capture_error(
+                    engine_state,
+                    &String::from_utf8_lossy(contents),
+                    "Got empty value.",
+                );
+
+                continue;
             };
 
             stack.add_env_var(name, value);
@@ -552,7 +651,7 @@ fn update_prompt<'prompt>(
         engine_state,
         &mut stack,
         block,
-        PipelineData::new(Span::unknown()),
+        PipelineData::new(Span::new(0, 0)), // Don't try this at home, 0 span is ignored
     ) {
         Ok(pipeline_data) => {
             let config = stack.get_config().unwrap_or_default();
@@ -600,7 +699,7 @@ fn eval_source(
         engine_state,
         stack,
         &block,
-        PipelineData::new(Span::unknown()),
+        PipelineData::new(Span::new(0, 0)), // Don't try this at home, 0 span is ignored
     ) {
         Ok(pipeline_data) => {
             if let Err(err) = print_pipeline_data(pipeline_data, engine_state, stack) {

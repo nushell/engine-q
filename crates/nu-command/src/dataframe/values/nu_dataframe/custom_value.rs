@@ -1,5 +1,5 @@
 use super::NuDataFrame;
-use nu_protocol::{ast::Operator, Category, CustomValue, ShellError, Span, Value};
+use nu_protocol::{ast::Operator, CustomValue, ShellError, Span, Value};
 
 // CustomValue implementation for NuDataFrame
 impl CustomValue for NuDataFrame {
@@ -20,16 +20,12 @@ impl CustomValue for NuDataFrame {
         }
     }
 
-    fn category(&self) -> Category {
-        Category::Custom(self.typetag_name().into())
-    }
-
     fn value_string(&self) -> String {
         self.typetag_name().to_string()
     }
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
-        let vals = self.print()?;
+        let vals = self.print(span)?;
 
         Ok(Value::List { vals, span })
     }

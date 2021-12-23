@@ -1038,7 +1038,7 @@ fn long_flag() -> TestResult {
 
 #[test]
 fn help_works_with_missing_requirements() -> TestResult {
-    run_test(r#"each --help | lines | length"#, "10")
+    run_test(r#"each --help | lines | length"#, "15")
 }
 
 #[test]
@@ -1299,4 +1299,36 @@ fn get_table_columns_1() -> TestResult {
 #[test]
 fn get_table_columns_2() -> TestResult {
     run_test("[[name, age, grade]; [paul,21,a]] | columns | nth 1", "age")
+}
+
+#[test]
+fn allow_missing_optional_params() -> TestResult {
+    run_test(
+        "def foo [x?:int] { if $x != $nothing { $x + 10 } else { 5 } }; foo",
+        "5",
+    )
+}
+
+#[test]
+fn flatten_should_flatten_inner_table() -> TestResult {
+    run_test(
+        "[[[name, value]; [abc, 123]]] | flatten | get value.0",
+        "123",
+    )
+}
+
+#[test]
+fn cjk_in_substrings() -> TestResult {
+    run_test(
+        r#"let s = '[Rust 程序设计语言](title-page.md)'; let start = ($s | str index-of '('); let end = ($s | str index-of ')'); echo ($s | str substring $"($start + 1),($end)")"#,
+        "title-page.md",
+    )
+}
+
+#[test]
+fn to_json_raw_flag() -> TestResult {
+    run_test(
+        "[[a b]; [jim susie] [3 4]] | to json -r",
+        r#"[{"a":"jim","b":"susie"},{"a":3,"b":4}]"#,
+    )
 }

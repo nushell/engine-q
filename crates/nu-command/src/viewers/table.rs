@@ -1,11 +1,11 @@
 use lscolors::{LsColors, Style};
 use nu_color_config::{get_color_config, style_primitive};
-use nu_engine::env_to_string;
+use nu_engine::{env_to_string, CallExt};
 use nu_protocol::ast::{Call, PathMember};
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
     Category, Config, DataSource, IntoInterruptiblePipelineData, IntoPipelineData, PipelineData,
-    PipelineMetadata, ShellError, Signature, Span, Value, ValueStream,
+    PipelineMetadata, ShellError, Signature, Span, SyntaxShape, Value, ValueStream,
 };
 use nu_table::{StyledString, TextStyle, Theme};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -30,7 +30,14 @@ impl Command for Table {
     }
 
     fn signature(&self) -> nu_protocol::Signature {
-        Signature::build("table").category(Category::Viewers)
+        Signature::build("table")
+            .named(
+                "start_number",
+                SyntaxShape::Int,
+                "row number to start viewing from",
+                Some('n'),
+            )
+            .category(Category::Viewers)
     }
 
     fn run(
@@ -43,6 +50,8 @@ impl Command for Table {
         let ctrlc = engine_state.ctrlc.clone();
         let config = stack.get_config().unwrap_or_default();
         let color_hm = get_color_config(&config);
+        let start_num: Option<i64> = call.get_flag(engine_state, stack, "start_number")?;
+        let row_offset = start_num.unwrap_or_default() as usize;
 
         let term_width = if let Some((Width(w), Height(_h))) = terminal_size::terminal_size() {
             (w - 1) as usize
@@ -62,7 +71,7 @@ impl Command for Table {
                 .map(move |x| Value::String { val: x, span })
                 .into_pipeline_data(ctrlc)),
             PipelineData::Value(Value::List { vals, .. }, ..) => {
-                let table = convert_to_table(0, vals, ctrlc, &config)?;
+                let table = convert_to_table(row_offset, &vals, ctrlc, &config, call.head)?;
 
                 if let Some(table) = table {
                     let result = nu_table::draw_table(&table, term_width, &color_hm, &config);
@@ -163,7 +172,7 @@ impl Command for Table {
                 let head = call.head;
 
                 Ok(PagingTableCreator {
-                    row_offset: 0,
+                    row_offset,
                     config,
                     ctrlc: ctrlc.clone(),
                     head,
@@ -211,19 +220,35 @@ impl Command for Table {
     }
 }
 
+fn get_columns(input: &[Value]) -> Vec<String> {
+    let mut columns = vec![];
+
+    for item in input {
+        if let Value::Record { cols, vals: _, .. } = item {
+            for col in cols {
+                if !columns.contains(col) {
+                    columns.push(col.to_string());
+                }
+            }
+        }
+    }
+
+    columns
+}
+
 fn convert_to_table(
     row_offset: usize,
-    iter: impl IntoIterator<Item = Value>,
+    input: &[Value],
     ctrlc: Option<Arc<AtomicBool>>,
     config: &Config,
+    head: Span,
 ) -> Result<Option<nu_table::Table>, ShellError> {
-    let mut iter = iter.into_iter().peekable();
+    let mut headers = get_columns(input);
+    let mut input = input.iter().peekable();
     let color_hm = get_color_config(config);
     let float_precision = config.float_precision as usize;
 
-    if let Some(first) = iter.peek() {
-        let mut headers = first.columns();
-
+    if input.peek().is_some() {
         if !headers.is_empty() {
             headers.insert(0, "#".into());
         }
@@ -231,14 +256,14 @@ fn convert_to_table(
         // Vec of Vec of String1, String2 where String1 is datatype and String2 is value
         let mut data: Vec<Vec<(String, String)>> = Vec::new();
 
-        for (row_num, item) in iter.enumerate() {
+        for (row_num, item) in input.enumerate() {
             if let Some(ctrlc) = &ctrlc {
                 if ctrlc.load(Ordering::SeqCst) {
                     return Ok(None);
                 }
             }
             if let Value::Error { error } = item {
-                return Err(error);
+                return Err(error.clone());
             }
             // String1 = datatype, String2 = value as string
             let mut row: Vec<(String, String)> =
@@ -253,7 +278,7 @@ fn convert_to_table(
                         Value::Record { .. } => {
                             item.clone().follow_cell_path(&[PathMember::String {
                                 val: header.into(),
-                                span: Span::unknown(),
+                                span: head,
                             }])
                         }
                         _ => Ok(item.clone()),
@@ -264,7 +289,7 @@ fn convert_to_table(
                             (&value.get_type()).to_string(),
                             value.into_abbreviated_string(config),
                         )),
-                        Err(_) => row.push(("empty".to_string(), String::new())),
+                        Err(_) => row.push(("empty".to_string(), "❎".into())),
                     }
                 }
             }
@@ -392,9 +417,10 @@ impl Iterator for PagingTableCreator {
 
         let table = convert_to_table(
             self.row_offset,
-            batch.into_iter(),
+            &batch,
             self.ctrlc.clone(),
             &self.config,
+            self.head,
         );
         self.row_offset += idx;
 

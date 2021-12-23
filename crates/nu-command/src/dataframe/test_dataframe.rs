@@ -5,7 +5,7 @@ use nu_protocol::{
     PipelineData, Span, Value, CONFIG_VARIABLE_ID,
 };
 
-use super::ToDataFrame;
+use super::eager::ToDataFrame;
 use crate::Let;
 
 pub fn test_dataframe(cmds: Vec<Box<dyn Command + 'static>>) {
@@ -62,7 +62,7 @@ pub fn test_dataframe(cmds: Vec<Box<dyn Command + 'static>>) {
             Value::Record {
                 cols: vec![],
                 vals: vec![],
-                span: Span::unknown(),
+                span: Span::test_data(),
             },
         );
 
@@ -70,11 +70,11 @@ pub fn test_dataframe(cmds: Vec<Box<dyn Command + 'static>>) {
             &engine_state,
             &mut stack,
             &block,
-            PipelineData::new(Span::unknown()),
+            PipelineData::new(Span::test_data()),
         ) {
             Err(err) => panic!("test eval error in `{}`: {:?}", example.example, err),
             Ok(result) => {
-                let result = result.into_value(Span::unknown());
+                let result = result.into_value(Span::test_data());
                 println!("input: {}", example.example);
                 println!("result: {:?}", result);
                 println!("done: {:?}", start.elapsed());

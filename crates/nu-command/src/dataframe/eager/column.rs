@@ -2,10 +2,10 @@ use nu_engine::CallExt;
 use nu_protocol::{
     ast::Call,
     engine::{Command, EngineState, Stack},
-    Category, Example, PipelineData, ShellError, Signature, Span, Spanned, SyntaxShape,
+    Category, Example, PipelineData, ShellError, Signature, Span, Spanned, SyntaxShape, Value,
 };
 
-use super::values::{Column, NuDataFrame};
+use super::super::values::{Column, NuDataFrame};
 
 #[derive(Clone)]
 pub struct ColumnDF;
@@ -32,10 +32,10 @@ impl Command for ColumnDF {
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "a".to_string(),
-                    vec![1.into(), 3.into()],
+                    vec![Value::test_int(1), Value::test_int(3)],
                 )])
                 .expect("simple df for test should not fail")
-                .into_value(Span::unknown()),
+                .into_value(Span::test_data()),
             ),
         }]
     }
@@ -71,7 +71,7 @@ fn command(
 
 #[cfg(test)]
 mod test {
-    use super::super::test_dataframe::test_dataframe;
+    use super::super::super::test_dataframe::test_dataframe;
     use super::*;
 
     #[test]

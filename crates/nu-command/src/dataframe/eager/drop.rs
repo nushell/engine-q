@@ -5,8 +5,8 @@ use nu_protocol::{
     Category, Example, PipelineData, ShellError, Signature, Span, SyntaxShape, Value,
 };
 
-use super::values::utils::convert_columns;
-use super::values::{Column, NuDataFrame};
+use super::super::values::utils::convert_columns;
+use super::super::values::{Column, NuDataFrame};
 
 #[derive(Clone)]
 pub struct DropDF;
@@ -33,10 +33,10 @@ impl Command for DropDF {
             result: Some(
                 NuDataFrame::try_from_columns(vec![Column::new(
                     "b".to_string(),
-                    vec![2.into(), 4.into()],
+                    vec![Value::test_int(2), Value::test_int(4)],
                 )])
                 .expect("simple df for test should not fail")
-                .into_value(Span::unknown()),
+                .into_value(Span::test_data()),
             ),
         }]
     }
@@ -101,7 +101,7 @@ fn command(
 
 #[cfg(test)]
 mod test {
-    use super::super::test_dataframe::test_dataframe;
+    use super::super::super::test_dataframe::test_dataframe;
     use super::*;
 
     #[test]

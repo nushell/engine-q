@@ -58,6 +58,7 @@ impl PipelineData {
 
     pub fn into_value(self, span: Span) -> Value {
         match self {
+            PipelineData::Value(Value::Nothing { .. }, ..) => Value::nothing(span),
             PipelineData::Value(v, ..) => v,
             PipelineData::ListStream(s, ..) => Value::List {
                 vals: s.collect(),
@@ -95,12 +96,16 @@ impl PipelineData {
         }
     }
 
-    pub fn follow_cell_path(self, cell_path: &[PathMember]) -> Result<Value, ShellError> {
+    pub fn follow_cell_path(
+        self,
+        cell_path: &[PathMember],
+        head: Span,
+    ) -> Result<Value, ShellError> {
         match self {
             // FIXME: there are probably better ways of doing this
             PipelineData::ListStream(stream, ..) => Value::List {
                 vals: stream.collect(),
-                span: Span::unknown(),
+                span: head,
             }
             .follow_cell_path(cell_path),
             PipelineData::Value(v, ..) => v.follow_cell_path(cell_path),
@@ -112,12 +117,13 @@ impl PipelineData {
         &mut self,
         cell_path: &[PathMember],
         callback: Box<dyn FnOnce(&Value) -> Value>,
+        head: Span,
     ) -> Result<(), ShellError> {
         match self {
             // FIXME: there are probably better ways of doing this
             PipelineData::ListStream(stream, ..) => Value::List {
                 vals: stream.collect(),
-                span: Span::unknown(),
+                span: head,
             }
             .update_cell_path(cell_path, callback),
             PipelineData::Value(v, ..) => v.update_cell_path(cell_path, callback),

@@ -157,12 +157,18 @@ fn action(input: &Value, options: &Substring, head: Span) -> Value {
                     Ordering::Less => Value::String {
                         val: {
                             if end == isize::max_value() {
-                                s.chars().skip(start as usize).collect::<String>()
+                                String::from_utf8_lossy(
+                                    &s.bytes().skip(start as usize).collect::<Vec<_>>(),
+                                )
+                                .to_string()
                             } else {
-                                s.chars()
-                                    .skip(start as usize)
-                                    .take((end - start) as usize)
-                                    .collect::<String>()
+                                String::from_utf8_lossy(
+                                    &s.bytes()
+                                        .skip(start as usize)
+                                        .take((end - start) as usize)
+                                        .collect::<Vec<_>>(),
+                                )
+                                .to_string()
                             }
                         },
                         span: head,
@@ -305,7 +311,7 @@ mod tests {
     fn substrings_indexes() {
         let word = Value::String {
             val: "andres".to_string(),
-            span: Span::unknown(),
+            span: Span::test_data(),
         };
 
         let cases = vec![
@@ -336,13 +342,13 @@ mod tests {
 
         for expectation in &cases {
             let expected = expectation.expected;
-            let actual = action(&word, &expectation.options(), Span::unknown());
+            let actual = action(&word, &expectation.options(), Span::test_data());
 
             assert_eq!(
                 actual,
                 Value::String {
                     val: expected.to_string(),
-                    span: Span::unknown()
+                    span: Span::test_data()
                 }
             );
         }

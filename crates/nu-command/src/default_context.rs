@@ -35,6 +35,7 @@ pub fn create_default_context() -> EngineState {
             For,
             Help,
             Hide,
+            History,
             If,
             Let,
             Module,
@@ -50,10 +51,12 @@ pub fn create_default_context() -> EngineState {
             Append,
             Collect,
             Columns,
+            Compact,
             Drop,
             DropColumn,
             DropNth,
             Each,
+            Empty,
             First,
             Flatten,
             Get,
@@ -218,6 +221,7 @@ pub fn create_default_context() -> EngineState {
         // Conversions
         bind_command! {
             Into,
+            IntoBool,
             IntoBinary,
             IntoDatetime,
             IntoDecimal,
