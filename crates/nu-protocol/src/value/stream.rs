@@ -50,6 +50,16 @@ impl StringStream {
     pub fn into_string(self, separator: &str) -> String {
         self.collect::<Vec<String>>().join(separator)
     }
+
+    pub fn from_stream(
+        input: impl Iterator<Item = String> + Send + 'static,
+        ctrlc: Option<Arc<AtomicBool>>,
+    ) -> StringStream {
+        StringStream {
+            stream: Box::new(input),
+            ctrlc,
+        }
+    }
 }
 impl Debug for StringStream {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -27,10 +27,11 @@ impl Command for Lines {
     fn run(
         &self,
         engine_state: &EngineState,
-        _stack: &mut Stack,
+        stack: &mut Stack,
         call: &Call,
         input: PipelineData,
     ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
+        let head = call.head;
         let skip_empty = call.has_flag("skip-emtpy");
         match input {
             #[allow(clippy::needless_collect)]
@@ -107,10 +108,28 @@ impl Command for Lines {
                 format!("Not supported input: {}", val.as_string()?),
                 call.head,
             )),
-            PipelineData::ByteStream(..) => Err(ShellError::UnsupportedInput(
-                "Byte stream not supported for `lines`".into(),
-                call.head,
-            )),
+            PipelineData::ByteStream(..) => {
+                let config = stack.get_config()?;
+
+                //FIXME: Make sure this can fail in the future to let the user
+                //know to use a different encoding
+                let s = input.collect_string("", &config);
+
+                let lines = s
+                    .split(SPLIT_CHAR)
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>();
+
+                let iter = lines.into_iter().filter_map(move |s| {
+                    if skip_empty && s.is_empty() {
+                        None
+                    } else {
+                        Some(Value::string(s, head))
+                    }
+                });
+
+                Ok(iter.into_pipeline_data(engine_state.ctrlc.clone()))
+            }
         }
     }
 }

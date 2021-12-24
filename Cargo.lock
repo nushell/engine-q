@@ -1711,6 +1711,7 @@ dependencies = [
  "digest 0.10.0",
  "dtparse",
  "eml-parser",
+ "encoding_rs",
  "glob",
  "htmlescape",
  "ical",

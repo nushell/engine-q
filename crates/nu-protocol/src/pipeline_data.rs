@@ -58,7 +58,9 @@ impl PipelineData {
 
     pub fn metadata(&self) -> Option<PipelineMetadata> {
         match self {
-            PipelineData::Stream(_, x) => x.clone(),
+            PipelineData::ListStream(_, x) => x.clone(),
+            PipelineData::ByteStream(_, _, x) => x.clone(),
+            PipelineData::StringStream(_, _, x) => x.clone(),
             PipelineData::Value(_, x) => x.clone(),
         }
     }
@@ -153,6 +155,11 @@ impl PipelineData {
                 Ok(vals.into_iter().map(f).into_pipeline_data(ctrlc))
             }
             PipelineData::ListStream(stream, ..) => Ok(stream.map(f).into_pipeline_data(ctrlc)),
+            PipelineData::StringStream(stream, span, ..) => Ok(stream
+                .map(move |x| Value::String { val: x, span })
+                .map(f)
+                .into_pipeline_data(ctrlc)),
+
             PipelineData::Value(Value::Range { val, .. }, ..) => {
                 Ok(val.into_range_iter()?.map(f).into_pipeline_data(ctrlc))
             }
@@ -160,8 +167,10 @@ impl PipelineData {
                 Value::Error { error } => Err(error),
                 v => Ok(v.into_pipeline_data()),
             },
-            _ => Err(ShellError::NushellFailed(
-                "Streams don't support simple mapping".into(),
+            PipelineData::ByteStream(_, span, ..) => Err(ShellError::UnsupportedInput(
+                "Binary output from this command may need to be decoded using the 'decode' command"
+                    .into(),
+                span,
             )),
         }
     }
@@ -185,13 +194,20 @@ impl PipelineData {
             PipelineData::ListStream(stream, ..) => {
                 Ok(stream.map(f).flatten().into_pipeline_data(ctrlc))
             }
+            PipelineData::StringStream(stream, span, ..) => Ok(stream
+                .map(move |x| Value::String { val: x, span })
+                .map(f)
+                .flatten()
+                .into_pipeline_data(ctrlc)),
             PipelineData::Value(Value::Range { val, .. }, ..) => match val.into_range_iter() {
                 Ok(iter) => Ok(iter.map(f).flatten().into_pipeline_data(ctrlc)),
                 Err(error) => Err(error),
             },
             PipelineData::Value(v, ..) => Ok(f(v).into_iter().into_pipeline_data(ctrlc)),
-            _ => Err(ShellError::NushellFailed(
-                "Streams don't support simple mapping".into(),
+            PipelineData::ByteStream(_, span, ..) => Err(ShellError::UnsupportedInput(
+                "Binary output from this command may need to be decoded using the 'decode' command"
+                    .into(),
+                span,
             )),
         }
     }
@@ -210,6 +226,11 @@ impl PipelineData {
                 Ok(vals.into_iter().filter(f).into_pipeline_data(ctrlc))
             }
             PipelineData::ListStream(stream, ..) => Ok(stream.filter(f).into_pipeline_data(ctrlc)),
+            PipelineData::StringStream(stream, span, ..) => Ok(stream
+                .map(move |x| Value::String { val: x, span })
+                .filter(f)
+                .into_pipeline_data(ctrlc)),
+
             PipelineData::Value(Value::Range { val, .. }, ..) => {
                 Ok(val.into_range_iter()?.filter(f).into_pipeline_data(ctrlc))
             }
@@ -220,18 +241,14 @@ impl PipelineData {
                     Ok(Value::Nothing { span: v.span()? }.into_pipeline_data())
                 }
             }
-            _ => Err(ShellError::NushellFailed(
-                "Streams don't support simple mapping".into(),
+            PipelineData::ByteStream(_, span, ..) => Err(ShellError::UnsupportedInput(
+                "Binary output from this command may need to be decoded using the 'decode' command"
+                    .into(),
+                span,
             )),
         }
     }
 }
-
-// impl Default for PipelineData {
-//     fn default() -> Self {
-//         PipelineData::new()
-//     }
-// }
 
 pub struct PipelineIterator(PipelineData);
 
