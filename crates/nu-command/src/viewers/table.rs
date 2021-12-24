@@ -64,11 +64,11 @@ impl Command for Table {
             PipelineData::ByteStream(stream, ..) => Ok(PipelineData::StringStream(
                 StringStream::from_stream(
                     stream.map(move |x| {
-                        if x.iter().all(|x| x.is_ascii()) {
+                        Ok(if x.iter().all(|x| x.is_ascii()) {
                             format!("{}", String::from_utf8_lossy(&x))
                         } else {
                             format!("{}\n", nu_pretty_hex::pretty_hex(&x))
-                        }
+                        })
                     }),
                     ctrlc,
                 ),
@@ -384,7 +384,7 @@ struct PagingTableCreator {
 }
 
 impl Iterator for PagingTableCreator {
-    type Item = String;
+    type Item = Result<String, ShellError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut batch = vec![];
@@ -439,9 +439,9 @@ impl Iterator for PagingTableCreator {
             Ok(Some(table)) => {
                 let result = nu_table::draw_table(&table, term_width, &color_hm, &self.config);
 
-                Some(result)
+                Some(Ok(result))
             }
-            Err(err) => Some(format!("{}", err)),
+            Err(err) => Some(Err(err)),
             _ => None,
         }
     }

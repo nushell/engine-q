@@ -81,7 +81,7 @@ impl Command for PluginDeclaration {
                 }
             }
             PipelineData::StringStream(stream, ..) => {
-                let val = stream.into_string("");
+                let val = stream.into_string("")?;
 
                 Value::String {
                     val,

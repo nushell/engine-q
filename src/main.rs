@@ -586,7 +586,7 @@ fn print_pipeline_data(
     match input {
         PipelineData::StringStream(stream, _, _) => {
             for s in stream {
-                print!("{}", s);
+                print!("{}", s?);
                 let _ = std::io::stdout().flush();
             }
             return Ok(());
@@ -685,7 +685,12 @@ fn update_prompt<'prompt>(
         }
     };
 
-    nu_prompt.update_prompt(evaluated_prompt);
+    match evaluated_prompt {
+        Ok(evaluated_prompt) => {
+            nu_prompt.update_prompt(evaluated_prompt);
+        }
+        _ => nu_prompt.update_prompt(String::new()),
+    }
 
     nu_prompt as &dyn Prompt
 }

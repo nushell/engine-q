@@ -85,8 +85,8 @@ impl Command for Lines {
             PipelineData::StringStream(stream, span, ..) => {
                 let iter = stream
                     .into_iter()
-                    .map(move |value| {
-                        value
+                    .map(move |value| match value {
+                        Ok(value) => value
                             .split(SPLIT_CHAR)
                             .filter_map(|s| {
                                 if !s.is_empty() {
@@ -98,7 +98,8 @@ impl Command for Lines {
                                     None
                                 }
                             })
-                            .collect::<Vec<Value>>()
+                            .collect::<Vec<Value>>(),
+                        Err(err) => vec![Value::Error { error: err }],
                     })
                     .flatten();
 
@@ -113,7 +114,7 @@ impl Command for Lines {
 
                 //FIXME: Make sure this can fail in the future to let the user
                 //know to use a different encoding
-                let s = input.collect_string("", &config);
+                let s = input.collect_string("", &config)?;
 
                 let lines = s
                     .split(SPLIT_CHAR)

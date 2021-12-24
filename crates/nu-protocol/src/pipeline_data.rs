@@ -73,10 +73,20 @@ impl PipelineData {
                 vals: s.collect(),
                 span, // FIXME?
             },
-            PipelineData::StringStream(s, ..) => Value::String {
-                val: s.collect(),
-                span, // FIXME?
-            },
+            PipelineData::StringStream(s, ..) => {
+                let mut output = String::new();
+
+                for item in s {
+                    match item {
+                        Ok(s) => output.push_str(&s),
+                        Err(err) => return Value::Error { error: err },
+                    }
+                }
+                Value::String {
+                    val: output,
+                    span, // FIXME?
+                }
+            }
             PipelineData::ByteStream(s, ..) => Value::Binary {
                 val: s.flatten().collect(),
                 span, // FIXME?
@@ -94,13 +104,13 @@ impl PipelineData {
         iter
     }
 
-    pub fn collect_string(self, separator: &str, config: &Config) -> String {
+    pub fn collect_string(self, separator: &str, config: &Config) -> Result<String, ShellError> {
         match self {
-            PipelineData::Value(v, ..) => v.into_string(separator, config),
-            PipelineData::ListStream(s, ..) => s.into_string(separator, config),
+            PipelineData::Value(v, ..) => Ok(v.into_string(separator, config)),
+            PipelineData::ListStream(s, ..) => Ok(s.into_string(separator, config)),
             PipelineData::StringStream(s, ..) => s.into_string(separator),
             PipelineData::ByteStream(s, ..) => {
-                String::from_utf8_lossy(&s.flatten().collect::<Vec<_>>()).to_string()
+                Ok(String::from_utf8_lossy(&s.flatten().collect::<Vec<_>>()).to_string())
             }
         }
     }
@@ -156,8 +166,10 @@ impl PipelineData {
             }
             PipelineData::ListStream(stream, ..) => Ok(stream.map(f).into_pipeline_data(ctrlc)),
             PipelineData::StringStream(stream, span, ..) => Ok(stream
-                .map(move |x| Value::String { val: x, span })
-                .map(f)
+                .map(move |x| match x {
+                    Ok(s) => f(Value::String { val: s, span }),
+                    Err(err) => Value::Error { error: err },
+                })
                 .into_pipeline_data(ctrlc)),
 
             PipelineData::Value(Value::Range { val, .. }, ..) => {
@@ -195,7 +207,10 @@ impl PipelineData {
                 Ok(stream.map(f).flatten().into_pipeline_data(ctrlc))
             }
             PipelineData::StringStream(stream, span, ..) => Ok(stream
-                .map(move |x| Value::String { val: x, span })
+                .map(move |x| match x {
+                    Ok(s) => Value::String { val: s, span },
+                    Err(err) => Value::Error { error: err },
+                })
                 .map(f)
                 .flatten()
                 .into_pipeline_data(ctrlc)),
@@ -227,7 +242,10 @@ impl PipelineData {
             }
             PipelineData::ListStream(stream, ..) => Ok(stream.filter(f).into_pipeline_data(ctrlc)),
             PipelineData::StringStream(stream, span, ..) => Ok(stream
-                .map(move |x| Value::String { val: x, span })
+                .map(move |x| match x {
+                    Ok(s) => Value::String { val: s, span },
+                    Err(err) => Value::Error { error: err },
+                })
                 .filter(f)
                 .into_pipeline_data(ctrlc)),
 
@@ -299,9 +317,12 @@ impl Iterator for PipelineIterator {
             PipelineData::Value(Value::Nothing { .. }, ..) => None,
             PipelineData::Value(v, ..) => Some(std::mem::take(v)),
             PipelineData::ListStream(stream, ..) => stream.next(),
-            PipelineData::StringStream(stream, span, ..) => stream.next().map(|x| Value::String {
-                val: x,
-                span: *span,
+            PipelineData::StringStream(stream, span, ..) => stream.next().map(|x| match x {
+                Ok(x) => Value::String {
+                    val: x,
+                    span: *span,
+                },
+                Err(err) => Value::Error { error: err },
             }),
             PipelineData::ByteStream(stream, span, ..) => stream.next().map(|x| Value::Binary {
                 val: x,

@@ -51,7 +51,7 @@ impl Command for Wrap {
                 })
                 .into_pipeline_data(engine_state.ctrlc.clone())),
             PipelineData::StringStream(stream, ..) => Ok(Value::String {
-                val: stream.into_string(""),
+                val: stream.into_string("")?,
                 span,
             }
             .into_pipeline_data()),

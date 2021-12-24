@@ -43,16 +43,28 @@ impl Iterator for ByteStream {
 /// A single string streamed over multiple parts. Optionally contains ctrl-c that can be used
 /// to break the stream.
 pub struct StringStream {
-    pub stream: Box<dyn Iterator<Item = String> + Send + 'static>,
+    pub stream: Box<dyn Iterator<Item = Result<String, ShellError>> + Send + 'static>,
     pub ctrlc: Option<Arc<AtomicBool>>,
 }
 impl StringStream {
-    pub fn into_string(self, separator: &str) -> String {
-        self.collect::<Vec<String>>().join(separator)
+    pub fn into_string(self, separator: &str) -> Result<String, ShellError> {
+        let mut output = String::new();
+
+        let mut first = true;
+        for s in self.stream {
+            output.push_str(&s?);
+
+            if !first {
+                output.push_str(separator);
+            } else {
+                first = false;
+            }
+        }
+        Ok(output)
     }
 
     pub fn from_stream(
-        input: impl Iterator<Item = String> + Send + 'static,
+        input: impl Iterator<Item = Result<String, ShellError>> + Send + 'static,
         ctrlc: Option<Arc<AtomicBool>>,
     ) -> StringStream {
         StringStream {
@@ -68,7 +80,7 @@ impl Debug for StringStream {
 }
 
 impl Iterator for StringStream {
-    type Item = String;
+    type Item = Result<String, ShellError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(ctrlc) = &self.ctrlc {

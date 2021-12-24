@@ -148,7 +148,10 @@ impl Command for Each {
                 .into_iter()
                 .enumerate()
                 .map(move |(idx, x)| {
-                    let x = Value::String { val: x, span };
+                    let x = match x {
+                        Ok(x) => Value::String { val: x, span },
+                        Err(err) => return Value::Error { error: err },
+                    };
 
                     if let Some(var) = block.signature.get_positional(0) {
                         if let Some(var_id) = &var.var_id {

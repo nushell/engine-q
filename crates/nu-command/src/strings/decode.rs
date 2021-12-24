@@ -3,8 +3,8 @@ use nu_engine::CallExt;
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
-    Category, Example, IntoPipelineData, PipelineData, ShellError, Signature, Span, Spanned,
-    SyntaxShape, Value,
+    Category, Example, IntoPipelineData, PipelineData, ShellError, Signature, Spanned, SyntaxShape,
+    Value,
 };
 
 #[derive(Clone)]
@@ -26,27 +26,11 @@ impl Command for Decode {
     }
 
     fn examples(&self) -> Vec<Example> {
-        let result = Value::List {
-            vals: vec![Value::Record {
-                cols: vec!["foo".to_string(), "bar".to_string()],
-                vals: vec![Value::test_string("hi"), Value::test_string("there")],
-                span: Span::test_data(),
-            }],
-            span: Span::test_data(),
-        };
-
-        vec![
-            Example {
-                description: "Parse a string into two named columns",
-                example: "echo \"hi there\" | parse \"{foo} {bar}\"",
-                result: Some(result.clone()),
-            },
-            Example {
-                description: "Parse a string using regex pattern",
-                example: "echo \"hi there\" | parse -r \"(?P<foo>\\w+) (?P<bar>\\w+)\"",
-                result: Some(result),
-            },
-        ]
+        vec![Example {
+            description: "Decode the output of an external command",
+            example: "cat myfile.q | decode utf-8",
+            result: None,
+        }]
     }
 
     fn run(
