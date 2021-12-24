@@ -47,7 +47,7 @@ impl Command for Decode {
             PipelineData::ByteStream(stream, ..) => {
                 let bytes: Vec<u8> = stream.flatten().collect();
 
-                let encoding = match Encoding::for_label(&encoding.item.as_bytes()) {
+                let encoding = match Encoding::for_label(encoding.item.as_bytes()) {
                     None => Err(ShellError::SpannedLabeledError(
                         format!(
                             r#"{} is not a valid encoding, refer to https://docs.rs/encoding_rs/0.8.23/encoding_rs/#statics for a valid list of encodings"#,
@@ -68,7 +68,7 @@ impl Command for Decode {
                 .into_pipeline_data())
             }
             PipelineData::Value(Value::Binary { val: bytes, .. }, ..) => {
-                let encoding = match Encoding::for_label(&encoding.item.as_bytes()) {
+                let encoding = match Encoding::for_label(encoding.item.as_bytes()) {
                     None => Err(ShellError::SpannedLabeledError(
                         format!(
                             r#"{} is not a valid encoding, refer to https://docs.rs/encoding_rs/0.8.23/encoding_rs/#statics for a valid list of encodings"#,
