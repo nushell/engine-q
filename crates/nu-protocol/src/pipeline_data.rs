@@ -41,12 +41,12 @@ pub enum PipelineData {
     ByteStream(ByteStream, Span, Option<PipelineMetadata>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PipelineMetadata {
     pub data_source: DataSource,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DataSource {
     Ls,
 }
@@ -54,6 +54,13 @@ pub enum DataSource {
 impl PipelineData {
     pub fn new(span: Span) -> PipelineData {
         PipelineData::Value(Value::Nothing { span }, None)
+    }
+
+    pub fn metadata(&self) -> Option<PipelineMetadata> {
+        match self {
+            PipelineData::Stream(_, x) => x.clone(),
+            PipelineData::Value(_, x) => x.clone(),
+        }
     }
 
     pub fn into_value(self, span: Span) -> Value {
