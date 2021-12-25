@@ -1140,30 +1140,15 @@ pub fn parse_string_interpolation(
         }
     }
 
-    if let Some(decl_id) = working_set.find_decl(b"build-string") {
-        (
-            Expression {
-                expr: Expr::Call(Box::new(Call {
-                    head: Span {
-                        start: span.start,
-                        end: span.start + 2,
-                    },
-                    named: vec![],
-                    positional: output,
-                    decl_id,
-                })),
-                span,
-                ty: Type::String,
-                custom_completion: None,
-            },
-            error,
-        )
-    } else {
-        (
-            Expression::garbage(span),
-            Some(ParseError::UnknownCommand(span)),
-        )
-    }
+    (
+        Expression {
+            expr: Expr::StringInterpolation(output),
+            span,
+            ty: Type::String,
+            custom_completion: None,
+        },
+        error,
+    )
 }
 
 pub fn parse_variable_expr(
@@ -3535,6 +3520,12 @@ pub fn find_captures_in_expr(
         }
         Expr::Signature(_) => {}
         Expr::String(_) => {}
+        Expr::StringInterpolation(exprs) => {
+            for expr in exprs {
+                let result = find_captures_in_expr(working_set, expr, seen);
+                output.extend(&result);
+            }
+        }
         Expr::RowCondition(block_id) | Expr::Subexpression(block_id) => {
             let block = working_set.get_block(*block_id);
             let result = find_captures_in_block(working_set, block, seen);
