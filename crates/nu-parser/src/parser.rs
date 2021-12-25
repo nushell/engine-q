@@ -1014,7 +1014,7 @@ pub(crate) fn parse_dollar_expr(
 ) -> (Expression, Option<ParseError>) {
     let contents = working_set.get_span_contents(span);
 
-    if contents.starts_with(b"$\"") {
+    if contents.starts_with(b"$\"") || contents.starts_with(b"$'") {
         parse_string_interpolation(working_set, span)
     } else if let (expr, None) = parse_range(working_set, span) {
         (expr, None)
@@ -1036,16 +1036,22 @@ pub fn parse_string_interpolation(
 
     let contents = working_set.get_span_contents(span);
 
-    let start = if contents.starts_with(b"$\"") {
-        span.start + 2
+    let (start, end) = if contents.starts_with(b"$\"") {
+        let end = if contents.ends_with(b"\"") && contents.len() > 2 {
+            span.end - 1
+        } else {
+            span.end
+        };
+        (span.start + 2, end)
+    } else if contents.starts_with(b"$'") {
+        let end = if contents.ends_with(b"'") && contents.len() > 2 {
+            span.end - 1
+        } else {
+            span.end
+        };
+        (span.start + 2, end)
     } else {
-        span.start
-    };
-
-    let end = if contents.ends_with(b"\"") && contents.len() > 2 {
-        span.end - 1
-    } else {
-        span.end
+        (span.start, span.end)
     };
 
     let inner_span = Span { start, end };
