@@ -96,12 +96,9 @@ pub enum ShellError {
     VariableNotFoundAtRuntime(#[label = "variable not found"] Span),
 
     #[error("Environment variable not found")]
-    #[diagnostic(code(nu::shell::variable_not_found), url(docsrs))]
+    #[diagnostic(code(nu::shell::env_variable_not_found), url(docsrs))]
     EnvVarNotFoundAtRuntime(#[label = "environment variable not found"] Span),
 
-    // #[error("Environment variable is not a string")]
-    // #[diagnostic(code(nu::shell::variable_not_found), url(docsrs))]
-    // EnvVarNotAString(#[label = "does not evaluate to a string"] Span),
     #[error("Not found.")]
     #[diagnostic(code(nu::parser::not_found), url(docsrs))]
     NotFound(#[label = "did not find anything under this name"] Span),

@@ -89,7 +89,7 @@ pub fn env_to_string(
     env_name: &str,
     value: Value,
     engine_state: &EngineState,
-    stack: &mut Stack,
+    stack: &Stack,
     config: &Config,
 ) -> Result<String, ShellError> {
     if let Some(env_conv) = config.env_conversions.get(env_name) {
@@ -128,7 +128,7 @@ pub fn env_to_string(
 /// Translate all environment variables from Values to Strings
 pub fn env_to_strings(
     engine_state: &EngineState,
-    stack: &mut Stack,
+    stack: &Stack,
     config: &Config,
 ) -> Result<HashMap<String, String>, ShellError> {
     let env_vars = stack.get_env_vars();
@@ -139,4 +139,17 @@ pub fn env_to_strings(
     }
 
     Ok(env_vars_str)
+}
+
+/// Shorthand for env_to_string() for PWD with custom error
+pub fn current_dir(engine_state: &EngineState, stack: &Stack) -> Result<String, ShellError> {
+    let config = stack.get_config()?;
+    if let Some(pwd) = stack.get_env_var("PWD") {
+        env_to_string("PWD", pwd, engine_state, stack, &config)
+    } else {
+        Err(ShellError::LabeledError(
+            "Current directory not found".to_string(),
+            "The environment variable 'PWD' was not found. It is required to define the current directory.".to_string(),
+        ))
+    }
 }

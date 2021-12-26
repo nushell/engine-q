@@ -494,6 +494,7 @@ fn main() -> Result<()> {
 // env vars into it (in a "NAME"="value" format, quite similar to the output of the Unix 'env'
 // tool), then uses the file to get the spans. The file stays in memory, no filesystem IO is done.
 fn gather_parent_env_vars(engine_state: &mut EngineState, stack: &mut Stack) {
+    // Some helper functions
     fn get_surround_char(s: &str) -> Option<char> {
         if s.contains('"') {
             if s.contains('\'') {
@@ -517,10 +518,14 @@ fn gather_parent_env_vars(engine_state: &mut EngineState, stack: &mut Stack) {
         );
     }
 
-    let mut fake_env_file = String::new();
-    for (name, val) in std::env::vars() {
+    fn put_env_to_fake_file(
+        name: &str,
+        val: &str,
+        fake_env_file: &mut String,
+        engine_state: &EngineState,
+    ) {
         let (c_name, c_val) =
-            if let (Some(cn), Some(cv)) = (get_surround_char(&name), get_surround_char(&val)) {
+            if let (Some(cn), Some(cv)) = (get_surround_char(name), get_surround_char(val)) {
                 (cn, cv)
             } else {
                 // environment variable with its name or value containing both ' and " is ignored
@@ -529,19 +534,53 @@ fn gather_parent_env_vars(engine_state: &mut EngineState, stack: &mut Stack) {
                     &format!("{}={}", name, val),
                     "Name or value should not contain both ' and \" at the same time.",
                 );
-                continue;
+                return;
             };
 
         fake_env_file.push(c_name);
-        fake_env_file.push_str(&name);
+        fake_env_file.push_str(name);
         fake_env_file.push(c_name);
         fake_env_file.push('=');
         fake_env_file.push(c_val);
-        fake_env_file.push_str(&val);
+        fake_env_file.push_str(val);
         fake_env_file.push(c_val);
         fake_env_file.push('\n');
     }
 
+    let mut fake_env_file = String::new();
+
+    // Make sure we always have PWD
+    if std::env::var("PWD").is_err() {
+        match std::env::current_dir() {
+            Ok(cwd) => {
+                put_env_to_fake_file(
+                    "PWD",
+                    &cwd.to_string_lossy(),
+                    &mut fake_env_file,
+                    engine_state,
+                );
+            }
+            Err(e) => {
+                // Could not capture current working directory
+                let working_set = StateWorkingSet::new(engine_state);
+                report_error(
+                    &working_set,
+                    &ShellError::LabeledError(
+                        "Current directory not found".to_string(),
+                        format!("Retrieving current directory failed: {:?}", e),
+                    ),
+                );
+            }
+        }
+    }
+
+    // Write all the env vars into a fake file
+    for (name, val) in std::env::vars() {
+        put_env_to_fake_file(&name, &val, &mut fake_env_file, engine_state);
+    }
+
+    // Lex the fake file, assign spans to all environment variables and add them
+    // to stack
     let span_offset = engine_state.next_span_start();
 
     engine_state.add_file(

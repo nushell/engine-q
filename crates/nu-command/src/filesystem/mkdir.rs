@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
-use std::env::current_dir;
+use std::path::PathBuf;
 
+use nu_engine::env::current_dir;
 use nu_engine::CallExt;
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
@@ -39,7 +40,7 @@ impl Command for Mkdir {
         call: &Call,
         _input: PipelineData,
     ) -> Result<PipelineData, ShellError> {
-        let path = current_dir()?;
+        let path = PathBuf::from(current_dir(engine_state, stack)?);
         let mut directories = call
             .rest::<String>(engine_state, stack, 0)?
             .into_iter()

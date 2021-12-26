@@ -40,7 +40,6 @@ impl Command for Cd {
                 (path.to_string_lossy().to_string(), call.head)
             }
         };
-        let _ = std::env::set_current_dir(&path);
 
         //FIXME: this only changes the current scope, but instead this environment variable
         //should probably be a block that loads the information from the state in the overlay
