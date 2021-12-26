@@ -32,7 +32,7 @@ impl Command for Cd {
 
         let (path, span) = match path_val {
             Some(v) => {
-                let path = nu_path::expand_path(v.as_string()?);
+                let path = nu_path::canonicalize(v.as_string()?)?;
                 (path.to_string_lossy().to_string(), v.span()?)
             }
             None => {

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use super::util::get_interactive_confirmation;
 use nu_engine::env::current_dir;
 use nu_engine::CallExt;
-use nu_path::canonicalize_with;
+use nu_path::canonicalize_relative;
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{Category, PipelineData, ShellError, Signature, SyntaxShape};
@@ -140,7 +140,7 @@ impl Command for Cp {
             if entry.is_file() {
                 let sources = sources.paths_applying_with(|(source_file, _depth_level)| {
                     if destination.is_dir() {
-                        let mut dest = canonicalize_with(&destination, &path)?;
+                        let mut dest = canonicalize_relative(&destination, &path)?;
                         if let Some(name) = entry.file_name() {
                             dest.push(name);
                         }
@@ -188,7 +188,7 @@ impl Command for Cp {
 
                 let sources = sources.paths_applying_with(|(source_file, depth_level)| {
                     let mut dest = destination.clone();
-                    let path = canonicalize_with(&source_file, &path)?;
+                    let path = canonicalize_relative(&source_file, &path)?;
                     let components = path
                         .components()
                         .map(|fragment| fragment.as_os_str())
