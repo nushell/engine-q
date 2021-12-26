@@ -80,6 +80,8 @@ impl Command for Each {
                 .into_iter()
                 .enumerate()
                 .map(move |(idx, x)| {
+                    let mut stack = stack.clone();
+
                     if let Some(var) = block.signature.get_positional(0) {
                         if let Some(var_id) = &var.var_id {
                             if numbered {

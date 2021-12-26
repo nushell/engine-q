@@ -182,7 +182,7 @@ pub enum ShellError {
     PluginFailedToDecode(String),
 
     #[error("I/O error")]
-    #[diagnostic(code(nu::shell::io_error), url(docsrs))]
+    #[diagnostic(code(nu::shell::io_error), url(docsrs), help("{0}"))]
     IOError(String),
 
     #[error("Directory not found")]
