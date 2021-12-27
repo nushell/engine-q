@@ -222,17 +222,17 @@ Example: 1;31m for bold red or 2;37;41m for dimmed white fg with red bg
 There can be multiple text formatting sequence numbers
 separated by a ; and ending with an m where the # is of the
 following values:
-    attributes
-    0    reset / normal display
-    1    bold or increased intensity
-    2    faint or decreased intensity
-    3    italic on (non-mono font)
-    4    underline on
-    5    slow blink on
-    6    fast blink on
-    7    reverse video on
-    8    nondisplayed (invisible) on
-    9    strike-through on
+    attribute_number, abbreviation, description
+    0     reset / normal display
+    1  b  bold or increased intensity
+    2  d  faint or decreased intensity
+    3  i  italic on (non-mono font)
+    4  u  underline on
+    5  l  slow blink on
+    6     fast blink on
+    7  r  reverse video on
+    8  h  nondisplayed (invisible) on
+    9  s  strike-through on
 
     foreground/bright colors    background/bright colors
     30/90    black              40/100    black
@@ -279,14 +279,14 @@ Format: #
                 )),
             },
             Example {
-                description: "Use ansi to color text",
+                description: "Use ansi to color text (italic bright yellow on red 'Hello' with green bold 'Nu' and purble bold 'World')",
                 example: r#"echo [(ansi -e '3;93;41m') Hello (ansi reset) " " (ansi gb) Nu " " (ansi pb) World (ansi reset)] | str collect"#,
                 result: Some(Value::test_string(
                     "\u{1b}[3;93;41mHello\u{1b}[0m \u{1b}[1;32mNu \u{1b}[1;35mWorld\u{1b}[0m",
                 )),
             },
             Example {
-                description: "Use ansi to color text with a style",
+                description: "Use ansi to color text with a style (blue on red in bold)",
                 example: r#"$"(ansi -e { fg: '#0000ff' bg: '#ff0000' attr: b })Hello Nu World(ansi reset)""#,
                 result: Some(Value::test_string(
                     "\u{1b}[1;48;2;255;0;0;38;2;0;0;255mHello Nu World\u{1b}[0m",
@@ -318,15 +318,7 @@ Format: #
             None => return Err(ShellError::MissingParameter("code".into(), call.head)),
         };
 
-        let param_type = match code {
-            Value::String { val: _, span: _ } => "string",
-            Value::Record {
-                cols: _,
-                vals: _,
-                span: _,
-            } => "record",
-            _ => "other",
-        };
+        let param_is_string = matches!(code, Value::String { val: _, span: _ });
 
         if escape && osc {
             return Err(ShellError::IncompatibleParameters {
@@ -343,15 +335,15 @@ Format: #
             });
         }
 
-        let code_string = if param_type == "string" {
+        let code_string = if param_is_string {
             code.as_string().expect("error getting code as string")
         } else {
             "".to_string()
         };
 
-        let param_is_string = param_type == "string" && !code_string.is_empty();
+        let param_is_valid_string = param_is_string && !code_string.is_empty();
 
-        if (escape || osc) && (param_is_string) {
+        if (escape || osc) && (param_is_valid_string) {
             let code_vec: Vec<char> = code_string.chars().collect();
             if code_vec[0] == '\\' {
                 return Err(ShellError::UnsupportedInput(
@@ -363,13 +355,13 @@ Format: #
             }
         }
 
-        let output = if escape && param_is_string {
+        let output = if escape && param_is_valid_string {
             format!("\x1b[{}", code_string)
-        } else if osc && param_is_string {
+        } else if osc && param_is_valid_string {
             // Operating system command aka osc  ESC ] <- note the right brace, not left brace for osc
             // OCS's need to end with a bell '\x07' char
             format!("\x1b]{};", code_string)
-        } else if param_is_string {
+        } else if param_is_valid_string {
             match str_to_ansi(&code_string) {
                 Some(c) => c,
                 None => {
@@ -397,7 +389,7 @@ Format: #
                     "attr" => nu_style.attr = Some(v.as_string()?),
                     _ => {
                         return Err(ShellError::IncompatibleParametersSingle(
-                            k.to_string(),
+                            format!("problem with key: {}", k.to_string()),
                             code.span().expect("error with span"),
                         ))
                     }
