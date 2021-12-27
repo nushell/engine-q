@@ -596,14 +596,14 @@ pub fn parse_internal_call(
             //     spans_idx, end, positional_idx
             // );
 
-            if end == 0 {
+            if spans[..end].is_empty() {
                 error = error.or_else(|| {
                     Some(ParseError::MissingPositional(
                         positional.name.clone(),
                         spans[spans_idx],
                     ))
                 });
-                spans_idx += 1;
+                positional_idx += 1;
                 continue;
             }
 
