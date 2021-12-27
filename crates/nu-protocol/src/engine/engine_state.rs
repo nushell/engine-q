@@ -9,6 +9,8 @@ use std::{
     sync::{atomic::AtomicBool, Arc},
 };
 
+use std::path::Path;
+
 #[cfg(feature = "plugin")]
 use std::path::PathBuf;
 
@@ -179,7 +181,11 @@ impl EngineState {
     ///
     /// When we want to preserve what the parser has created, we can take its output (the `StateDelta`) and
     /// use this function to merge it into the global state.
-    pub fn merge_delta(&mut self, mut delta: StateDelta) -> Result<(), ShellError> {
+    pub fn merge_delta(
+        &mut self,
+        mut delta: StateDelta,
+        cwd: impl AsRef<Path>,
+    ) -> Result<(), ShellError> {
         // Take the mutable reference and extend the permanent state from the working set
         self.files.extend(delta.files);
         self.file_contents.extend(delta.file_contents);
@@ -187,6 +193,8 @@ impl EngineState {
         self.vars.extend(delta.vars);
         self.blocks.extend(delta.blocks);
         self.overlays.extend(delta.overlays);
+
+        std::env::set_current_dir(cwd)?;
 
         if let Some(last) = self.scope.back_mut() {
             let first = delta.scope.remove(0);
@@ -1209,7 +1217,8 @@ mod engine_state_tests {
             working_set.render()
         };
 
-        engine_state.merge_delta(delta)?;
+        let cwd = std::env::current_dir().expect("Could not get current working directory.");
+        engine_state.merge_delta(delta, &cwd)?;
 
         assert_eq!(engine_state.num_files(), 2);
         assert_eq!(&engine_state.files[0].0, "test.nu");

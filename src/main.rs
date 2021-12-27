@@ -20,6 +20,7 @@ use nu_protocol::{
 use reedline::{Completer, CompletionActionHandler, DefaultHinter, LineBuffer, Prompt, Vi};
 use std::{
     io::Write,
+    path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -97,7 +98,20 @@ fn main() -> Result<()> {
         miette_hook(x);
     }));
 
-    let mut engine_state = create_default_context();
+    // Get initial current working directory.
+    // Missing PWD error is reported later so it is not critical to report it also here.
+    let init_cwd = match std::env::current_dir() {
+        Ok(cwd) => cwd,
+        Err(_) => match std::env::var("PWD".to_string()) {
+            Ok(cwd) => PathBuf::from(cwd),
+            Err(_) => match nu_path::home_dir() {
+                Some(cwd) => cwd,
+                None => PathBuf::new(),
+            },
+        },
+    };
+
+    let mut engine_state = create_default_context(&init_cwd);
 
     // TODO: make this conditional in the future
     // Ctrl-c protection section
@@ -129,7 +143,7 @@ fn main() -> Result<()> {
             (output, working_set.render())
         };
 
-        if let Err(err) = engine_state.merge_delta(delta) {
+        if let Err(err) = engine_state.merge_delta(delta, &init_cwd) {
             let working_set = StateWorkingSet::new(&engine_state);
             report_error(&working_set, &err);
         }
@@ -204,7 +218,9 @@ fn main() -> Result<()> {
                     (output, working_set.render())
                 };
 
-                if let Err(err) = engine_state.merge_delta(delta) {
+                let cwd = nu_engine::env::current_dir(&engine_state, &stack)?;
+
+                if let Err(err) = engine_state.merge_delta(delta, &cwd) {
                     let working_set = StateWorkingSet::new(&engine_state);
                     report_error(&working_set, &err);
                 }
@@ -896,7 +912,16 @@ fn eval_source(
         (output, working_set.render())
     };
 
-    if let Err(err) = engine_state.merge_delta(delta) {
+    let cwd = match nu_engine::env::current_dir(engine_state, stack) {
+        Ok(p) => p,
+        Err(e) => {
+            let working_set = StateWorkingSet::new(engine_state);
+            report_error(&working_set, &e);
+            return false;
+        }
+    };
+
+    if let Err(err) = engine_state.merge_delta(delta, &cwd) {
         let working_set = StateWorkingSet::new(engine_state);
         report_error(&working_set, &err);
     }
