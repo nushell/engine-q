@@ -2,7 +2,7 @@ use std::path::Path;
 
 use nu_engine::env::current_dir;
 use nu_engine::CallExt;
-use nu_path::{canonicalize_relative, expand_path};
+use nu_path::{canonicalize_with, expand_path};
 use nu_protocol::{engine::Command, Example, ShellError, Signature, Span, SyntaxShape, Value};
 
 use super::PathSubcommandArguments;
@@ -110,7 +110,7 @@ impl Command for SubCommand {
 }
 
 fn expand(path: &Path, span: Span, args: &Arguments) -> Value {
-    if let Ok(p) = canonicalize_relative(path, &args.cwd) {
+    if let Ok(p) = canonicalize_with(path, &args.cwd) {
         Value::string(p.to_string_lossy(), span)
     } else if args.strict {
         Value::Error {

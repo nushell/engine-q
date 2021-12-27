@@ -39,7 +39,7 @@ pub fn canonicalize(path: impl AsRef<Path>) -> io::Result<PathBuf> {
 }
 
 /// Same as canonicalize() but the input path is specified relative to another path
-pub fn canonicalize_relative<P, Q>(path: P, relative_to: Q) -> io::Result<PathBuf>
+pub fn canonicalize_with<P, Q>(path: P, relative_to: Q) -> io::Result<PathBuf>
 where
     P: AsRef<Path>,
     Q: AsRef<Path>,
@@ -64,7 +64,7 @@ pub fn expand_path(path: impl AsRef<Path>) -> PathBuf {
 }
 
 /// Same as expand_path() but the input path is specified relative to another path
-pub fn expand_path_relative<P, Q>(path: P, relative_to: Q) -> PathBuf
+pub fn expand_path_with<P, Q>(path: P, relative_to: Q) -> PathBuf
 where
     P: AsRef<Path>,
     Q: AsRef<Path>,
