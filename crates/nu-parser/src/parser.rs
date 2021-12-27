@@ -89,6 +89,25 @@ pub fn check_call(command: Span, sig: &Signature, call: &Call) -> Option<ParseEr
     }
 
     if call.positional.len() < sig.required_positional.len() {
+        // Comparing the types of all signature positional arguments against the parsed
+        // expressions found in the call. If one type is not found then it could be assumed
+        // that that positional argument is missing from the parsed call
+        for argument in &sig.required_positional {
+            let found = call.positional.iter().fold(false, |ac, expr| {
+                if argument.shape.to_type() == expr.ty {
+                    true
+                } else {
+                    ac
+                }
+            });
+            if !found {
+                return Some(ParseError::MissingPositional(
+                    argument.name.clone(),
+                    command,
+                ));
+            }
+        }
+
         let missing = &sig.required_positional[call.positional.len()];
         Some(ParseError::MissingPositional(missing.name.clone(), command))
     } else {
@@ -576,6 +595,17 @@ pub fn parse_internal_call(
             //     "start: {} end: {} positional_idx: {}",
             //     spans_idx, end, positional_idx
             // );
+
+            if spans[..end].is_empty() {
+                error = error.or_else(|| {
+                    Some(ParseError::MissingPositional(
+                        positional.name.clone(),
+                        spans[spans_idx],
+                    ))
+                });
+                positional_idx += 1;
+                continue;
+            }
 
             let orig_idx = spans_idx;
             let (arg, err) = parse_multispan_value(
@@ -2075,7 +2105,7 @@ pub fn parse_signature(
         Expression {
             expr: Expr::Signature(sig),
             span,
-            ty: Type::Unknown,
+            ty: Type::Signature,
             custom_completion: None,
         },
         error,
