@@ -97,9 +97,16 @@ impl PipelineData {
                     }
                 }
 
-                Value::Binary {
-                    val: output,
-                    span, // FIXME?
+                if let Ok(mut t) = String::from_utf8(output.clone()) {
+                    if t.ends_with('\n') {
+                        t.pop();
+                    }
+                    Value::String { val: t, span }
+                } else {
+                    Value::Binary {
+                        val: output,
+                        span, // FIXME?
+                    }
                 }
             }
         }

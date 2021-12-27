@@ -376,10 +376,19 @@ impl Value {
                     .collect::<Vec<_>>()
                     .join(separator)
             ),
-            Value::Block { val, .. } => format!("<Block {}>", val),
+            Value::Block { val, .. } => format!("<block {}>", val),
             Value::Nothing { .. } => String::new(),
             Value::Error { error } => format!("{:?}", error),
-            Value::Binary { val, .. } => format!("{:?}", val),
+            Value::Binary { val, .. } => {
+                if let Ok(mut t) = String::from_utf8(val.clone()) {
+                    if t.ends_with('\n') {
+                        t.pop();
+                    }
+                    t
+                } else {
+                    format!("{:?}", val)
+                }
+            }
             Value::CellPath { val, .. } => val.into_string(),
             Value::CustomValue { val, .. } => val.value_string(),
         }
@@ -419,10 +428,10 @@ impl Value {
                 cols.len(),
                 if cols.len() == 1 { "" } else { "s" }
             ),
-            Value::Block { val, .. } => format!("<Block {}>", val),
+            Value::Block { val, .. } => format!("<block {}>", val),
             Value::Nothing { .. } => String::new(),
             Value::Error { error } => format!("{:?}", error),
-            Value::Binary { val, .. } => format!("{:?}", val),
+            Value::Binary { .. } => "<binary>".to_string(),
             Value::CellPath { val, .. } => val.into_string(),
             Value::CustomValue { val, .. } => val.value_string(),
         }
