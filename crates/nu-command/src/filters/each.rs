@@ -115,6 +115,8 @@ impl Command for Each {
                 .into_iter()
                 .enumerate()
                 .map(move |(idx, x)| {
+                    let mut stack = stack.clone();
+
                     let x = match x {
                         Ok(x) => Value::Binary { val: x, span },
                         Err(err) => return Value::Error { error: err },
@@ -153,6 +155,8 @@ impl Command for Each {
                 .into_iter()
                 .enumerate()
                 .map(move |(idx, x)| {
+                    let mut stack = stack.clone();
+
                     let x = match x {
                         Ok(x) => Value::String { val: x, span },
                         Err(err) => return Value::Error { error: err },
