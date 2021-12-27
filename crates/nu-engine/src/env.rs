@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::Path;
 
 use nu_protocol::engine::{EngineState, Stack};
 use nu_protocol::{Config, PipelineData, ShellError, Value};
@@ -145,11 +146,23 @@ pub fn env_to_strings(
 pub fn current_dir(engine_state: &EngineState, stack: &Stack) -> Result<String, ShellError> {
     let config = stack.get_config()?;
     if let Some(pwd) = stack.get_env_var("PWD") {
-        env_to_string("PWD", pwd, engine_state, stack, &config)
+        match env_to_string("PWD", pwd, engine_state, stack, &config) {
+            Ok(cwd) => {
+                if Path::new(&cwd).is_absolute() {
+                    Ok(cwd)
+                } else {
+                    Err(ShellError::LabeledError(
+                            "Invalid current directory".to_string(),
+                            format!("The 'PWD' environment variable must be set to an absolute path. Found: '{}'", cwd)
+                    ))
+                }
+            }
+            Err(e) => Err(e),
+        }
     } else {
         Err(ShellError::LabeledError(
-            "Current directory not found".to_string(),
-            "The environment variable 'PWD' was not found. It is required to define the current directory.".to_string(),
+                "Current directory not found".to_string(),
+                "The environment variable 'PWD' was not found. It is required to define the current directory.".to_string(),
         ))
     }
 }

@@ -100,17 +100,7 @@ fn main() -> Result<()> {
 
     // Get initial current working directory.
     // Missing PWD error is reported later so it is not critical to report it also here.
-    let init_cwd = match std::env::current_dir() {
-        Ok(cwd) => cwd,
-        Err(_) => match std::env::var("PWD".to_string()) {
-            Ok(cwd) => PathBuf::from(cwd),
-            Err(_) => match nu_path::home_dir() {
-                Some(cwd) => cwd,
-                None => PathBuf::new(),
-            },
-        },
-    };
-
+    let init_cwd = get_init_cwd();
     let mut engine_state = create_default_context(&init_cwd);
 
     // TODO: make this conditional in the future
@@ -913,11 +903,11 @@ fn eval_source(
     };
 
     let cwd = match nu_engine::env::current_dir(engine_state, stack) {
-        Ok(p) => p,
+        Ok(p) => PathBuf::from(p),
         Err(e) => {
             let working_set = StateWorkingSet::new(engine_state);
             report_error(&working_set, &e);
-            return false;
+            get_init_cwd()
         }
     };
 
@@ -989,5 +979,18 @@ pub fn report_error(
     #[cfg(windows)]
     {
         let _ = enable_vt_processing();
+    }
+}
+
+fn get_init_cwd() -> PathBuf {
+    match std::env::current_dir() {
+        Ok(cwd) => cwd,
+        Err(_) => match std::env::var("PWD".to_string()) {
+            Ok(cwd) => PathBuf::from(cwd),
+            Err(_) => match nu_path::home_dir() {
+                Some(cwd) => cwd,
+                None => PathBuf::new(),
+            },
+        },
     }
 }
