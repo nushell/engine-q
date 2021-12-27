@@ -440,8 +440,6 @@ fn main() -> Result<()> {
                         && tokens.0.len() == 1
                     {
                         // We have an auto-cd
-                        let _ = std::env::set_current_dir(&path);
-
                         //FIXME: this only changes the current scope, but instead this environment variable
                         //should probably be a block that loads the information from the state in the overlay
                         stack.add_env_var(
