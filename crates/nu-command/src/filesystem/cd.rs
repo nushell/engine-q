@@ -35,7 +35,7 @@ impl Command for Cd {
             Some(v) => {
                 let path = nu_path::canonicalize_relative(
                     v.as_string()?,
-                    current_dir(engine_state, &stack)?,
+                    current_dir(engine_state, stack)?,
                 )?;
                 (path.to_string_lossy().to_string(), v.span()?)
             }

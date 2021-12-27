@@ -1,11 +1,11 @@
 use std::fs::OpenOptions;
 
-use nu_engine::CallExt;
 use nu_engine::env::current_dir;
+use nu_engine::CallExt;
+use nu_path::expand_path_relative;
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{Category, PipelineData, ShellError, Signature, SyntaxShape};
-use nu_path::expand_path_relative;
 
 #[derive(Clone)]
 pub struct Touch;
@@ -41,7 +41,7 @@ impl Command for Touch {
         let rest: Vec<String> = call.rest(engine_state, stack, 1)?;
 
         for (index, item) in vec![target].into_iter().chain(rest).enumerate() {
-            let path = expand_path_relative(&item, current_dir(engine_state, &stack)?);
+            let path = expand_path_relative(&item, current_dir(engine_state, stack)?);
             match OpenOptions::new().write(true).create(true).open(&path) {
                 Ok(_) => continue,
                 Err(err) => {

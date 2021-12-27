@@ -1,7 +1,7 @@
 use std::path::Path;
 
-use nu_engine::CallExt;
 use nu_engine::env::current_dir;
+use nu_engine::CallExt;
 use nu_path::{canonicalize_relative, expand_path};
 use nu_protocol::{engine::Command, Example, ShellError, Signature, Span, SyntaxShape, Value};
 
@@ -57,7 +57,7 @@ impl Command for SubCommand {
         let args = Arguments {
             strict: call.has_flag("strict"),
             columns: call.get_flag(engine_state, stack, "columns")?,
-            cwd: current_dir(engine_state, &stack)?,
+            cwd: current_dir(engine_state, stack)?,
         };
 
         input.map(
