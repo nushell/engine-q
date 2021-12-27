@@ -95,9 +95,9 @@ pub fn check_call(command: Span, sig: &Signature, call: &Call) -> Option<ParseEr
         for argument in &sig.required_positional {
             let found = call.positional.iter().fold(false, |ac, expr| {
                 if argument.shape.to_type() == expr.ty {
-                    ac || true
+                    true
                 } else {
-                    ac || false
+                    ac
                 }
             });
             if !found {
@@ -109,7 +109,7 @@ pub fn check_call(command: Span, sig: &Signature, call: &Call) -> Option<ParseEr
         }
 
         let missing = &sig.required_positional[call.positional.len()];
-        return Some(ParseError::MissingPositional(missing.name.clone(), command));
+        Some(ParseError::MissingPositional(missing.name.clone(), command))
     } else {
         for req_flag in sig.named.iter().filter(|x| x.required) {
             if call.named.iter().all(|(n, _)| n.item != req_flag.long) {
