@@ -305,13 +305,6 @@ Format: #
         let list: bool = call.has_flag("list");
         let escape: bool = call.has_flag("escape");
         let osc: bool = call.has_flag("osc");
-        // let rest: Vec<Value> = call.rest(engine_state, stack, 0)?;
-        // let style: Option<Value> = call.get_flag(engine_state, stack, "style")?;
-        // let style = match style {
-        //     Some(s) => s,
-        //     None => Value::string("", call.head),
-        // };
-        // eprintln!("{:#?}", &style);
 
         if list {
             return generate_ansi_code_list(engine_state, call.head);
@@ -373,7 +366,7 @@ Format: #
         let output = if escape && param_is_string {
             format!("\x1b[{}", code_string)
         } else if osc && param_is_string {
-            //Operating system command aka osc  ESC ] <- note the right brace, not left brace for osc
+            // Operating system command aka osc  ESC ] <- note the right brace, not left brace for osc
             // OCS's need to end with a bell '\x07' char
             format!("\x1b]{};", code_string)
         } else if param_is_string {
