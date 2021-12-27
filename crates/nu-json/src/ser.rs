@@ -1044,7 +1044,7 @@ fn remove_json_whitespace(v: Vec<u8>) -> String {
         match line {
             Ok(line) => output.push_str(line.trim().trim_end()),
             _ => {
-                String::from("Error Removing JSON whitespace");
+                eprintln!("Error removing JSON whitespace");
             }
         }
     }
