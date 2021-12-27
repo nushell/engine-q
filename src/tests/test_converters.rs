@@ -29,3 +29,11 @@ fn to_json_raw_flag_2() -> TestResult {
         r#"[{"a b": "jim","c": "susie"},{"a b": 3,"c": 4}]"#,
     )
 }
+
+#[test]
+fn to_json_raw_flag_3() -> TestResult {
+    run_test(
+        "[[\"a b\" \"c d\"]; [\"jim smith\" \"susie roberts\"] [3 4]] | to json -r",
+        r#"[{"a b": "jim smith","c d": "susie roberts"},{"a b": 3,"c d": 4}]"#,
+    )
+}
