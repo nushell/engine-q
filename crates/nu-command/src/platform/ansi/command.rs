@@ -207,8 +207,6 @@ impl Command for AnsiCommand {
                 Some('o'),
             )
             .switch("list", "list available ansi code names", Some('l'))
-            // .named("style", SyntaxShape::Any, "color style", Some('s'))
-            // .rest("style", SyntaxShape::Any, "nu style with fg, bg, attr")
             .category(Category::Platform)
     }
 
