@@ -480,7 +480,7 @@ pub fn eval_subexpression(
 ) -> Result<PipelineData, ShellError> {
     for stmt in block.stmts.iter() {
         if let Statement::Pipeline(pipeline) = stmt {
-            for (i, elem) in pipeline.expressions.iter().enumerate() {
+            for elem in pipeline.expressions.iter() {
                 match elem {
                     Expression {
                         expr: Expr::Call(call),
