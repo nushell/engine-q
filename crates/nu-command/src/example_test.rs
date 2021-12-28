@@ -7,6 +7,8 @@ use nu_protocol::{
     engine::{Command, EngineState, Stack, StateWorkingSet},
     PipelineData, Span, Value, CONFIG_VARIABLE_ID,
 };
+#[cfg(test)]
+use std::collections::HashMap;
 
 #[cfg(test)]
 use crate::To;
@@ -48,7 +50,7 @@ pub fn test_examples(cmd: impl Command + 'static) {
     };
 
     let cwd = std::env::current_dir().expect("Could not get current working directory.");
-    let _ = engine_state.merge_delta(delta, &cwd);
+    let _ = engine_state.merge_delta(delta, &cwd, HashMap::new());
 
     for example in examples {
         // Skip tests that don't have results to compare to
@@ -68,7 +70,7 @@ pub fn test_examples(cmd: impl Command + 'static) {
             (output, working_set.render())
         };
 
-        let _ = engine_state.merge_delta(delta, &cwd);
+        let _ = engine_state.merge_delta(delta, &cwd, HashMap::new());
 
         let mut stack = Stack::new();
 

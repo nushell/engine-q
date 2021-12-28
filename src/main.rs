@@ -19,6 +19,7 @@ use nu_protocol::{
 };
 use reedline::{Completer, CompletionActionHandler, DefaultHinter, LineBuffer, Prompt, Vi};
 use std::{
+    collections::HashMap,
     io::Write,
     path::PathBuf,
     sync::{
@@ -133,7 +134,7 @@ fn main() -> Result<()> {
             (output, working_set.render())
         };
 
-        if let Err(err) = engine_state.merge_delta(delta, &init_cwd) {
+        if let Err(err) = engine_state.merge_delta(delta, &init_cwd, HashMap::new()) {
             let working_set = StateWorkingSet::new(&engine_state);
             report_error(&working_set, &err);
         }
@@ -164,7 +165,7 @@ fn main() -> Result<()> {
         };
 
         // Translate environment variables from Strings to Values
-        if let Some(e) = convert_env_values(&engine_state, &mut stack, &config) {
+        if let Some(e) = convert_env_values(&mut engine_state, &mut stack, &config) {
             let working_set = StateWorkingSet::new(&engine_state);
             report_error(&working_set, &e);
             std::process::exit(1);
@@ -210,7 +211,10 @@ fn main() -> Result<()> {
 
                 let cwd = nu_engine::env::current_dir(&engine_state, &stack)?;
 
-                if let Err(err) = engine_state.merge_delta(delta, &cwd) {
+                let env_vars = stack.get_env_vars(&engine_state);
+                stack.env_vars = vec![];
+
+                if let Err(err) = engine_state.merge_delta(delta, &cwd, env_vars) {
                     let working_set = StateWorkingSet::new(&engine_state);
                     report_error(&working_set, &err);
                 }
@@ -337,7 +341,7 @@ fn main() -> Result<()> {
         })?;
 
         // Translate environment variables from Strings to Values
-        if let Some(e) = convert_env_values(&engine_state, &mut stack, &config) {
+        if let Some(e) = convert_env_values(&mut engine_state, &mut stack, &config) {
             let working_set = StateWorkingSet::new(&engine_state);
             report_error(&working_set, &e);
         }
@@ -665,7 +669,8 @@ fn gather_parent_env_vars(engine_state: &mut EngineState, stack: &mut Stack) {
                 continue;
             };
 
-            stack.add_env_var(name, value);
+            // stack.add_env_var(name, value);
+            engine_state.env_vars.insert(name, value);
         }
     }
 }
@@ -911,7 +916,10 @@ fn eval_source(
         }
     };
 
-    if let Err(err) = engine_state.merge_delta(delta, &cwd) {
+    let env_vars = stack.get_env_vars(&engine_state);
+    stack.env_vars = vec![];
+
+    if let Err(err) = engine_state.merge_delta(delta, &cwd, env_vars) {
         let working_set = StateWorkingSet::new(engine_state);
         report_error(&working_set, &err);
     }

@@ -189,6 +189,7 @@ impl EngineState {
         &mut self,
         mut delta: StateDelta,
         cwd: impl AsRef<Path>,
+        env_vars: HashMap<String, Value>,
     ) -> Result<(), ShellError> {
         // Take the mutable reference and extend the permanent state from the working set
         self.files.extend(delta.files);
@@ -197,6 +198,10 @@ impl EngineState {
         self.vars.extend(delta.vars);
         self.blocks.extend(delta.blocks);
         self.overlays.extend(delta.overlays);
+
+        for (k, v) in env_vars {
+            self.env_vars.insert(k, v);
+        }
 
         std::env::set_current_dir(cwd)?;
 
@@ -1222,7 +1227,7 @@ mod engine_state_tests {
         };
 
         let cwd = std::env::current_dir().expect("Could not get current working directory.");
-        engine_state.merge_delta(delta, &cwd)?;
+        engine_state.merge_delta(delta, &cwd, HashMap::new())?;
 
         assert_eq!(engine_state.num_files(), 2);
         assert_eq!(&engine_state.files[0].0, "test.nu");

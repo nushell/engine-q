@@ -18,17 +18,17 @@ const ENV_SEP: &str = ":";
 /// skip errors. This function is called in the main() so we want to keep running, we cannot just
 /// exit.
 pub fn convert_env_values(
-    engine_state: &EngineState,
+    engine_state: &mut EngineState,
     stack: &mut Stack,
     config: &Config,
 ) -> Option<ShellError> {
-    let mut new_env_vars = vec![];
+    // let mut new_env_vars = vec![];
     let mut error = None;
 
-    for scope in &stack.env_vars {
+    // for scope in &stack.env_vars {
         let mut new_scope = HashMap::new();
 
-        for (name, val) in scope {
+        for (name, val) in &engine_state.env_vars {
             if let Some(env_conv) = config.env_conversions.get(name) {
                 if let Some((block_id, from_span)) = env_conv.from_string {
                     let val_span = match val.span() {
@@ -77,10 +77,14 @@ pub fn convert_env_values(
             }
         }
 
-        new_env_vars.push(new_scope);
-    }
+        for (k, v) in new_scope {
+            engine_state.env_vars.insert(k, v);
+        }
 
-    stack.env_vars = new_env_vars;
+    //     new_env_vars.push(new_scope);
+    // }
+
+    // stack.env_vars = new_env_vars;
 
     error
 }
