@@ -9,6 +9,8 @@ use std::{
     sync::{atomic::AtomicBool, Arc},
 };
 
+use crate::Value;
+
 use std::path::Path;
 
 #[cfg(feature = "plugin")]
@@ -142,6 +144,7 @@ pub struct EngineState {
     overlays: im::Vector<Overlay>,
     pub scope: im::Vector<ScopeFrame>,
     pub ctrlc: Option<Arc<AtomicBool>>,
+    pub env_vars: im::HashMap<String, Value>,
     #[cfg(feature = "plugin")]
     pub plugin_signatures: Option<PathBuf>,
 }
@@ -169,6 +172,7 @@ impl EngineState {
             overlays: im::vector![],
             scope: im::vector![ScopeFrame::new()],
             ctrlc: None,
+            env_vars: im::HashMap::new(),
             #[cfg(feature = "plugin")]
             plugin_signatures: None,
         }

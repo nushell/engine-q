@@ -880,7 +880,7 @@ pub fn eval_variable(
             span,
         })
     } else if var_id == ENV_VARIABLE_ID {
-        let env_vars = stack.get_env_vars();
+        let env_vars = stack.get_env_vars(engine_state);
         let env_columns = env_vars.keys();
         let env_values = env_vars.values();
 

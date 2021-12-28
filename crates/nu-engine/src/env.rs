@@ -132,7 +132,7 @@ pub fn env_to_strings(
     stack: &Stack,
     config: &Config,
 ) -> Result<HashMap<String, String>, ShellError> {
-    let env_vars = stack.get_env_vars();
+    let env_vars = stack.get_env_vars(engine_state);
     let mut env_vars_str = HashMap::new();
     for (env_name, val) in env_vars {
         let val_str = env_to_string(&env_name, val, engine_state, stack, config)?;
@@ -145,7 +145,7 @@ pub fn env_to_strings(
 /// Shorthand for env_to_string() for PWD with custom error
 pub fn current_dir(engine_state: &EngineState, stack: &Stack) -> Result<String, ShellError> {
     let config = stack.get_config()?;
-    if let Some(pwd) = stack.get_env_var("PWD") {
+    if let Some(pwd) = stack.get_env_var(engine_state, "PWD") {
         match env_to_string("PWD", pwd, engine_state, stack, &config) {
             Ok(cwd) => {
                 if Path::new(&cwd).is_absolute() {
