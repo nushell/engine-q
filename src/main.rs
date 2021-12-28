@@ -142,7 +142,7 @@ fn main() -> Result<()> {
         let mut stack = nu_protocol::engine::Stack::new();
 
         // First, set up env vars as strings only
-        gather_parent_env_vars(&mut engine_state, &mut stack);
+        gather_parent_env_vars(&mut engine_state);
 
         // Set up our initial config to start from
         stack.vars.insert(
@@ -165,7 +165,7 @@ fn main() -> Result<()> {
         };
 
         // Translate environment variables from Strings to Values
-        if let Some(e) = convert_env_values(&mut engine_state, &mut stack, &config) {
+        if let Some(e) = convert_env_values(&mut engine_state, &stack, &config) {
             let working_set = StateWorkingSet::new(&engine_state);
             report_error(&working_set, &e);
             std::process::exit(1);
@@ -265,7 +265,7 @@ fn main() -> Result<()> {
         let mut stack = nu_protocol::engine::Stack::new();
 
         // First, set up env vars as strings only
-        gather_parent_env_vars(&mut engine_state, &mut stack);
+        gather_parent_env_vars(&mut engine_state);
 
         // Set up our initial config to start from
         stack.vars.insert(
@@ -341,7 +341,7 @@ fn main() -> Result<()> {
         })?;
 
         // Translate environment variables from Strings to Values
-        if let Some(e) = convert_env_values(&mut engine_state, &mut stack, &config) {
+        if let Some(e) = convert_env_values(&mut engine_state, &stack, &config) {
             let working_set = StateWorkingSet::new(&engine_state);
             report_error(&working_set, &e);
         }
@@ -501,7 +501,7 @@ fn main() -> Result<()> {
 // In order to ensure the values have spans, it first creates a dummy file, writes the collected
 // env vars into it (in a "NAME"="value" format, quite similar to the output of the Unix 'env'
 // tool), then uses the file to get the spans. The file stays in memory, no filesystem IO is done.
-fn gather_parent_env_vars(engine_state: &mut EngineState, stack: &mut Stack) {
+fn gather_parent_env_vars(engine_state: &mut EngineState) {
     // Some helper functions
     fn get_surround_char(s: &str) -> Option<char> {
         if s.contains('"') {
@@ -916,7 +916,7 @@ fn eval_source(
         }
     };
 
-    let env_vars = stack.get_env_vars(&engine_state);
+    let env_vars = stack.get_env_vars(engine_state);
     stack.env_vars = vec![];
 
     if let Err(err) = engine_state.merge_delta(delta, &cwd, env_vars) {

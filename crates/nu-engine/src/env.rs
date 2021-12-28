@@ -19,67 +19,63 @@ const ENV_SEP: &str = ":";
 /// exit.
 pub fn convert_env_values(
     engine_state: &mut EngineState,
-    stack: &mut Stack,
+    stack: &Stack,
     config: &Config,
 ) -> Option<ShellError> {
     // let mut new_env_vars = vec![];
     let mut error = None;
 
     // for scope in &stack.env_vars {
-        let mut new_scope = HashMap::new();
+    let mut new_scope = HashMap::new();
 
-        for (name, val) in &engine_state.env_vars {
-            if let Some(env_conv) = config.env_conversions.get(name) {
-                if let Some((block_id, from_span)) = env_conv.from_string {
-                    let val_span = match val.span() {
-                        Ok(sp) => sp,
-                        Err(e) => {
-                            error = error.or(Some(e));
-                            continue;
+    for (name, val) in &engine_state.env_vars {
+        if let Some(env_conv) = config.env_conversions.get(name) {
+            if let Some((block_id, from_span)) = env_conv.from_string {
+                let val_span = match val.span() {
+                    Ok(sp) => sp,
+                    Err(e) => {
+                        error = error.or(Some(e));
+                        continue;
+                    }
+                };
+
+                let block = engine_state.get_block(block_id);
+
+                if let Some(var) = block.signature.get_positional(0) {
+                    let mut stack = stack.collect_captures(&block.captures);
+                    if let Some(var_id) = &var.var_id {
+                        stack.add_var(*var_id, val.clone());
+                    }
+
+                    let result =
+                        eval_block(engine_state, &mut stack, block, PipelineData::new(val_span));
+
+                    match result {
+                        Ok(data) => {
+                            let val = data.into_value(val_span);
+                            new_scope.insert(name.to_string(), val);
                         }
-                    };
-
-                    let block = engine_state.get_block(block_id);
-
-                    if let Some(var) = block.signature.get_positional(0) {
-                        let mut stack = stack.collect_captures(&block.captures);
-                        if let Some(var_id) = &var.var_id {
-                            stack.add_var(*var_id, val.clone());
-                        }
-
-                        let result = eval_block(
-                            engine_state,
-                            &mut stack,
-                            block,
-                            PipelineData::new(val_span),
-                        );
-
-                        match result {
-                            Ok(data) => {
-                                let val = data.into_value(val_span);
-                                new_scope.insert(name.to_string(), val);
-                            }
-                            Err(e) => error = error.or(Some(e)),
-                        }
-                    } else {
-                        error = error.or_else(|| {
-                            Some(ShellError::MissingParameter(
-                                "block input".into(),
-                                from_span,
-                            ))
-                        });
+                        Err(e) => error = error.or(Some(e)),
                     }
                 } else {
-                    new_scope.insert(name.to_string(), val.clone());
+                    error = error.or_else(|| {
+                        Some(ShellError::MissingParameter(
+                            "block input".into(),
+                            from_span,
+                        ))
+                    });
                 }
             } else {
                 new_scope.insert(name.to_string(), val.clone());
             }
+        } else {
+            new_scope.insert(name.to_string(), val.clone());
         }
+    }
 
-        for (k, v) in new_scope {
-            engine_state.env_vars.insert(k, v);
-        }
+    for (k, v) in new_scope {
+        engine_state.env_vars.insert(k, v);
+    }
 
     //     new_env_vars.push(new_scope);
     // }
