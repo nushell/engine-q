@@ -45,7 +45,11 @@ fn length_col(
     call: &Call,
     input: PipelineData,
 ) -> Result<PipelineData, ShellError> {
-    length_row(call, getcol(engine_state, call.head, input).unwrap())
+    length_row(
+        call,
+        getcol(engine_state, call.head, input)
+            .expect("getcol() should not fail used in column command"),
+    )
 }
 
 fn length_row(call: &Call, input: PipelineData) -> Result<PipelineData, ShellError> {
