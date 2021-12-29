@@ -15,8 +15,7 @@ impl Command for Ignore {
     }
 
     fn signature(&self) -> nu_protocol::Signature {
-        Signature::build("ignore")
-            .category(Category::Core)
+        Signature::build("ignore").category(Category::Core)
     }
 
     fn run(
