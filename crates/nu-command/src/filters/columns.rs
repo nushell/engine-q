@@ -66,7 +66,7 @@ fn getcol(
             },
             ..,
         ) => {
-            let input_cols = get_input_cols(input_vals);
+            let input_cols = get_columns(&input_vals);
             Ok(input_cols
                 .into_iter()
                 .map(move |x| Value::String { val: x, span })
@@ -74,7 +74,7 @@ fn getcol(
         }
         PipelineData::ListStream(stream, ..) => {
             let v: Vec<_> = stream.into_iter().collect();
-            let input_cols = get_input_cols(v);
+            let input_cols = get_columns(&v);
 
             Ok(input_cols
                 .into_iter()
@@ -89,12 +89,20 @@ fn getcol(
     }
 }
 
-fn get_input_cols(input: Vec<Value>) -> Vec<String> {
-    let rec = input.first();
-    match rec {
-        Some(Value::Record { cols, vals: _, .. }) => cols.to_vec(),
-        _ => vec!["".to_string()],
+fn get_columns(input: &[Value]) -> Vec<String> {
+    let mut columns = vec![];
+
+    for item in input {
+        if let Value::Record { cols, vals: _, .. } = item {
+            for col in cols {
+                if !columns.contains(col) {
+                    columns.push(col.to_string());
+                }
+            }
+        }
     }
+
+    columns
 }
 
 #[cfg(test)]
