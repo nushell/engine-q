@@ -2,6 +2,7 @@ use lscolors::{LsColors, Style};
 use nu_color_config::{get_color_config, style_primitive};
 use nu_engine::{env_to_string, CallExt};
 use nu_protocol::ast::{Call, PathMember};
+use nu_protocol::column::get_columns;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
     Category, Config, DataSource, IntoPipelineData, PipelineData, PipelineMetadata, ShellError,
@@ -242,22 +243,6 @@ impl Command for Table {
             x => Ok(x),
         }
     }
-}
-
-fn get_columns(input: &[Value]) -> Vec<String> {
-    let mut columns = vec![];
-
-    for item in input {
-        if let Value::Record { cols, vals: _, .. } = item {
-            for col in cols {
-                if !columns.contains(col) {
-                    columns.push(col.to_string());
-                }
-            }
-        }
-    }
-
-    columns
 }
 
 fn convert_to_table(

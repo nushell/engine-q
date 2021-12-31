@@ -1,4 +1,5 @@
 pub mod ast;
+pub mod column;
 mod config;
 pub mod engine;
 mod example;
@@ -14,6 +15,7 @@ mod ty;
 mod value;
 pub use value::Value;
 
+pub use column::get_columns;
 pub use config::*;
 pub use engine::{CONFIG_VARIABLE_ID, IN_VARIABLE_ID, NU_VARIABLE_ID, SCOPE_VARIABLE_ID};
 pub use example::*;

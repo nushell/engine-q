@@ -1,4 +1,5 @@
 use nu_protocol::ast::Call;
+use nu_protocol::column::get_columns;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
     Category, Example, IntoInterruptiblePipelineData, IntoPipelineData, PipelineData, ShellError,
@@ -87,22 +88,6 @@ fn getcol(
             Ok(Value::Record { cols, vals, span }.into_pipeline_data())
         }
     }
-}
-
-fn get_columns(input: &[Value]) -> Vec<String> {
-    let mut columns = vec![];
-
-    for item in input {
-        if let Value::Record { cols, vals: _, .. } = item {
-            for col in cols {
-                if !columns.contains(col) {
-                    columns.push(col.to_string());
-                }
-            }
-        }
-    }
-
-    columns
 }
 
 #[cfg(test)]
