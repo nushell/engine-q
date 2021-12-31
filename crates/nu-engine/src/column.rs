@@ -1,4 +1,4 @@
-use crate::Value;
+use nu_protocol::Value;
 
 pub fn get_columns(input: &[Value]) -> Vec<String> {
     let mut columns = vec![];

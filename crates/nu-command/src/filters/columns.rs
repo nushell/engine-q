@@ -1,5 +1,5 @@
+use nu_engine::column::get_columns;
 use nu_protocol::ast::Call;
-use nu_protocol::column::get_columns;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
     Category, Example, IntoInterruptiblePipelineData, IntoPipelineData, PipelineData, ShellError,
