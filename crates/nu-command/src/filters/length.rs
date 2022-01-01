@@ -1,3 +1,4 @@
+use nu_engine::column::get_columns;
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
@@ -80,7 +81,7 @@ fn getcol(
             },
             ..,
         ) => {
-            let input_cols = get_input_cols(input_vals);
+            let input_cols = get_columns(&input_vals);
             Ok(input_cols
                 .into_iter()
                 .map(move |x| Value::String { val: x, span })
@@ -88,7 +89,7 @@ fn getcol(
         }
         PipelineData::ListStream(stream, ..) => {
             let v: Vec<_> = stream.into_iter().collect();
-            let input_cols = get_input_cols(v);
+            let input_cols = get_columns(&v);
 
             Ok(input_cols
                 .into_iter()
@@ -100,13 +101,5 @@ fn getcol(
             let vals = vec![];
             Ok(Value::Record { cols, vals, span }.into_pipeline_data())
         }
-    }
-}
-
-fn get_input_cols(input: Vec<Value>) -> Vec<String> {
-    let rec = input.first();
-    match rec {
-        Some(Value::Record { cols, vals: _, .. }) => cols.to_vec(),
-        _ => vec!["".to_string()],
     }
 }
