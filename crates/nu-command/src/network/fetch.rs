@@ -87,7 +87,12 @@ fn run_fetch(
 
     let path = match fetch_helper.path {
         Some(p) => p,
-        None => return Err(ShellError::UnsupportedInput("test".to_string(), call.head)),
+        None => {
+            return Err(ShellError::UnsupportedInput(
+                "The url must be a string".to_string(),
+                call.head,
+            ))
+        }
     };
 
     runtime.block_on(fetch(
