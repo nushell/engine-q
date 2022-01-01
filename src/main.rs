@@ -33,6 +33,10 @@ mod tests;
 
 // Name of environment variable where the prompt could be stored
 const PROMPT_COMMAND: &str = "PROMPT_COMMAND";
+const PROMPT_INDICATOR: &str = "PROMPT_INDICATOR";
+const PROMPT_INDICATOR_VI_INSERT: &str = "PROMPT_INDICATOR_VI_INSERT";
+const PROMPT_INDICATOR_VI_VISUAL: &str = "PROMPT_INDICATOR_VI_VISUAL";
+const PROMPT_MULTILINE_INDICATOR: &str = "PROMPT_MULTILINE_INDICATOR";
 
 struct FuzzyCompletion {
     completer: Box<dyn Completer>,
@@ -406,7 +410,7 @@ fn main() -> Result<()> {
             };
 
             let prompt = update_prompt(
-                PROMPT_COMMAND,
+                &config,
                 &engine_state,
                 &stack,
                 &mut nu_prompt,
@@ -704,13 +708,13 @@ fn print_pipeline_data(
 }
 
 fn update_prompt<'prompt>(
-    env_variable: &str,
+    config: &Config,
     engine_state: &EngineState,
     stack: &Stack,
     nu_prompt: &'prompt mut NushellPrompt,
     default_prompt: &'prompt DefaultPrompt,
 ) -> &'prompt dyn Prompt {
-    let block_id = match stack.get_env_var(env_variable) {
+    let prompt_command_block_id = match stack.get_env_var(PROMPT_COMMAND) {
         Some(v) => match v.as_block() {
             Ok(b) => b,
             Err(_) => return default_prompt as &dyn Prompt,
@@ -718,7 +722,7 @@ fn update_prompt<'prompt>(
         None => return default_prompt as &dyn Prompt,
     };
 
-    let block = engine_state.get_block(block_id);
+    let block = engine_state.get_block(prompt_command_block_id);
 
     let mut stack = stack.clone();
 
@@ -729,8 +733,8 @@ fn update_prompt<'prompt>(
         PipelineData::new(Span::new(0, 0)), // Don't try this at home, 0 span is ignored
     ) {
         Ok(pipeline_data) => {
-            let config = stack.get_config().unwrap_or_default();
-            pipeline_data.collect_string("", &config)
+            // let config = stack.get_config().unwrap_or_default();
+            pipeline_data.collect_string("", config)
         }
         Err(..) => {
             // If we can't run the custom prompt, give them the default
@@ -738,11 +742,43 @@ fn update_prompt<'prompt>(
         }
     };
 
+    let prompt_indicator = match stack.get_env_var(PROMPT_INDICATOR) {
+        Some(pi) => pi.into_string("", config),
+        None => "〉".to_string(),
+    };
+
+    let prompt_vi_insert = match stack.get_env_var(PROMPT_INDICATOR_VI_INSERT) {
+        Some(pvii) => pvii.into_string("", config),
+        None => ": ".to_string(),
+    };
+
+    let prompt_vi_visual = match stack.get_env_var(PROMPT_INDICATOR_VI_VISUAL) {
+        Some(pviv) => pviv.into_string("", config),
+        None => "v ".to_string(),
+    };
+
+    let prompt_multiline = match stack.get_env_var(PROMPT_MULTILINE_INDICATOR) {
+        Some(pm) => pm.into_string("", config),
+        None => "::: ".to_string(),
+    };
+
     match evaluated_prompt {
         Ok(evaluated_prompt) => {
-            nu_prompt.update_prompt(evaluated_prompt);
+            nu_prompt.update_all_prompt_strings(
+                evaluated_prompt,
+                prompt_indicator,
+                prompt_vi_insert,
+                prompt_vi_visual,
+                prompt_multiline,
+            );
         }
-        _ => nu_prompt.update_prompt(String::new()),
+        _ => nu_prompt.update_all_prompt_strings(
+            String::new(),
+            prompt_indicator,
+            prompt_vi_insert,
+            prompt_vi_visual,
+            prompt_multiline,
+        ),
     }
 
     nu_prompt as &dyn Prompt
