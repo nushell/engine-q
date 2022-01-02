@@ -9,6 +9,7 @@ use nu_protocol::{
 
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct SubCommand;
@@ -38,7 +39,9 @@ impl Command for SubCommand {
                 "the password when authenticating",
                 Some('p'),
             )
+            .named("timeout", SyntaxShape::Int, "timeout period in seconds", Some('t'))
             .switch("raw", "fetch contents as text rather than a table", Some('r'))
+            
             .filter()
             .category(Category::Network)
     }
@@ -85,42 +88,45 @@ fn run_fetch(
 
     let runtime = tokio::runtime::Runtime::new()?;
 
-    let path = match fetch_helper.path {
-        Some(p) => p,
-        None => {
-            return Err(ShellError::UnsupportedInput(
-                "The url must be a string".to_string(),
-                call.head,
-            ))
-        }
-    };
+    // let path = match fetch_helper.path {
+    //     Some(p) => p,
+    //     None => {
+    //         return Err(ShellError::UnsupportedInput(
+    //             "The url must be a string".to_string(),
+    //             call.head,
+    //         ))
+    //     }
+    // };
 
     runtime.block_on(fetch(
         engine_state,
+        call,
         stack,
-        path,
-        call.head,
+        fetch_helper.url,
         fetch_helper.has_raw,
         fetch_helper.user.clone(),
         fetch_helper.password,
+        fetch_helper.timeout,
     ))
 }
 
 #[derive(Default)]
 pub struct Fetch {
-    pub path: Option<String>,
+    pub url: Option<Value>,
     pub has_raw: bool,
     pub user: Option<String>,
     pub password: Option<String>,
+    pub timeout: Option<Value>,
 }
 
 impl Fetch {
     pub fn new() -> Fetch {
         Fetch {
-            path: None,
+            url: None,
             has_raw: false,
             user: None,
             password: None,
+            timeout: None,
         }
     }
 
@@ -130,25 +136,33 @@ impl Fetch {
         call: &Call,
         stack: &mut Stack,
     ) -> Result<(), ShellError> {
-        self.path = Some(call.req(engine_state, stack, 0)?);
+        self.url = Some(call.req(engine_state, stack, 0)?);
         self.has_raw = call.has_flag("raw");
         self.user = call.get_flag(engine_state, stack, "user")?;
         self.password = call.get_flag(engine_state, stack, "password")?;
-
+        self.timeout = call.get_flag(engine_state, stack, "timeout")?;
         Ok(())
     }
 }
 
 pub async fn fetch(
     engine_state: &EngineState,
+    call: &Call,
     stack: &mut Stack,
-    path_str: String,
-    span: Span,
+    url: Option<Value>,
     has_raw: bool,
     user: Option<String>,
     password: Option<String>,
+    timeout: Option<Value>,
 ) -> Result<PipelineData, ShellError> {
-    let result = helper(&path_str, span, has_raw, user, password).await;
+    let url_value = if let Some(val) = url {
+        val
+    } else {
+        return Err(ShellError::UnsupportedInput("Expecting a url as a string but got nothing".to_string(), call.head))
+    };
+    let span = url_value.span()?;
+    let url = url_value.as_string()?;
+    let result = helper(&url, span, has_raw, user, password, timeout).await;
 
     if let Err(e) = result {
         return Err(e);
@@ -160,7 +174,7 @@ pub async fn fetch(
     } else {
         // If the extension could not be determined via mimetype, try to use the path
         // extension. Some file types do not declare their mimetypes (such as bson files).
-        file_extension.or_else(|| path_str.split('.').last().map(String::from))
+        file_extension.or_else(|| url.split('.').last().map(String::from))
     };
 
     if let Some(ext) = file_extension {
@@ -186,17 +200,21 @@ async fn helper(
     has_raw: bool,
     user: Option<String>,
     password: Option<String>,
+    timeout: Option<Value>,
 ) -> std::result::Result<(Option<String>, Value), ShellError> {
+
+    
+
     let url = match url::Url::parse(location) {
         Ok(u) => u,
         Err(e) => {
-            return Err(ShellError::LabeledError(
-                format!("Incomplete or incorrect url:\n{:?}", e),
-                "expected a full url".to_string(),
+            return Err(ShellError::UnsupportedInput(
+                "Incomplete or incorrect url. Expected a full url, e.g., https://www.example.com".to_string(),
+                span
+                
             ));
         }
     };
-
     let login = match (user, password) {
         (Some(user), Some(password)) => Some(encode(&format!("{}:{}", user, password))),
         (Some(user), _) => Some(encode(&format!("{}:", user))),
@@ -205,6 +223,18 @@ async fn helper(
 
     let client = http_client();
     let mut request = client.get(url);
+
+    if let Some(timeout) = timeout {
+        let val = timeout.as_i64()?;
+        if val.is_negative() || val < 1 {
+            return Err(ShellError::UnsupportedInput(
+                "Timeout value must be an integer and larger than 0".to_string(),
+                timeout.span().unwrap_or(Span::new(0, 0)),
+            ));
+        }
+            
+        request = request.timeout(Duration::from_secs(val as u64));
+    }
 
     if let Some(login) = login {
         request = request.header("Authorization", format!("Basic {}", login));
@@ -339,9 +369,8 @@ async fn helper(
                 },
             )),
         },
-        Err(e) => Err(ShellError::LabeledError(
-            "url could not be opened".to_string(),
-            e.to_string(),
+        Err(_e) => Err(ShellError::NetworkFailure(
+            format!("Cannot connect to {}", location),span
         )),
     }
 }
