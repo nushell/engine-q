@@ -762,23 +762,27 @@ fn print_pipeline_data(
     Ok(())
 }
 
-fn get_prompt_indicators(config: &Config, stack: &Stack) -> (String, String, String, String) {
-    let prompt_indicator = match stack.get_env_var(PROMPT_INDICATOR) {
+fn get_prompt_indicators(
+    config: &Config,
+    engine_state: &EngineState,
+    stack: &Stack,
+) -> (String, String, String, String) {
+    let prompt_indicator = match stack.get_env_var(engine_state, PROMPT_INDICATOR) {
         Some(pi) => pi.into_string("", config),
         None => "〉".to_string(),
     };
 
-    let prompt_vi_insert = match stack.get_env_var(PROMPT_INDICATOR_VI_INSERT) {
+    let prompt_vi_insert = match stack.get_env_var(engine_state, PROMPT_INDICATOR_VI_INSERT) {
         Some(pvii) => pvii.into_string("", config),
         None => ": ".to_string(),
     };
 
-    let prompt_vi_visual = match stack.get_env_var(PROMPT_INDICATOR_VI_VISUAL) {
+    let prompt_vi_visual = match stack.get_env_var(engine_state, PROMPT_INDICATOR_VI_VISUAL) {
         Some(pviv) => pviv.into_string("", config),
         None => "v ".to_string(),
     };
 
-    let prompt_multiline = match stack.get_env_var(PROMPT_MULTILINE_INDICATOR) {
+    let prompt_multiline = match stack.get_env_var(engine_state, PROMPT_MULTILINE_INDICATOR) {
         Some(pm) => pm.into_string("", config),
         None => "::: ".to_string(),
     };
@@ -803,9 +807,9 @@ fn update_prompt<'prompt>(
         prompt_vi_insert_string,
         prompt_vi_visual_string,
         prompt_multiline_string,
-    ) = get_prompt_indicators(config, stack);
+    ) = get_prompt_indicators(config, engine_state, stack);
 
-    let prompt_command_block_id = match stack.get_env_var(PROMPT_COMMAND) {
+    let prompt_command_block_id = match stack.get_env_var(engine_state, PROMPT_COMMAND) {
         Some(v) => match v.as_block() {
             Ok(b) => b,
             Err(_) => {
