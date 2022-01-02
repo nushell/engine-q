@@ -24,6 +24,7 @@ pub enum FlatShape {
     GlobPattern,
     Variable,
     Flag,
+    List,
     Custom(String),
 }
 
@@ -44,6 +45,7 @@ impl Display for FlatShape {
             FlatShape::Signature => write!(f, "flatshape_signature"),
             FlatShape::String => write!(f, "flatshape_string"),
             FlatShape::StringInterpolation => write!(f, "flatshape_string_interpolation"),
+            FlatShape::List => write!(f, "flatshape_list"),
             FlatShape::Filepath => write!(f, "flatshape_filepath"),
             FlatShape::GlobPattern => write!(f, "flatshape_globpattern"),
             FlatShape::Variable => write!(f, "flatshape_variable"),
@@ -211,10 +213,24 @@ pub fn flatten_expression(
             vec![(expr.span, FlatShape::GlobPattern)]
         }
         Expr::List(list) => {
-            let mut output = vec![];
+            let mut output = vec![(
+                Span {
+                    start: expr.span.start,
+                    end: expr.span.start + 1,
+                },
+                FlatShape::List,
+            )];
             for l in list {
                 output.extend(flatten_expression(working_set, l));
             }
+            output.push((
+                Span {
+                    start: expr.span.end - 1,
+                    end: expr.span.end,
+                },
+                FlatShape::List,
+            ));
+
             output
         }
         Expr::StringInterpolation(exprs) => {
