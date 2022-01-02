@@ -22,10 +22,8 @@ pub fn convert_env_values(
     stack: &Stack,
     config: &Config,
 ) -> Option<ShellError> {
-    // let mut new_env_vars = vec![];
     let mut error = None;
 
-    // for scope in &stack.env_vars {
     let mut new_scope = HashMap::new();
 
     for (name, val) in &engine_state.env_vars {
@@ -76,11 +74,6 @@ pub fn convert_env_values(
     for (k, v) in new_scope {
         engine_state.env_vars.insert(k, v);
     }
-
-    //     new_env_vars.push(new_scope);
-    // }
-
-    // stack.env_vars = new_env_vars;
 
     error
 }

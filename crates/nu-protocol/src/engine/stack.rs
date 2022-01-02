@@ -99,7 +99,8 @@ impl Stack {
 
     /// Flatten the env var scope frames into one frame
     pub fn get_env_vars(&self, engine_state: &EngineState) -> HashMap<String, Value> {
-        // TODO: Collecting im::HashMap into regular HashMap... maybe we could try im here as well.
+        // TODO: We're collecting im::HashMap to HashMap here. It might make sense to make these
+        // the same data structure.
         let mut result: HashMap<String, Value> = engine_state
             .env_vars
             .iter()
@@ -121,14 +122,14 @@ impl Stack {
             }
         }
 
-        if let Some(val) = engine_state.env_vars.get(name) {
-            if self.env_hidden.contains(name) {
-                None
-            } else {
-                Some(val.clone())
-            }
-        } else {
+        if self.env_hidden.contains(name) {
             None
+        } else {
+            if let Some(val) = engine_state.env_vars.get(name) {
+                Some(val.clone())
+            } else {
+                None
+            }
         }
     }
 
