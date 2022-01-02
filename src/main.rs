@@ -100,7 +100,6 @@ fn main() -> Result<()> {
     }));
 
     // Get initial current working directory.
-    // Missing PWD error is reported later so it is not critical to report it also here.
     let init_cwd = get_init_cwd();
     let mut engine_state = create_default_context(&init_cwd);
 

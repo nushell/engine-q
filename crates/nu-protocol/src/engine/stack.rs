@@ -46,6 +46,11 @@ impl Stack {
         }
     }
 
+    pub fn with_env(&mut self, env_vars: Vec<HashMap<String, Value>>, env_hidden: HashSet<String>) {
+        self.env_vars = env_vars;
+        self.env_hidden = env_hidden;
+    }
+
     pub fn get_var(&self, var_id: VarId) -> Result<Value, ShellError> {
         if let Some(v) = self.vars.get(&var_id) {
             return Ok(v.clone());
