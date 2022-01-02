@@ -125,11 +125,7 @@ impl Stack {
         if self.env_hidden.contains(name) {
             None
         } else {
-            if let Some(val) = engine_state.env_vars.get(name) {
-                Some(val.clone())
-            } else {
-                None
-            }
+            engine_state.env_vars.get(name).cloned()
         }
     }
 
@@ -143,14 +139,12 @@ impl Stack {
         if self.env_hidden.contains(name) {
             // the environment variable is already hidden
             None
+        } else if let Some(val) = engine_state.env_vars.get(name) {
+            // the environment variable was found in the engine state => mark it as hidden
+            self.env_hidden.insert(name.to_string());
+            Some(val.clone())
         } else {
-            if let Some(val) = engine_state.env_vars.get(name) {
-                // the environment variable was found in the engine state => mark it as hidden
-                self.env_hidden.insert(name.to_string());
-                Some(val.clone())
-            } else {
-                None
-            }
+            None
         }
     }
 
