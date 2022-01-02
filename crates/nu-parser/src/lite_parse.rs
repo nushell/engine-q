@@ -144,5 +144,15 @@ pub fn lite_parse(tokens: &[Token]) -> (LiteBlock, Option<ParseError>) {
         block.push(curr_pipeline);
     }
 
-    (block, None)
+    if last_token_was_pipe {
+        (
+            block,
+            Some(ParseError::UnexpectedEof(
+                "pipeline missing end".into(),
+                tokens[tokens.len() - 1].span,
+            )),
+        )
+    } else {
+        (block, None)
+    }
 }
