@@ -1,4 +1,4 @@
-use super::Command;
+use super::{Command, Stack};
 use crate::{
     ast::Block, BlockId, DeclId, Example, Overlay, OverlayId, ShellError, Signature, Span, Type,
     VarId,
@@ -188,8 +188,8 @@ impl EngineState {
     pub fn merge_delta(
         &mut self,
         mut delta: StateDelta,
+        stack: Option<&mut Stack>,
         cwd: impl AsRef<Path>,
-        env_vars: HashMap<String, Value>,
     ) -> Result<(), ShellError> {
         // Take the mutable reference and extend the permanent state from the working set
         self.files.extend(delta.files);
@@ -198,12 +198,6 @@ impl EngineState {
         self.vars.extend(delta.vars);
         self.blocks.extend(delta.blocks);
         self.overlays.extend(delta.overlays);
-
-        for (k, v) in env_vars {
-            self.env_vars.insert(k, v);
-        }
-
-        std::env::set_current_dir(cwd)?;
 
         if let Some(last) = self.scope.back_mut() {
             let first = delta.scope.remove(0);
@@ -232,6 +226,16 @@ impl EngineState {
                 return result;
             }
         }
+
+        if let Some(stack) = stack {
+            for mut env_scope in stack.env_vars.drain(..) {
+                for (k, v) in env_scope.drain() {
+                    self.env_vars.insert(k, v);
+                }
+            }
+        }
+
+        std::env::set_current_dir(cwd)?;
 
         Ok(())
     }
@@ -1227,7 +1231,7 @@ mod engine_state_tests {
         };
 
         let cwd = std::env::current_dir().expect("Could not get current working directory.");
-        engine_state.merge_delta(delta, &cwd, HashMap::new())?;
+        engine_state.merge_delta(delta, None, &cwd)?;
 
         assert_eq!(engine_state.num_files(), 2);
         assert_eq!(&engine_state.files[0].0, "test.nu");

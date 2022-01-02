@@ -1,6 +1,5 @@
 use nu_protocol::engine::{EngineState, StateWorkingSet};
 
-use std::collections::HashMap;
 use std::path::Path;
 
 use crate::*;
@@ -309,7 +308,7 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
         working_set.render()
     };
 
-    let _ = engine_state.merge_delta(delta, &cwd, HashMap::new());
+    let _ = engine_state.merge_delta(delta, None, &cwd);
 
     engine_state
 }

@@ -19,7 +19,6 @@ use nu_protocol::{
 };
 use reedline::{Completer, CompletionActionHandler, DefaultHinter, LineBuffer, Prompt, Vi};
 use std::{
-    collections::HashMap,
     io::Write,
     path::PathBuf,
     sync::{
@@ -133,7 +132,7 @@ fn main() -> Result<()> {
             (output, working_set.render())
         };
 
-        if let Err(err) = engine_state.merge_delta(delta, &init_cwd, HashMap::new()) {
+        if let Err(err) = engine_state.merge_delta(delta, None, &init_cwd) {
             let working_set = StateWorkingSet::new(&engine_state);
             report_error(&working_set, &err);
         }
@@ -210,10 +209,7 @@ fn main() -> Result<()> {
 
                 let cwd = nu_engine::env::current_dir(&engine_state, &stack)?;
 
-                let env_vars = stack.get_env_vars(&engine_state);
-                stack.env_vars = vec![];
-
-                if let Err(err) = engine_state.merge_delta(delta, &cwd, env_vars) {
+                if let Err(err) = engine_state.merge_delta(delta, Some(&mut stack), &cwd) {
                     let working_set = StateWorkingSet::new(&engine_state);
                     report_error(&working_set, &err);
                 }
@@ -919,10 +915,7 @@ fn eval_source(
         }
     };
 
-    let env_vars = stack.get_env_vars(engine_state);
-    stack.env_vars = vec![];
-
-    if let Err(err) = engine_state.merge_delta(delta, &cwd, env_vars) {
+    if let Err(err) = engine_state.merge_delta(delta, Some(stack), &cwd) {
         let working_set = StateWorkingSet::new(engine_state);
         report_error(&working_set, &err);
     }

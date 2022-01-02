@@ -5,8 +5,6 @@ use nu_protocol::{
     PipelineData, Span, Value, CONFIG_VARIABLE_ID,
 };
 
-use std::collections::HashMap;
-
 use super::eager::ToDataFrame;
 use crate::Let;
 
@@ -35,7 +33,7 @@ pub fn test_dataframe(cmds: Vec<Box<dyn Command + 'static>>) {
     };
 
     let cwd = std::env::current_dir().expect("Could not get current working directory.");
-    let _ = engine_state.merge_delta(delta, &cwd, HashMap::new());
+    let _ = engine_state.merge_delta(delta, None, &cwd);
 
     for example in examples {
         // Skip tests that don't have results to compare to
@@ -55,7 +53,7 @@ pub fn test_dataframe(cmds: Vec<Box<dyn Command + 'static>>) {
             (output, working_set.render())
         };
 
-        let _ = engine_state.merge_delta(delta, &cwd, HashMap::new());
+        let _ = engine_state.merge_delta(delta, None, &cwd);
 
         let mut stack = Stack::new();
 
