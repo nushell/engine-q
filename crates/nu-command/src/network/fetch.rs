@@ -8,7 +8,7 @@ use nu_protocol::{
     Category, Example, PipelineData, ShellError, Signature, Span, SyntaxShape, Value,
 };
 
-use std::io::{BufRead, BufReader, BufWriter, Read};
+use std::io::{BufRead, BufReader, Read};
 
 use reqwest::StatusCode;
 use std::path::PathBuf;
@@ -162,21 +162,12 @@ fn helper(
     }
 
     match request.send() {
-        Ok(mut resp) => {
-            let temp = std::fs::File::create("temp_dwl.txt")?;
-            let mut b = BufWriter::new(temp);
-            let _bytes = resp.copy_to(&mut b);
-            let temp1 = std::fs::File::open("temp_dwl.txt")?;
-            let a = BufReader::new(temp1);
-
-            let output = PipelineData::ByteStream(
-                ByteStream {
-                    stream: Box::new(BufferedReader { input: a }),
-                    ctrlc: engine_state.ctrlc.clone(),
-                },
-                span,
-                None,
-            );
+        Ok(resp) => {
+            // let temp = std::fs::File::create("temp_dwl.txt")?;
+            // let mut b = BufWriter::new(temp);
+            // let _bytes = resp.copy_to(&mut b);
+            // let temp1 = std::fs::File::open("temp_dwl.txt")?;
+            // let a = BufReader::new(temp1);
 
             // TODO I guess we should check if all bytes were written/read...
             match resp.headers().get("content-type") {
@@ -215,6 +206,19 @@ fn helper(
                         _ => Some(content_type.subtype().to_string()),
                     };
 
+                    let buffered_input = BufReader::new(resp);
+
+                    let output = PipelineData::ByteStream(
+                        ByteStream {
+                            stream: Box::new(BufferedReader {
+                                input: buffered_input,
+                            }),
+                            ctrlc: engine_state.ctrlc.clone(),
+                        },
+                        span,
+                        None,
+                    );
+
                     if raw {
                         return Ok(output);
                     }
@@ -233,7 +237,21 @@ fn helper(
                         Ok(output)
                     }
                 }
-                None => Ok(output),
+                None => {
+                    let buffered_input = BufReader::new(resp);
+
+                    let output = PipelineData::ByteStream(
+                        ByteStream {
+                            stream: Box::new(BufferedReader {
+                                input: buffered_input,
+                            }),
+                            ctrlc: engine_state.ctrlc.clone(),
+                        },
+                        span,
+                        None,
+                    );
+                    Ok(output)
+                }
             }
         }
         Err(e) if e.is_timeout() => Err(ShellError::NetworkFailure(
