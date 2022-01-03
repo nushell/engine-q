@@ -787,6 +787,13 @@ impl Value {
             span: Span::test_data(),
         }
     }
+
+    // Only use these for test data. Should not be used in user data.
+    pub fn test_nothing() -> Value {
+        Value::Nothing {
+            span: Span::test_data(),
+        }
+    }
 }
 
 impl Default for Value {
