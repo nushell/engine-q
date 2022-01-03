@@ -102,15 +102,42 @@ pub fn check_call(command: Span, sig: &Signature, call: &Call) -> Option<ParseEr
                 }
             });
             if !found {
-                return Some(ParseError::MissingPositional(
-                    argument.name.clone(),
-                    command,
-                ));
+                if let Some(last) = call.positional.last() {
+                    return Some(ParseError::MissingPositional(
+                        argument.name.clone(),
+                        Span {
+                            start: last.span.end,
+                            end: last.span.end,
+                        },
+                        sig.call_signature(),
+                    ));
+                } else {
+                    return Some(ParseError::MissingPositional(
+                        argument.name.clone(),
+                        command,
+                        sig.call_signature(),
+                    ));
+                }
             }
         }
 
         let missing = &sig.required_positional[call.positional.len()];
-        Some(ParseError::MissingPositional(missing.name.clone(), command))
+        if let Some(last) = call.positional.last() {
+            Some(ParseError::MissingPositional(
+                missing.name.clone(),
+                Span {
+                    start: last.span.end,
+                    end: last.span.end,
+                },
+                sig.call_signature(),
+            ))
+        } else {
+            Some(ParseError::MissingPositional(
+                missing.name.clone(),
+                command,
+                sig.call_signature(),
+            ))
+        }
     } else {
         for req_flag in sig.named.iter().filter(|x| x.required) {
             if call.named.iter().all(|(n, _)| n.item != req_flag.long) {
@@ -228,7 +255,10 @@ fn parse_long_flag(
                         (
                             Some(long_name),
                             None,
-                            Some(ParseError::MissingFlagParam(arg_span)),
+                            Some(ParseError::MissingFlagParam(
+                                arg_shape.to_string(),
+                                arg_span,
+                            )),
                         )
                     }
                 } else {
@@ -467,8 +497,12 @@ pub fn parse_multispan_value(
             if *spans_idx >= spans.len() {
                 error = error.or_else(|| {
                     Some(ParseError::KeywordMissingArgument(
+                        arg.to_string(),
                         String::from_utf8_lossy(keyword).into(),
-                        spans[*spans_idx - 1],
+                        Span {
+                            start: spans[*spans_idx - 1].end,
+                            end: spans[*spans_idx - 1].end,
+                        },
                     ))
                 });
                 return (
@@ -584,7 +618,12 @@ pub fn parse_internal_call(
                         ));
                         spans_idx += 1;
                     } else {
-                        error = error.or(Some(ParseError::MissingFlagParam(arg_span)))
+                        error = error.or_else(|| {
+                            Some(ParseError::MissingFlagParam(
+                                arg_shape.to_string(),
+                                arg_span,
+                            ))
+                        })
                     }
                 } else {
                     call.named.push((
@@ -614,6 +653,7 @@ pub fn parse_internal_call(
                     Some(ParseError::MissingPositional(
                         positional.name.clone(),
                         spans[spans_idx],
+                        signature.call_signature(),
                     ))
                 });
                 positional_idx += 1;
@@ -646,7 +686,12 @@ pub fn parse_internal_call(
             positional_idx += 1;
         } else {
             call.positional.push(Expression::garbage(arg_span));
-            error = error.or(Some(ParseError::ExtraPositional(arg_span)))
+            error = error.or_else(|| {
+                Some(ParseError::ExtraPositional(
+                    signature.call_signature(),
+                    arg_span,
+                ))
+            })
         }
 
         error = error.or(err);
@@ -2514,10 +2559,10 @@ pub fn parse_list_expression(
         error = error.or_else(|| Some(ParseError::Unclosed("]".into(), Span { start: end, end })));
     }
 
-    let span = Span { start, end };
-    let source = working_set.get_span_contents(span);
+    let inner_span = Span { start, end };
+    let source = working_set.get_span_contents(inner_span);
 
-    let (output, err) = lex(source, span.start, &[b'\n', b'\r', b','], &[], true);
+    let (output, err) = lex(source, inner_span.start, &[b'\n', b'\r', b','], &[], true);
     error = error.or(err);
 
     let (output, err) = lite_parse(&output);
@@ -2585,9 +2630,9 @@ pub fn parse_table_expression(
         error = error.or_else(|| Some(ParseError::Unclosed("]".into(), Span { start: end, end })));
     }
 
-    let span = Span { start, end };
+    let inner_span = Span { start, end };
 
-    let source = working_set.get_span_contents(span);
+    let source = working_set.get_span_contents(inner_span);
 
     let (output, err) = lex(source, start, &[b'\n', b'\r', b','], &[], true);
     error = error.or(err);
@@ -2599,7 +2644,7 @@ pub fn parse_table_expression(
         0 => (
             Expression {
                 expr: Expr::List(vec![]),
-                span,
+                span: original_span,
                 ty: Type::List(Box::new(Type::Unknown)),
                 custom_completion: None,
             },
@@ -2665,7 +2710,7 @@ pub fn parse_table_expression(
             (
                 Expression {
                     expr: Expr::Table(table_headers, rows),
-                    span,
+                    span: original_span,
                     ty: Type::Table,
                     custom_completion: None,
                 },
@@ -2702,9 +2747,9 @@ pub fn parse_block_expression(
         error = error.or_else(|| Some(ParseError::Unclosed("}".into(), Span { start: end, end })));
     }
 
-    let span = Span { start, end };
+    let inner_span = Span { start, end };
 
-    let source = working_set.get_span_contents(span);
+    let source = working_set.get_span_contents(inner_span);
 
     let (output, err) = lex(source, start, &[], &[], true);
     error = error.or(err);
@@ -3365,8 +3410,8 @@ pub fn parse_record(
         error = error.or_else(|| Some(ParseError::Unclosed("}".into(), Span { start: end, end })));
     }
 
-    let span = Span { start, end };
-    let source = working_set.get_span_contents(span);
+    let inner_span = Span { start, end };
+    let source = working_set.get_span_contents(inner_span);
 
     let (tokens, err) = lex(source, start, &[b'\n', b'\r', b','], &[b':'], true);
     error = error.or(err);
