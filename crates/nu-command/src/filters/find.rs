@@ -67,8 +67,9 @@ impl Command for Find {
         let ctrlc = engine_state.ctrlc.clone();
         let engine_state = engine_state.clone();
 
-        Ok(
-            match input.into_interruptible_iter(ctrlc).find(move |value| {
+        Ok(input
+            .into_interruptible_iter(ctrlc)
+            .find(move |value| {
                 if let Some(var_id) = var_id {
                     stack.add_var(var_id, value.clone());
                 }
@@ -77,12 +78,9 @@ impl Command for Find {
                     .map_or(false, |pipeline_data| {
                         pipeline_data.into_value(span).is_true()
                     })
-            }) {
-                Some(found_value) => found_value,
-                None => Value::Nothing { span },
-            }
-            .into_pipeline_data(),
-        )
+            })
+            .unwrap_or(Value::Nothing { span })
+            .into_pipeline_data())
     }
 }
 
