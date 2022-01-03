@@ -46,9 +46,14 @@ impl Stack {
         }
     }
 
-    pub fn with_env(&mut self, env_vars: Vec<HashMap<String, Value>>, env_hidden: HashSet<String>) {
-        self.env_vars = env_vars;
-        self.env_hidden = env_hidden;
+    pub fn with_env(&mut self, env_vars: &[HashMap<String, Value>], env_hidden: &HashSet<String>) {
+        if env_vars.iter().any(|scope| !scope.is_empty()) {
+            self.env_vars = env_vars.to_owned();
+        }
+
+        if !env_hidden.is_empty() {
+            self.env_hidden = env_hidden.clone();
+        }
     }
 
     pub fn get_var(&self, var_id: VarId) -> Result<Value, ShellError> {

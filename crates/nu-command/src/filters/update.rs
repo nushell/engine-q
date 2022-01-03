@@ -79,7 +79,7 @@ fn update(
 
         input.map(
             move |mut input| {
-                stack.with_env(orig_env_vars.clone(), orig_env_hidden.clone());
+                stack.with_env(&orig_env_vars, &orig_env_hidden);
 
                 if let Some(var) = block.signature.get_positional(0) {
                     if let Some(var_id) = &var.var_id {

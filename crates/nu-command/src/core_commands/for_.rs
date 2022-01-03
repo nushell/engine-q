@@ -79,7 +79,7 @@ impl Command for For {
                 .into_iter()
                 .enumerate()
                 .map(move |(idx, x)| {
-                    stack.with_env(orig_env_vars.clone(), orig_env_hidden.clone());
+                    stack.with_env(&orig_env_vars, &orig_env_hidden);
 
                     stack.add_var(
                         var_id,
@@ -111,7 +111,7 @@ impl Command for For {
                 .into_range_iter()?
                 .enumerate()
                 .map(move |(idx, x)| {
-                    stack.with_env(orig_env_vars.clone(), orig_env_hidden.clone());
+                    stack.with_env(&orig_env_vars, &orig_env_hidden);
 
                     stack.add_var(
                         var_id,
