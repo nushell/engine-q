@@ -756,7 +756,8 @@ impl Value {
         Value::Bool { val, span }
     }
 
-    // Only use these for test data. Should not be used in user data
+    /// Note: Only use this for test data, *not* live data, as it will point into unknown source
+    /// when used in errors.
     pub fn test_string(s: impl Into<String>) -> Value {
         Value::String {
             val: s.into(),
@@ -764,7 +765,8 @@ impl Value {
         }
     }
 
-    // Only use these for test data. Should not be used in user data
+    /// Note: Only use this for test data, *not* live data, as it will point into unknown source
+    /// when used in errors.
     pub fn test_int(val: i64) -> Value {
         Value::Int {
             val,
@@ -772,7 +774,8 @@ impl Value {
         }
     }
 
-    // Only use these for test data. Should not be used in user data
+    /// Note: Only use this for test data, *not* live data, as it will point into unknown source
+    /// when used in errors.
     pub fn test_float(val: f64) -> Value {
         Value::Float {
             val,
@@ -780,7 +783,8 @@ impl Value {
         }
     }
 
-    // Only use these for test data. Should not be used in user data
+    /// Note: Only use this for test data, *not* live data, as it will point into unknown source
+    /// when used in errors.
     pub fn test_bool(val: bool) -> Value {
         Value::Bool {
             val,
@@ -788,7 +792,8 @@ impl Value {
         }
     }
 
-    // Only use these for test data. Should not be used in user data.
+    /// Note: Only use this for test data, *not* live data, as it will point into unknown source
+    /// when used in errors.
     pub fn test_nothing() -> Value {
         Value::Nothing {
             span: Span::test_data(),
