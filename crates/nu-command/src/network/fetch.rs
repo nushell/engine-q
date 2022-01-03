@@ -264,6 +264,11 @@ fn helper(
             let bytes = resp.copy_to(&mut b);
             let temp1 = std::fs::File::open("temp_dwl.txt")?;
             let a =  BufReader::new(temp1);
+
+            // let mut buf: Vec<u8> = vec![];
+            // let bytes = resp.copy_to(&mut buf);
+            // let a =  BufReader::new(buf);
+
             let output = PipelineData::ByteStream(
                 ByteStream {
                     stream: Box::new(BufferedReader { input: a }),
@@ -276,16 +281,20 @@ fn helper(
 
             match resp.headers().get("content-type") {
                 Some(content_type) => {
+                    println!("{:?}", content_type);
                     let content_type = content_type.to_str().map_err(|e| {
                         ShellError::LabeledError(e.to_string(), "MIME type were invalid".to_string())
                     })?;
+                    println!("{:?}", content_type);
                     let content_type = mime::Mime::from_str(content_type).map_err(|_| {
                         ShellError::LabeledError(
                             format!("MIME type unknown: {}", content_type),
                             "given unknown MIME type".to_string(),
                         )
                     })?;
+                    println!("{:?}", content_type);
                     let ext = Some(content_type.subtype().as_str());
+                    println!("{:?}", ext);
                     if let Some(ext) = ext {
                         match engine_state.find_decl(format!("from {}", ext).as_bytes()) {
                             Some(converter_id) => engine_state.get_decl(converter_id).run(
