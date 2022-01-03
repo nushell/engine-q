@@ -1,9 +1,11 @@
 use std::cmp::Ordering;
+use std::io::Write;
 
 use nu_protocol::ast::{Block, Call, Expr, Expression, Operator, Statement};
 use nu_protocol::engine::{EngineState, Stack};
 use nu_protocol::{
-    IntoPipelineData, PipelineData, Range, ShellError, Span, Spanned, Type, Unit, Value, VarId,
+    IntoInterruptiblePipelineData, IntoPipelineData, PipelineData, Range, ShellError, Span,
+    Spanned, Type, Unit, Value, VarId,
 };
 
 use crate::get_full_help;
@@ -22,7 +24,7 @@ pub fn eval_operator(op: &Expression) -> Result<Operator, ShellError> {
 
 fn eval_call(
     engine_state: &EngineState,
-    stack: &mut Stack,
+    caller_stack: &mut Stack,
     call: &Call,
     input: PipelineData,
 ) -> Result<PipelineData, ShellError> {
@@ -38,7 +40,7 @@ fn eval_call(
     } else if let Some(block_id) = decl.get_block_id() {
         let block = engine_state.get_block(block_id);
 
-        let mut stack = stack.collect_captures(&block.captures);
+        let mut callee_stack = caller_stack.collect_captures(&block.captures);
 
         for (param_idx, param) in decl
             .signature()
@@ -52,10 +54,10 @@ fn eval_call(
                 .expect("internal error: all custom parameters must have var_ids");
 
             if let Some(arg) = call.positional.get(param_idx) {
-                let result = eval_expression(engine_state, &mut stack, arg)?;
-                stack.add_var(var_id, result);
+                let result = eval_expression(engine_state, caller_stack, arg)?;
+                callee_stack.add_var(var_id, result);
             } else {
-                stack.add_var(var_id, Value::nothing(call.head));
+                callee_stack.add_var(var_id, Value::nothing(call.head));
             }
         }
 
@@ -66,7 +68,7 @@ fn eval_call(
                 decl.signature().required_positional.len()
                     + decl.signature().optional_positional.len(),
             ) {
-                let result = eval_expression(engine_state, &mut stack, arg)?;
+                let result = eval_expression(engine_state, caller_stack, arg)?;
                 rest_items.push(result);
             }
 
@@ -76,7 +78,7 @@ fn eval_call(
                 call.head
             };
 
-            stack.add_var(
+            callee_stack.add_var(
                 rest_positional
                     .var_id
                     .expect("Internal error: rest positional parameter lacks var_id"),
@@ -93,11 +95,11 @@ fn eval_call(
                 for call_named in &call.named {
                     if call_named.0.item == named.long {
                         if let Some(arg) = &call_named.1 {
-                            let result = eval_expression(engine_state, &mut stack, arg)?;
+                            let result = eval_expression(engine_state, caller_stack, arg)?;
 
-                            stack.add_var(var_id, result);
+                            callee_stack.add_var(var_id, result);
                         } else {
-                            stack.add_var(
+                            callee_stack.add_var(
                                 var_id,
                                 Value::Bool {
                                     val: true,
@@ -110,7 +112,7 @@ fn eval_call(
                 }
 
                 if !found && named.arg.is_none() {
-                    stack.add_var(
+                    callee_stack.add_var(
                         var_id,
                         Value::Bool {
                             val: false,
@@ -120,9 +122,12 @@ fn eval_call(
                 }
             }
         }
-        eval_block(engine_state, &mut stack, block, input)
+        eval_block(engine_state, &mut callee_stack, block, input)
     } else {
-        decl.run(engine_state, stack, call, input)
+        // We pass caller_stack here with the knowledge that internal commands
+        // are going to be specifically looking for global state in the stack
+        // rather than any local state.
+        decl.run(engine_state, caller_stack, call, input)
     }
 }
 
@@ -245,7 +250,7 @@ pub fn eval_expression(
                 span,
                 args,
                 PipelineData::new(*span),
-                true,
+                false,
             )?
             .into_value(*span))
         }
@@ -338,6 +343,23 @@ pub fn eval_expression(
             })
         }
         Expr::Keyword(_, _, expr) => eval_expression(engine_state, stack, expr),
+        Expr::StringInterpolation(exprs) => {
+            let mut parts = vec![];
+            for expr in exprs {
+                parts.push(eval_expression(engine_state, stack, expr)?);
+            }
+
+            let config = stack.get_config().unwrap_or_default();
+
+            parts
+                .into_iter()
+                .into_pipeline_data(None)
+                .collect_string("", &config)
+                .map(|x| Value::String {
+                    val: x,
+                    span: expr.span,
+                })
+        }
         Expr::String(s) => Ok(Value::String {
             val: s.clone(),
             span: expr.span,
@@ -362,7 +384,8 @@ pub fn eval_block(
     block: &Block,
     mut input: PipelineData,
 ) -> Result<PipelineData, ShellError> {
-    for stmt in block.stmts.iter() {
+    let num_stmts = block.stmts.len();
+    for (stmt_idx, stmt) in block.stmts.iter().enumerate() {
         if let Statement::Pipeline(pipeline) = stmt {
             for (i, elem) in pipeline.expressions.iter().enumerate() {
                 match elem {
@@ -393,6 +416,62 @@ pub fn eval_block(
                 }
             }
         }
+
+        if stmt_idx < (num_stmts) - 1 {
+            match input {
+                PipelineData::Value(Value::Nothing { .. }, ..) => {}
+                _ => {
+                    // Drain the input to the screen via tabular output
+                    let config = stack.get_config().unwrap_or_default();
+
+                    match engine_state.find_decl("table".as_bytes()) {
+                        Some(decl_id) => {
+                            let table = engine_state.get_decl(decl_id).run(
+                                engine_state,
+                                stack,
+                                &Call::new(),
+                                input,
+                            )?;
+
+                            for item in table {
+                                let stdout = std::io::stdout();
+
+                                if let Value::Error { error } = item {
+                                    return Err(error);
+                                }
+
+                                let mut out = item.into_string("\n", &config);
+                                out.push('\n');
+
+                                match stdout.lock().write_all(out.as_bytes()) {
+                                    Ok(_) => (),
+                                    Err(err) => eprintln!("{}", err),
+                                };
+                            }
+                        }
+                        None => {
+                            for item in input {
+                                let stdout = std::io::stdout();
+
+                                if let Value::Error { error } = item {
+                                    return Err(error);
+                                }
+
+                                let mut out = item.into_string("\n", &config);
+                                out.push('\n');
+
+                                match stdout.lock().write_all(out.as_bytes()) {
+                                    Ok(_) => (),
+                                    Err(err) => eprintln!("{}", err),
+                                };
+                            }
+                        }
+                    };
+                }
+            }
+
+            input = PipelineData::new(Span { start: 0, end: 0 })
+        }
     }
 
     Ok(input)
@@ -406,7 +485,7 @@ pub fn eval_subexpression(
 ) -> Result<PipelineData, ShellError> {
     for stmt in block.stmts.iter() {
         if let Statement::Pipeline(pipeline) = stmt {
-            for (i, elem) in pipeline.expressions.iter().enumerate() {
+            for elem in pipeline.expressions.iter() {
                 match elem {
                     Expression {
                         expr: Expr::Call(call),
@@ -427,24 +506,6 @@ pub fn eval_subexpression(
                             input,
                             false,
                         )?;
-
-                        if i == pipeline.expressions.len() - 1 {
-                            // We're at the end, so drain as a string for the value
-                            // to be used later
-                            // FIXME: the trimming of the end probably needs to live in a better place
-
-                            let config = stack.get_config().unwrap_or_default();
-
-                            let mut s = input.collect_string("", &config);
-                            if s.ends_with('\n') {
-                                s.pop();
-                            }
-                            input = Value::String {
-                                val: s.to_string(),
-                                span: *name_span,
-                            }
-                            .into_pipeline_data()
-                        }
                     }
 
                     elem => {
@@ -470,8 +531,17 @@ pub fn eval_variable(
         let mut output_vals = vec![];
 
         let env_vars = stack.get_env_vars();
-        let env_columns: Vec<_> = env_vars.keys().map(|x| x.to_string()).collect();
-        let env_values: Vec<_> = env_vars.values().cloned().collect();
+        let env_columns = env_vars.keys();
+        let env_values = env_vars.values();
+
+        let mut pairs = env_columns
+            .map(|x| x.to_string())
+            .zip(env_values.cloned())
+            .collect::<Vec<(String, Value)>>();
+
+        pairs.sort_by(|a, b| a.0.cmp(&b.0));
+
+        let (env_columns, env_values) = pairs.into_iter().unzip();
 
         output_cols.push("env".into());
         output_vals.push(Value::Record {
@@ -614,7 +684,7 @@ pub fn eval_variable(
                             Value::string(&signature.name, span),
                             Value::string(req.name, span),
                             Value::string("positional", span),
-                            Value::string(req.shape.to_type().to_string(), span),
+                            Value::string(req.shape.to_string(), span),
                             Value::boolean(false, span),
                             Value::nothing(span),
                             Value::string(req.desc, span),
@@ -633,7 +703,7 @@ pub fn eval_variable(
                             Value::string(&signature.name, span),
                             Value::string(opt.name, span),
                             Value::string("positional", span),
-                            Value::string(opt.shape.to_type().to_string(), span),
+                            Value::string(opt.shape.to_string(), span),
                             Value::boolean(true, span),
                             Value::nothing(span),
                             Value::string(opt.desc, span),
@@ -648,42 +718,39 @@ pub fn eval_variable(
 
                     {
                         // rest_positional
-                        let (name, shape, desc) = if let Some(rest) = signature.rest_positional {
-                            (
+                        if let Some(rest) = signature.rest_positional {
+                            let sig_vals = vec![
+                                Value::string(&signature.name, span),
                                 Value::string(rest.name, span),
-                                Value::string(rest.shape.to_type().to_string(), span),
+                                Value::string("rest", span),
+                                Value::string(rest.shape.to_string(), span),
+                                Value::boolean(true, span),
+                                Value::nothing(span),
                                 Value::string(rest.desc, span),
-                            )
-                        } else {
-                            (
-                                Value::nothing(span),
-                                Value::nothing(span),
-                                Value::nothing(span),
-                            )
-                        };
+                            ];
 
-                        let sig_vals = vec![
-                            Value::string(&signature.name, span),
-                            name,
-                            Value::string("rest", span),
-                            shape,
-                            Value::boolean(false, span),
-                            Value::nothing(span),
-                            desc,
-                        ];
-
-                        sig_records.push(Value::Record {
-                            cols: sig_cols.clone(),
-                            vals: sig_vals,
-                            span,
-                        });
+                            sig_records.push(Value::Record {
+                                cols: sig_cols.clone(),
+                                vals: sig_vals,
+                                span,
+                            });
+                        }
                     }
 
                     // named flags
                     for named in signature.named {
+                        let flag_type;
+
+                        // Skip the help flag
+                        if named.long == "help" {
+                            continue;
+                        }
+
                         let shape = if let Some(arg) = named.arg {
-                            Value::string(arg.to_type().to_string(), span)
+                            flag_type = Value::string("named", span);
+                            Value::string(arg.to_string(), span)
                         } else {
+                            flag_type = Value::string("switch", span);
                             Value::nothing(span)
                         };
 
@@ -696,7 +763,7 @@ pub fn eval_variable(
                         let sig_vals = vec![
                             Value::string(&signature.name, span),
                             Value::string(named.long, span),
-                            Value::string("named", span),
+                            flag_type,
                             shape,
                             Value::boolean(!named.required, span),
                             short_flag,

@@ -68,8 +68,8 @@ fn command(
 
 #[cfg(test)]
 mod test {
+    use super::super::super::eager::DropNulls;
     use super::super::super::test_dataframe::test_dataframe;
-    use super::super::super::DropNulls;
     use super::*;
 
     #[test]

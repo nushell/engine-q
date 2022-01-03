@@ -7,8 +7,6 @@ use nu_protocol::{
 #[derive(Clone)]
 pub struct Lines;
 
-const SPLIT_CHAR: char = '\n';
-
 impl Command for Lines {
     fn name(&self) -> &str {
         "lines"
@@ -19,52 +17,64 @@ impl Command for Lines {
     }
 
     fn signature(&self) -> nu_protocol::Signature {
-        Signature::build("lines").category(Category::Filters)
+        Signature::build("lines")
+            .switch("skip-empty", "skip empty lines", Some('s'))
+            .category(Category::Filters)
     }
 
     fn run(
         &self,
         engine_state: &EngineState,
-        _stack: &mut Stack,
+        stack: &mut Stack,
         call: &Call,
         input: PipelineData,
     ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
+        let head = call.head;
+        let skip_empty = call.has_flag("skip-emtpy");
         match input {
             #[allow(clippy::needless_collect)]
             // Collect is needed because the string may not live long enough for
             // the Rc structure to continue using it. If split could take ownership
             // of the split values, then this wouldn't be needed
             PipelineData::Value(Value::String { val, span }, ..) => {
+                let split_char = if val.contains("\r\n") { "\r\n" } else { "\n" };
+
                 let lines = val
-                    .split(SPLIT_CHAR)
+                    .split(split_char)
                     .map(|s| s.to_string())
                     .collect::<Vec<String>>();
 
                 let iter = lines.into_iter().filter_map(move |s| {
-                    if !s.is_empty() {
-                        Some(Value::string(s, span))
-                    } else {
+                    if skip_empty && s.is_empty() {
                         None
+                    } else {
+                        Some(Value::string(s, span))
                     }
                 });
 
                 Ok(iter.into_pipeline_data(engine_state.ctrlc.clone()))
             }
-            PipelineData::Stream(stream, ..) => {
+            PipelineData::ListStream(stream, ..) => {
+                let mut split_char = "\n";
+
                 let iter = stream
                     .into_iter()
-                    .filter_map(|value| {
+                    .filter_map(move |value| {
                         if let Value::String { val, span } = value {
+                            if split_char != "\r\n" && val.contains("\r\n") {
+                                split_char = "\r\n";
+                            }
+
                             let inner = val
-                                .split(SPLIT_CHAR)
+                                .split(split_char)
                                 .filter_map(|s| {
-                                    if !s.is_empty() {
+                                    if skip_empty && s.is_empty() {
+                                        None
+                                    } else {
                                         Some(Value::String {
                                             val: s.into(),
                                             span,
                                         })
-                                    } else {
-                                        None
                                     }
                                 })
                                 .collect::<Vec<Value>>();
@@ -78,10 +88,64 @@ impl Command for Lines {
 
                 Ok(iter.into_pipeline_data(engine_state.ctrlc.clone()))
             }
+            PipelineData::StringStream(stream, span, ..) => {
+                let mut split_char = "\n";
+
+                let iter = stream
+                    .into_iter()
+                    .map(move |value| match value {
+                        Ok(value) => {
+                            if split_char != "\r\n" && value.contains("\r\n") {
+                                split_char = "\r\n";
+                            }
+                            value
+                                .split(split_char)
+                                .filter_map(|s| {
+                                    if !s.is_empty() {
+                                        Some(Value::String {
+                                            val: s.into(),
+                                            span,
+                                        })
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect::<Vec<Value>>()
+                        }
+                        Err(err) => vec![Value::Error { error: err }],
+                    })
+                    .flatten();
+
+                Ok(iter.into_pipeline_data(engine_state.ctrlc.clone()))
+            }
             PipelineData::Value(val, ..) => Err(ShellError::UnsupportedInput(
                 format!("Not supported input: {}", val.as_string()?),
                 call.head,
             )),
+            PipelineData::ByteStream(..) => {
+                let config = stack.get_config()?;
+
+                //FIXME: Make sure this can fail in the future to let the user
+                //know to use a different encoding
+                let s = input.collect_string("", &config)?;
+
+                let split_char = if s.contains("\r\n") { "\r\n" } else { "\n" };
+
+                let lines = s
+                    .split(split_char)
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>();
+
+                let iter = lines.into_iter().filter_map(move |s| {
+                    if skip_empty && s.is_empty() {
+                        None
+                    } else {
+                        Some(Value::string(s, head))
+                    }
+                });
+
+                Ok(iter.into_pipeline_data(engine_state.ctrlc.clone()))
+            }
         }
     }
 }

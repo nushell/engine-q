@@ -2,12 +2,12 @@ use crate::{BlockId, ShellError, Span, Value};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-const ANIMATE_PROMPT_DEFAULT: bool = false;
+const ANIMATE_PROMPT_DEFAULT: bool = true;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EnvConversion {
-    pub from_string: (BlockId, Span),
-    pub to_string: (BlockId, Span),
+    pub from_string: Option<(BlockId, Span)>,
+    pub to_string: Option<(BlockId, Span)>,
 }
 
 impl EnvConversion {
@@ -28,20 +28,13 @@ impl EnvConversion {
             }
         }
 
-        match (conv_map.get("from_string"), conv_map.get("to_string")) {
-            (None, _) => Err(ShellError::MissingConfigValue(
-                "'from_string' field".into(),
-                value.span()?,
-            )),
-            (_, None) => Err(ShellError::MissingConfigValue(
-                "'to_string' field".into(),
-                value.span()?,
-            )),
-            (Some(from), Some(to)) => Ok(EnvConversion {
-                from_string: *from,
-                to_string: *to,
-            }),
-        }
+        let from_string = conv_map.get("from_string").cloned();
+        let to_string = conv_map.get("to_string").cloned();
+
+        Ok(EnvConversion {
+            from_string,
+            to_string,
+        })
     }
 }
 
@@ -58,6 +51,9 @@ pub struct Config {
     pub filesize_format: String,
     pub use_ansi_coloring: bool,
     pub env_conversions: HashMap<String, EnvConversion>,
+    pub edit_mode: String,
+    pub max_history_size: i64,
+    pub log_level: String,
 }
 
 impl Default for Config {
@@ -74,6 +70,9 @@ impl Default for Config {
             filesize_format: "auto".into(),
             use_ansi_coloring: true,
             env_conversions: HashMap::new(), // TODO: Add default conversoins
+            edit_mode: "emacs".into(),
+            max_history_size: 1000,
+            log_level: String::new(),
         }
     }
 }
@@ -177,10 +176,20 @@ impl Value {
                     let mut env_conversions = HashMap::new();
 
                     for (env_var, record) in env_vars.iter().zip(conversions) {
+                        // println!("{}: {:?}", env_var, record);
                         env_conversions.insert(env_var.into(), EnvConversion::from_record(record)?);
                     }
 
                     config.env_conversions = env_conversions;
+                }
+                "edit_mode" => {
+                    config.edit_mode = value.as_string()?;
+                }
+                "max_history_size" => {
+                    config.max_history_size = value.as_i64()?;
+                }
+                "log_level" => {
+                    config.log_level = value.as_string()?;
                 }
                 _ => {}
             }

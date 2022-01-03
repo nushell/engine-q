@@ -78,7 +78,7 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bcb2392079bf27198570d6af79ecbd9ec7d8f16d3ec6b60933922fdb66287127"
 dependencies = [
- "heapless",
+ "heapless 0.5.6",
  "nom 4.2.3",
 ]
 
@@ -841,6 +841,7 @@ dependencies = [
  "crossterm_winapi",
  "ctrlc",
  "dialoguer",
+ "log",
  "miette",
  "nu-ansi-term",
  "nu-cli",
@@ -851,6 +852,7 @@ dependencies = [
  "nu-parser",
  "nu-path",
  "nu-plugin",
+ "nu-pretty-hex",
  "nu-protocol",
  "nu-table",
  "nu-term-grid",
@@ -858,8 +860,22 @@ dependencies = [
  "nu_plugin_gstat",
  "nu_plugin_inc",
  "pretty_assertions",
+ "pretty_env_logger",
  "reedline",
  "tempfile",
+]
+
+[[package]]
+name = "env_logger"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44533bbbb3bb3c1fa17d9f2e4e38bbbaf8396ba82193c4cb1b6445d711445d36"
+dependencies = [
+ "atty",
+ "humantime",
+ "log",
+ "regex",
+ "termcolor",
 ]
 
 [[package]]
@@ -1103,6 +1119,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "hash32"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0c35f58762feb77d74ebe43bdbc3210f09be9fe6742234d573bacc26ed92b67"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "hash_hasher"
 version = "2.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1126,7 +1151,18 @@ checksum = "74911a68a1658cfcfb61bc0ccfbd536e3b6e906f8c2f7883ee50157e3e2184f1"
 dependencies = [
  "as-slice",
  "generic-array 0.13.3",
- "hash32",
+ "hash32 0.1.1",
+ "stable_deref_trait",
+]
+
+[[package]]
+name = "heapless"
+version = "0.7.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e476c64197665c3725621f0ac3f9e5209aa5e889e02a08b1daf5f16dc5fd952"
+dependencies = [
+ "hash32 0.2.1",
+ "spin",
  "stable_deref_trait",
 ]
 
@@ -1144,6 +1180,15 @@ name = "htmlescape"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9025058dae765dee5070ec375f591e2ba14638c63feff74f13805a72e523163"
+
+[[package]]
+name = "humantime"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df004cfca50ef23c36850aaaa59ad52cc70d0e90243c3c7737a4dd32dc7a3c4f"
+dependencies = [
+ "quick-error",
+]
 
 [[package]]
 name = "ical"
@@ -1362,6 +1407,12 @@ dependencies = [
  "openssl-sys",
  "pkg-config",
 ]
+
+[[package]]
+name = "libm"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7d73b3f436185384286bd8098d17ec07c9a7d2388a6599f824d8502b529702a"
 
 [[package]]
 name = "libssh2-sys"
@@ -1633,9 +1684,9 @@ dependencies = [
 
 [[package]]
 name = "nu-ansi-term"
-version = "0.39.0"
+version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e62e2187cbceeafee9fb7b5e5e182623e0628ebf430a479df4487beb8f92fd7a"
+checksum = "b8afa9b5ba9e7ea9898e119244372cac911bea31ee7a5de42f51bbc36dc66318"
 dependencies = [
  "overload",
  "winapi",
@@ -1645,6 +1696,7 @@ dependencies = [
 name = "nu-cli"
 version = "0.1.0"
 dependencies = [
+ "log",
  "miette",
  "nu-ansi-term",
  "nu-color-config",
@@ -1684,6 +1736,7 @@ dependencies = [
  "digest 0.10.0",
  "dtparse",
  "eml-parser",
+ "encoding_rs",
  "glob",
  "htmlescape",
  "ical",
@@ -1699,12 +1752,12 @@ dependencies = [
  "nu-json",
  "nu-parser",
  "nu-path",
+ "nu-pretty-hex",
  "nu-protocol",
  "nu-table",
  "nu-term-grid",
  "num 0.4.0",
  "polars",
- "pretty-hex",
  "quick-xml 0.22.0",
  "rand",
  "rayon",
@@ -1724,8 +1777,10 @@ dependencies = [
  "titlecase",
  "toml",
  "trash",
+ "umask",
  "unicode-segmentation",
  "url",
+ "users",
  "uuid",
  "zip",
 ]
@@ -1757,6 +1812,7 @@ dependencies = [
 name = "nu-parser"
 version = "0.1.0"
 dependencies = [
+ "log",
  "miette",
  "nu-path",
  "nu-plugin",
@@ -1782,6 +1838,15 @@ dependencies = [
  "nu-protocol",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "nu-pretty-hex"
+version = "0.41.0"
+dependencies = [
+ "heapless 0.7.9",
+ "nu-ansi-term",
+ "rand",
 ]
 
 [[package]]
@@ -1982,6 +2047,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a64b1ec5cda2586e284722486d802acf1f7dbdc623e2bfc57e65ca1cd099290"
 dependencies = [
  "autocfg",
+ "libm",
 ]
 
 [[package]]
@@ -2249,6 +2315,8 @@ dependencies = [
  "num_cpus",
  "polars-arrow",
  "prettytable-rs",
+ "rand",
+ "rand_distr",
  "rayon",
  "regex",
  "serde",
@@ -2329,12 +2397,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pretty-hex"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc5c99d529f0d30937f6f4b8a86d988047327bb88d04d2c4afc356de74722131"
-
-[[package]]
 name = "pretty_assertions"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2344,6 +2406,16 @@ dependencies = [
  "ctor",
  "diff",
  "output_vt100",
+]
+
+[[package]]
+name = "pretty_env_logger"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "926d36b9553851b8b0005f1275891b392ee4d2d833852c417ed025477350fb9d"
+dependencies = [
+ "env_logger",
+ "log",
 ]
 
 [[package]]
@@ -2368,6 +2440,12 @@ checksum = "fb37d2df5df740e582f28f8560cf425f52bb267d872fe58358eadb554909f07a"
 dependencies = [
  "unicode-xid",
 ]
+
+[[package]]
+name = "quick-error"
+version = "1.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
 
 [[package]]
 name = "quick-xml"
@@ -2432,6 +2510,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d34f1408f55294453790c48b2f1ebbb1c5b4b7563eb1f418bcfcfdbb06ebb4e7"
 dependencies = [
  "getrandom 0.2.3",
+]
+
+[[package]]
+name = "rand_distr"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "964d548f8e7d12e102ef183a0de7e98180c9f8729f555897a857b96e48122d2f"
+dependencies = [
+ "num-traits",
+ "rand",
 ]
 
 [[package]]
@@ -2516,7 +2604,7 @@ dependencies = [
 [[package]]
 name = "reedline"
 version = "0.2.0"
-source = "git+https://github.com/nushell/reedline?branch=main#e512512dd4af9f3aad19c0f045f03b0b1680eb99"
+source = "git+https://github.com/nushell/reedline?branch=main#a2682b50f949245b5933471992b8094e1b3ae478"
 dependencies = [
  "chrono",
  "crossterm",
@@ -2865,6 +2953,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "45456094d1983e2ee2a18fdfebce3189fa451699d0502cb8e3b49dba5ba41451"
 
 [[package]]
+name = "spin"
+version = "0.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "511254be0c5bcf062b019a6c89c01a664aa359ded62f78aa72c6fc137c0590e5"
+dependencies = [
+ "lock_api",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3006,6 +3103,15 @@ checksum = "1e4129646ca0ed8f45d09b929036bafad5377103edd06e50bf574b353d2b08d9"
 dependencies = [
  "libc",
  "winapi",
+]
+
+[[package]]
+name = "termcolor"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
+dependencies = [
+ "winapi-util",
 ]
 
 [[package]]
@@ -3152,6 +3258,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56dee185309b50d1f11bfedef0fe6d036842e3fb77413abef29f8f8d1c5d4c1c"
 
 [[package]]
+name = "umask"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "982efbf70ec4d28f7862062c03dd1a4def601a5079e0faf1edc55f2ad0f6fe46"
+
+[[package]]
 name = "uncased"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3218,6 +3330,16 @@ dependencies = [
  "idna",
  "matches",
  "percent-encoding",
+]
+
+[[package]]
+name = "users"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24cc0f6d6f267b73e5a2cadf007ba8f9bc39c6a6f9666f8cf25ea809a153b032"
+dependencies = [
+ "libc",
+ "log",
 ]
 
 [[package]]
