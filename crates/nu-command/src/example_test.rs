@@ -73,21 +73,13 @@ pub fn test_examples(cmd: impl Command + 'static) {
         let mut stack = Stack::new();
 
         // Set up PWD
-        match std::env::current_dir() {
-            Ok(cwd) => stack.add_env_var(
-                "PWD".to_string(),
-                Value::String {
-                    val: cwd.to_string_lossy().to_string(),
-                    span: Span::test_data(),
-                },
-            ),
-            Err(e) => {
-                panic!(
-                    "Could not get current working directory. Got error: {:?}",
-                    e
-                )
-            }
-        }
+        stack.add_env_var(
+            "PWD".to_string(),
+            Value::String {
+                val: cwd.to_string_lossy().to_string(),
+                span: Span::test_data(),
+            },
+        );
 
         // Set up our initial config to start from
         stack.vars.insert(
