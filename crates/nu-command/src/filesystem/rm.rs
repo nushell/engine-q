@@ -86,7 +86,7 @@ fn rm(
         ));
     }
 
-    let current_path = PathBuf::from(current_dir(engine_state, stack)?);
+    let current_path = current_dir(engine_state, stack)?;
     let mut paths = call
         .rest::<String>(engine_state, stack, 0)?
         .into_iter()

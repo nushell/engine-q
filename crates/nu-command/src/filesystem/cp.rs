@@ -49,7 +49,7 @@ impl Command for Cp {
         let interactive = call.has_flag("interactive");
         let force = call.has_flag("force");
 
-        let path = PathBuf::from(current_dir(engine_state, stack)?);
+        let path = current_dir(engine_state, stack)?;
         let source = path.join(source.as_str());
         let destination = path.join(destination.as_str());
 

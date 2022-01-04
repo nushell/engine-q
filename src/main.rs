@@ -207,7 +207,7 @@ fn main() -> Result<()> {
                     (output, working_set.render())
                 };
 
-                let cwd = nu_engine::env::current_dir(&engine_state, &stack)?;
+                let cwd = nu_engine::env::current_dir_str(&engine_state, &stack)?;
 
                 if let Err(err) = engine_state.merge_delta(delta, Some(&mut stack), &cwd) {
                     let working_set = StateWorkingSet::new(&engine_state);
@@ -434,7 +434,8 @@ fn main() -> Result<()> {
                 Ok(Signal::Success(s)) => {
                     let tokens = lex(s.as_bytes(), 0, &[], &[], false);
                     // Check if this is a single call to a directory, if so auto-cd
-                    let path = nu_path::expand_path(&s);
+                    let cwd = nu_engine::env::current_dir_str(&engine_state, &stack)?;
+                    let path = nu_path::expand_path_with(&s, &cwd);
                     let orig = s.clone();
 
                     if (orig.starts_with('.')
@@ -906,7 +907,7 @@ fn eval_source(
         (output, working_set.render())
     };
 
-    let cwd = match nu_engine::env::current_dir(engine_state, stack) {
+    let cwd = match nu_engine::env::current_dir_str(engine_state, stack) {
         Ok(p) => PathBuf::from(p),
         Err(e) => {
             let working_set = StateWorkingSet::new(engine_state);

@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use nu_engine::env::current_dir;
+use nu_engine::env::current_dir_str;
 use nu_path::canonicalize_with;
 use nu_protocol::engine::{EngineState, Stack};
 use nu_protocol::ShellError;
@@ -61,7 +61,7 @@ impl FileStructure {
         engine_state: &EngineState,
         stack: &Stack,
     ) -> Result<(), ShellError> {
-        let source = canonicalize_with(src, current_dir(engine_state, stack)?)?;
+        let source = canonicalize_with(src, current_dir_str(engine_state, stack)?)?;
 
         if source.is_dir() {
             for entry in std::fs::read_dir(src)? {

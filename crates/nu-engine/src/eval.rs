@@ -8,7 +8,7 @@ use nu_protocol::{
     Spanned, Type, Unit, Value, VarId, ENV_VARIABLE_ID,
 };
 
-use crate::{current_dir, get_full_help};
+use crate::{current_dir_str, get_full_help};
 
 pub fn eval_operator(op: &Expression) -> Result<Operator, ShellError> {
     match op {
@@ -575,7 +575,7 @@ pub fn eval_variable(
 
         // since the env var PWD doesn't exist on all platforms
         // lets just get the current directory
-        let cwd = current_dir(engine_state, stack)?;
+        let cwd = current_dir_str(engine_state, stack)?;
         output_cols.push("cwd".into());
         output_vals.push(Value::String { val: cwd, span });
 

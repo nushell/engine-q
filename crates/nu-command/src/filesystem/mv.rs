@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use super::util::get_interactive_confirmation;
 use nu_engine::env::current_dir;
@@ -50,7 +50,7 @@ impl Command for Mv {
         let interactive = call.has_flag("interactive");
         let force = call.has_flag("force");
 
-        let path = PathBuf::from(current_dir(engine_state, stack)?);
+        let path = current_dir(engine_state, stack)?;
         let source = path.join(spanned_source.item.as_str());
         let destination = path.join(destination.as_str());
 

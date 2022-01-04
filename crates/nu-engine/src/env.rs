@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use nu_protocol::engine::{EngineState, Stack};
 use nu_protocol::{Config, PipelineData, ShellError, Value};
@@ -136,7 +136,7 @@ pub fn env_to_strings(
 }
 
 /// Shorthand for env_to_string() for PWD with custom error
-pub fn current_dir(engine_state: &EngineState, stack: &Stack) -> Result<String, ShellError> {
+pub fn current_dir_str(engine_state: &EngineState, stack: &Stack) -> Result<String, ShellError> {
     let config = stack.get_config()?;
     if let Some(pwd) = stack.get_env_var(engine_state, "PWD") {
         match env_to_string("PWD", pwd, engine_state, stack, &config) {
@@ -158,4 +158,9 @@ pub fn current_dir(engine_state: &EngineState, stack: &Stack) -> Result<String, 
                 "The environment variable 'PWD' was not found. It is required to define the current directory.".to_string(),
         ))
     }
+}
+
+/// Calls current_dir_str() and returns the current directory as a PathBuf
+pub fn current_dir(engine_state: &EngineState, stack: &Stack) -> Result<PathBuf, ShellError> {
+    current_dir_str(engine_state, stack).map(PathBuf::from)
 }

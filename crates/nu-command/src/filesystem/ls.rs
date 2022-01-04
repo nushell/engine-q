@@ -72,7 +72,7 @@ impl Command for Ls {
 
             let (mut path, prefix) = if path.is_relative() {
                 let cwd = current_dir(engine_state, stack)?;
-                (PathBuf::from(&cwd).join(path), Some(cwd))
+                (cwd.join(path), Some(cwd))
             } else {
                 (path, None)
             };
@@ -108,10 +108,7 @@ impl Command for Ls {
             (path.to_string_lossy().to_string(), prefix)
         } else {
             let cwd = current_dir(engine_state, stack)?;
-            (
-                PathBuf::from(&cwd).join("*").to_string_lossy().to_string(),
-                Some(cwd),
-            )
+            (cwd.join("*").to_string_lossy().to_string(), Some(cwd))
         };
 
         let glob = glob::glob(&pattern).map_err(|err| {
