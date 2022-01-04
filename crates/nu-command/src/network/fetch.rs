@@ -163,66 +163,61 @@ fn helper(
     }
 
     match request.send() {
-        Ok(resp) => {
-            match resp.headers().get("content-type") {
-                Some(content_type) => {
-                    let content_type = content_type.to_str().map_err(|e| {
-                        ShellError::LabeledError(
-                            e.to_string(),
-                            "MIME type were invalid".to_string(),
-                        )
-                    })?;
-                    let content_type = mime::Mime::from_str(content_type).map_err(|_| {
-                        ShellError::LabeledError(
-                            format!("MIME type unknown: {}", content_type),
-                            "given unknown MIME type".to_string(),
-                        )
-                    })?;
-                    let ext = match (content_type.type_(), content_type.subtype()) {
-                        (mime::TEXT, mime::PLAIN) => {
-                            let path_extension = url::Url::parse(&requested_url)
-                                .map_err(|_| {
-                                    ShellError::LabeledError(
-                                        format!("Cannot parse URL: {}", requested_url),
-                                        "cannot parse".to_string(),
-                                    )
-                                })?
-                                .path_segments()
-                                .and_then(|segments| segments.last())
-                                .and_then(|name| if name.is_empty() { None } else { Some(name) })
-                                .and_then(|name| {
-                                    PathBuf::from(name)
-                                        .extension()
-                                        .map(|name| name.to_string_lossy().to_string())
-                                });
-                            path_extension
-                        }
-                        _ => Some(content_type.subtype().to_string()),
-                    };
-
-                    let output = response_to_buffer(resp, engine_state, span);
-
-                    if raw {
-                        return Ok(output);
+        Ok(resp) => match resp.headers().get("content-type") {
+            Some(content_type) => {
+                let content_type = content_type.to_str().map_err(|e| {
+                    ShellError::LabeledError(e.to_string(), "MIME type were invalid".to_string())
+                })?;
+                let content_type = mime::Mime::from_str(content_type).map_err(|_| {
+                    ShellError::LabeledError(
+                        format!("MIME type unknown: {}", content_type),
+                        "given unknown MIME type".to_string(),
+                    )
+                })?;
+                let ext = match (content_type.type_(), content_type.subtype()) {
+                    (mime::TEXT, mime::PLAIN) => {
+                        let path_extension = url::Url::parse(&requested_url)
+                            .map_err(|_| {
+                                ShellError::LabeledError(
+                                    format!("Cannot parse URL: {}", requested_url),
+                                    "cannot parse".to_string(),
+                                )
+                            })?
+                            .path_segments()
+                            .and_then(|segments| segments.last())
+                            .and_then(|name| if name.is_empty() { None } else { Some(name) })
+                            .and_then(|name| {
+                                PathBuf::from(name)
+                                    .extension()
+                                    .map(|name| name.to_string_lossy().to_string())
+                            });
+                        path_extension
                     }
+                    _ => Some(content_type.subtype().to_string()),
+                };
 
-                    if let Some(ext) = ext {
-                        match engine_state.find_decl(format!("from {}", ext).as_bytes()) {
-                            Some(converter_id) => engine_state.get_decl(converter_id).run(
-                                engine_state,
-                                stack,
-                                &Call::new(),
-                                output,
-                            ),
-                            None => Ok(output),
-                        }
-                    } else {
-                        Ok(output)
-                    }
+                let output = response_to_buffer(resp, engine_state, span);
+
+                if raw {
+                    return Ok(output);
                 }
-                None => Ok(response_to_buffer(resp, engine_state, span)),
+
+                if let Some(ext) = ext {
+                    match engine_state.find_decl(format!("from {}", ext).as_bytes()) {
+                        Some(converter_id) => engine_state.get_decl(converter_id).run(
+                            engine_state,
+                            stack,
+                            &Call::new(),
+                            output,
+                        ),
+                        None => Ok(output),
+                    }
+                } else {
+                    Ok(output)
+                }
             }
-        }
+            None => Ok(response_to_buffer(resp, engine_state, span)),
+        },
         Err(e) if e.is_timeout() => Err(ShellError::NetworkFailure(
             format!("Request to {} has timed out", requested_url),
             span,
