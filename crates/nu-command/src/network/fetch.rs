@@ -7,6 +7,7 @@ use nu_protocol::ByteStream;
 use nu_protocol::{
     Category, Example, PipelineData, ShellError, Signature, Span, SyntaxShape, Value,
 };
+use reqwest::blocking::Response;
 
 use std::io::{BufRead, BufReader, Read};
 
@@ -163,13 +164,6 @@ fn helper(
 
     match request.send() {
         Ok(resp) => {
-            // let temp = std::fs::File::create("temp_dwl.txt")?;
-            // let mut b = BufWriter::new(temp);
-            // let _bytes = resp.copy_to(&mut b);
-            // let temp1 = std::fs::File::open("temp_dwl.txt")?;
-            // let a = BufReader::new(temp1);
-
-            // TODO I guess we should check if all bytes were written/read...
             match resp.headers().get("content-type") {
                 Some(content_type) => {
                     let content_type = content_type.to_str().map_err(|e| {
@@ -206,18 +200,7 @@ fn helper(
                         _ => Some(content_type.subtype().to_string()),
                     };
 
-                    let buffered_input = BufReader::new(resp);
-
-                    let output = PipelineData::ByteStream(
-                        ByteStream {
-                            stream: Box::new(BufferedReader {
-                                input: buffered_input,
-                            }),
-                            ctrlc: engine_state.ctrlc.clone(),
-                        },
-                        span,
-                        None,
-                    );
+                    let output = response_to_buffer(resp, engine_state, span);
 
                     if raw {
                         return Ok(output);
@@ -237,21 +220,7 @@ fn helper(
                         Ok(output)
                     }
                 }
-                None => {
-                    let buffered_input = BufReader::new(resp);
-
-                    let output = PipelineData::ByteStream(
-                        ByteStream {
-                            stream: Box::new(BufferedReader {
-                                input: buffered_input,
-                            }),
-                            ctrlc: engine_state.ctrlc.clone(),
-                        },
-                        span,
-                        None,
-                    );
-                    Ok(output)
-                }
+                None => Ok(response_to_buffer(resp, engine_state, span)),
             }
         }
         Err(e) if e.is_timeout() => Err(ShellError::NetworkFailure(
@@ -325,6 +294,25 @@ impl<R: Read> Iterator for BufferedReader<R> {
             Err(e) => Some(Err(ShellError::IOError(e.to_string()))),
         }
     }
+}
+
+fn response_to_buffer(
+    response: Response,
+    engine_state: &EngineState,
+    span: Span,
+) -> nu_protocol::PipelineData {
+    let buffered_input = BufReader::new(response);
+
+    PipelineData::ByteStream(
+        ByteStream {
+            stream: Box::new(BufferedReader {
+                input: buffered_input,
+            }),
+            ctrlc: engine_state.ctrlc.clone(),
+        },
+        span,
+        None,
+    )
 }
 
 // Only panics if the user agent is invalid but we define it statically so either
