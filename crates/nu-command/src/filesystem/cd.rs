@@ -37,7 +37,10 @@ impl Command for Cd {
                 let path = match nu_path::canonicalize_with(path, &cwd) {
                     Ok(p) => p,
                     Err(e) => {
-                        return Err(ShellError::DirectoryNotFoundHelp(v.span()?, format!("IO Error: {:?}", e)))
+                        return Err(ShellError::DirectoryNotFoundHelp(
+                            v.span()?,
+                            format!("IO Error: {:?}", e),
+                        ))
                     }
                 };
                 (path.to_string_lossy().to_string(), v.span()?)
