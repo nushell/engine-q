@@ -82,7 +82,7 @@ impl Command for SubCommand {
             Example {
                 description: "Expand a relative path",
                 example: r"'foo\..\bar' | path expand",
-                result: Some(Value::test_string("bar")),
+                result: None,
             },
         ]
     }
