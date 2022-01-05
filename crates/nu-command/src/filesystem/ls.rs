@@ -137,7 +137,6 @@ impl Command for Ls {
                             {
                                 None
                             } else {
-                                eprintln!("raw {:?}", e.raw_os_error());
                                 return Some(Value::Error {
                                     error: ShellError::IOError(format!("{}", e)),
                                 });
