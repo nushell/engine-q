@@ -70,7 +70,6 @@ stable = ["default"]
 extra = [
 	"default",
 	"dataframe",
-	"fetch-support",
 	"gstat",
 	"zip-support",
 ]
@@ -85,7 +84,6 @@ example = ["nu_plugin_example"]
 gstat = ["nu_plugin_gstat"]
 
 zip-support = ["nu-command/zip"]
-fetch-support = ["nu-command/fetch"]
 
 # Dataframe feature for nushell
 dataframe = ["nu-command/dataframe"]
