@@ -34,7 +34,6 @@ impl Command for Cd {
         let (path, span) = match path_val {
             Some(v) => {
                 let path = v.as_path()?;
-                println!("cd: {:?}, cwd: {:?}", path, cwd);
                 let path = match nu_path::canonicalize_with(path, &cwd) {
                     Ok(p) => p,
                     Err(e) => {
