@@ -131,9 +131,13 @@ impl Command for Ls {
                         Err(e) => {
                             if e.kind() == ErrorKind::PermissionDenied
                                 || e.kind() == ErrorKind::Other
+                            // on windows this is "The process cannot access the file
+                            // because it is being used by another process. (os error 32)"
+                            || e.raw_os_error() == Some(32)
                             {
                                 None
                             } else {
+                                eprintln!("raw {:?}", e.raw_os_error());
                                 return Some(Value::Error {
                                     error: ShellError::IOError(format!("{}", e)),
                                 });
