@@ -163,7 +163,6 @@ impl Command for Ls {
 
                     match display_name {
                         Ok(name) => {
-                            println!("{:?}", &path);
                             let entry =
                                 dir_entry_dict(&path, name, metadata.as_ref(), call_span, long);
 
