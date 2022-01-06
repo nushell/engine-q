@@ -33,7 +33,7 @@ mod tests;
 mod logger;
 
 // Name of environment variable where the prompt could be stored
-const PROMPT_COMMAND_LEFT: &str = "PROMPT_COMMAND_LEFT";
+const PROMPT_COMMAND: &str = "PROMPT_COMMAND";
 const PROMPT_COMMAND_RIGHT: &str = "PROMPT_COMMAND_RIGHT";
 const PROMPT_INDICATOR: &str = "PROMPT_INDICATOR";
 const PROMPT_INDICATOR_VI_INSERT: &str = "PROMPT_INDICATOR_VI_INSERT";
@@ -816,7 +816,7 @@ fn update_prompt<'prompt>(
 
     // apply the other indicators
     nu_prompt.update_all_prompt_strings(
-        get_prompt_string(PROMPT_COMMAND_LEFT, config, engine_state, &mut stack),
+        get_prompt_string(PROMPT_COMMAND, config, engine_state, &mut stack),
         get_prompt_string(PROMPT_COMMAND_RIGHT, config, engine_state, &mut stack),
         prompt_indicator_string,
         prompt_vi_insert_string,
