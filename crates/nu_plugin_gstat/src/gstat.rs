@@ -126,6 +126,12 @@ impl GStat {
             }
         };
 
+        let repo_name = repo_path
+            .file_name()
+            .map(|o| o.to_string_lossy())
+            .unwrap_or_else(|| "".into())
+            .to_string();
+
         let stats = Repository::discover(repo_path).map(|mut repo| (Stats::new(&mut repo)));
         let stats = match stats {
             Ok(s) => s,
@@ -212,6 +218,11 @@ impl GStat {
         cols.push("stashes".into());
         vals.push(Value::Int {
             val: stats.stashes as i64,
+            span: *span,
+        });
+        cols.push("repo_name".into());
+        vals.push(Value::String {
+            val: repo_name,
             span: *span,
         });
         cols.push("branch".into());
@@ -319,6 +330,11 @@ impl GStat {
         cols.push("stashes".into());
         vals.push(Value::Int {
             val: -1,
+            span: *span,
+        });
+        cols.push("repo_name".into());
+        vals.push(Value::String {
+            val: "no_repository".to_string(),
             span: *span,
         });
         cols.push("branch".into());
@@ -467,7 +483,7 @@ impl Stats {
                         } else {
                             "HEAD".to_string()
                         }
-                    // Grab the branch from the reference
+                        // Grab the branch from the reference
                     } else {
                         let branch = name.to_string();
                         // Since we have a branch name, look for the name of the upstream branch
