@@ -60,7 +60,7 @@ impl Command for Ls {
     ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
         let all = call.has_flag("all");
         let long = call.has_flag("long");
-        let short_names = call.has_flag("short-names");
+        let mut short_names = call.has_flag("short-names");
 
         let call_span = call.head;
 
@@ -69,6 +69,9 @@ impl Command for Ls {
         {
             let path = PathBuf::from(&result.item);
 
+            if !path.exists() {
+                return Err(ShellError::DirectoryNotFound(result.span));
+            }
             let (mut path, prefix) = if path.is_relative() {
                 let cwd = current_dir(engine_state, stack)?;
                 (cwd.join(path), Some(cwd))
@@ -103,7 +106,7 @@ impl Command for Ls {
                     path = path.join("*");
                 }
             }
-
+            short_names = true;
             (path.to_string_lossy().to_string(), prefix)
         } else {
             let cwd = current_dir(engine_state, stack)?;
@@ -160,6 +163,7 @@ impl Command for Ls {
 
                     match display_name {
                         Ok(name) => {
+                            println!("{:?}", &path);
                             let entry =
                                 dir_entry_dict(&path, name, metadata.as_ref(), call_span, long);
 
