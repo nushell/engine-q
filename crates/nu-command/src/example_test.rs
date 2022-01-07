@@ -13,7 +13,8 @@ use crate::To;
 
 #[cfg(test)]
 use super::{
-    Ansi, Date, From, Into, Math, Path, Random, Split, Str, StrCollect, StrFindReplace, Url,
+    Ansi, Date, From, If, Into, Math, Path, Random, Split, Str, StrCollect, StrFindReplace,
+    StrLength, Url,
 };
 
 #[cfg(test)]
@@ -29,9 +30,11 @@ pub fn test_examples(cmd: impl Command + 'static) {
         let mut working_set = StateWorkingSet::new(&*engine_state);
         working_set.add_decl(Box::new(Str));
         working_set.add_decl(Box::new(StrCollect));
+        working_set.add_decl(Box::new(StrLength));
         working_set.add_decl(Box::new(StrFindReplace));
         working_set.add_decl(Box::new(BuildString));
         working_set.add_decl(Box::new(From));
+        working_set.add_decl(Box::new(If));
         working_set.add_decl(Box::new(To));
         working_set.add_decl(Box::new(Into));
         working_set.add_decl(Box::new(Random));
