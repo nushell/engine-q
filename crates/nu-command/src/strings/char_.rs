@@ -110,23 +110,24 @@ lazy_static! {
 
         // This is the emoji section
         // Weather symbols
-        "sun" => "☀️".to_string(),
-        "sunny" => "☀️".to_string(),
-        "sunrise" => "☀️".to_string(),
-        "moon" => "🌛".to_string(),
-        "cloudy" => "☁️".to_string(),
-        "cloud" => "☁️".to_string(),
-        "clouds" => "☁️".to_string(),
-        "rainy" => "🌦️".to_string(),
-        "rain" => "🌦️".to_string(),
-        "foggy" => "🌫️".to_string(),
-        "fog" => "🌫️".to_string(),
-        "mist" => '\u{2591}'.to_string(),
-        "haze" => '\u{2591}'.to_string(),
-        "snowy" => "❄️".to_string(),
-        "snow" => "❄️".to_string(),
-        "thunderstorm" => "🌩️".to_string(),
-        "thunder" => "🌩️".to_string(),
+        // https://www.babelstone.co.uk/Unicode/whatisit.html
+        "sun" => "☀️".to_string(),         //2600 + fe0f
+        "sunny" => "☀️".to_string(),       //2600 + fe0f
+        "sunrise" => "☀️".to_string(),     //2600 + fe0f
+        "moon" => "🌛".to_string(),        //1f31b
+        "cloudy" => "☁️".to_string(),      //2601 + fe0f
+        "cloud" => "☁️".to_string(),       //2601 + fe0f
+        "clouds" => "☁️".to_string(),      //2601 + fe0f
+        "rainy" => "🌦️".to_string(),       //1f326 + fe0f
+        "rain" => "🌦️".to_string(),        //1f326 + fe0f
+        "foggy" => "🌫️".to_string(),       //1f32b + fe0f
+        "fog" => "🌫️".to_string(),         //1f32b + fe0f
+        "mist" => '\u{2591}'.to_string(),  //2591
+        "haze" => '\u{2591}'.to_string(),  //2591
+        "snowy" => "❄️".to_string(),       //2744 + fe0f
+        "snow" => "❄️".to_string(),        //2744 + fe0f
+        "thunderstorm" => "🌩️".to_string(),//1f329 + fe0f
+        "thunder" => "🌩️".to_string(),     //1f329 + fe0f
 
         // This is the "other" section
         "bel" => '\x07'.to_string(),       // Terminal Bell
