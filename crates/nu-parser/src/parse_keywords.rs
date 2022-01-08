@@ -88,7 +88,7 @@ pub fn parse_def(
         }
         Some(decl_id) => {
             working_set.enter_scope();
-            //let (call, mut err) = parse_internal_call(working_set, spans[0], &spans[1..], decl_id);
+            let (call, mut err) = parse_internal_call(working_set, spans[0], &spans[1..], decl_id);
             working_set.exit_scope();
 
             let call_span = span(spans);
