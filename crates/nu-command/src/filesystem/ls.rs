@@ -63,6 +63,8 @@ impl Command for Ls {
         let short_names = call.has_flag("short-names");
 
         let call_span = call.head;
+        let mut new_prefix = false;
+        let mut prefx = vec![];
 
         let (pattern, prefix) = if let Some(result) =
             call.opt::<Spanned<String>>(engine_state, stack, 0)?
@@ -107,10 +109,20 @@ impl Command for Ls {
                     return Ok(PipelineData::new(call_span));
                 }
 
+                let curr_dir = current_dir(engine_state, stack)?;
+                new_prefix = curr_dir.ancestors().any(|x| x.to_path_buf() == path);
+                if new_prefix {
+                    for a in curr_dir.ancestors() {
+                        if a.to_path_buf() == path {
+                            break;
+                        }
+                        prefx.push(format!("..{}", std::path::MAIN_SEPARATOR));
+                    }
+                }
+
                 if path.is_dir() {
                     path = path.join("*");
                 }
-
                 (
                     path.to_string_lossy().to_string(),
                     Some(current_dir(engine_state, stack)?),
@@ -173,8 +185,25 @@ impl Command for Ls {
 
                     match display_name {
                         Ok(name) => {
-                            let entry =
-                                dir_entry_dict(&path, name, metadata.as_ref(), call_span, long);
+                            let entry = if new_prefix {
+                                let filename = match path.file_name() {
+                                    Some(p) => format!(
+                                        "{}{}",
+                                        prefx.concat(),
+                                        p.to_string_lossy().to_string()
+                                    ),
+                                    None => path.to_string_lossy().to_string(),
+                                };
+                                dir_entry_dict(
+                                    &path,
+                                    filename.as_str(),
+                                    metadata.as_ref(),
+                                    call_span,
+                                    long,
+                                )
+                            } else {
+                                dir_entry_dict(&path, name, metadata.as_ref(), call_span, long)
+                            };
 
                             match entry {
                                 Ok(value) => Some(value),
