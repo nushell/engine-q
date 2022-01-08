@@ -154,6 +154,7 @@ pub const SCOPE_VARIABLE_ID: usize = 1;
 pub const IN_VARIABLE_ID: usize = 2;
 pub const CONFIG_VARIABLE_ID: usize = 3;
 pub const ENV_VARIABLE_ID: usize = 4;
+// NOTE: If you add more to this list, make sure to update the > checks based on the last in the list
 
 impl EngineState {
     pub fn new() -> Self {
@@ -982,6 +983,10 @@ impl<'a> StateWorkingSet<'a> {
 
     pub fn add_variable(&mut self, mut name: Vec<u8>, ty: Type) -> VarId {
         let next_id = self.next_var_id();
+
+        if next_id == 27 {
+            println!("{}", String::from_utf8_lossy(&name));
+        }
 
         // correct name if necessary
         if !name.starts_with(b"$") {

@@ -13,7 +13,7 @@ use nu_protocol::{
     },
     engine::StateWorkingSet,
     span, Flag, PositionalArg, Signature, Span, Spanned, SyntaxShape, Type, Unit, VarId,
-    CONFIG_VARIABLE_ID,
+    CONFIG_VARIABLE_ID, ENV_VARIABLE_ID,
 };
 
 use crate::parse_keywords::{
@@ -3556,6 +3556,8 @@ fn find_captures_in_block(
 ) -> Vec<VarId> {
     let mut output = vec![];
 
+    println!("sig: {:#?}", block.signature);
+
     for flag in &block.signature.named {
         if let Some(var_id) = flag.var_id {
             seen.push(var_id);
@@ -3626,6 +3628,13 @@ pub fn find_captures_in_expr(
         }
         Expr::Bool(_) => {}
         Expr::Call(call) => {
+            let decl = working_set.get_decl(call.decl_id);
+            if let Some(block_id) = decl.get_block_id() {
+                let block = working_set.get_block(block_id);
+                let result = find_captures_in_block(working_set, block, seen);
+                output.extend(&result);
+            }
+
             for named in &call.named {
                 if let Some(arg) = &named.1 {
                     let result = find_captures_in_expr(working_set, arg, seen);
@@ -3687,7 +3696,30 @@ pub fn find_captures_in_expr(
                 output.extend(&find_captures_in_expr(working_set, field_value, seen));
             }
         }
-        Expr::Signature(_) => {}
+        Expr::Signature(sig) => {
+            println!("Signature found! Adding var_ids");
+            // Something with a declaration, similar to a var decl, will introduce more VarIds into the stack at eval
+            for pos in &sig.required_positional {
+                if let Some(var_id) = pos.var_id {
+                    seen.push(var_id);
+                }
+            }
+            for pos in &sig.optional_positional {
+                if let Some(var_id) = pos.var_id {
+                    seen.push(var_id);
+                }
+            }
+            if let Some(rest) = &sig.rest_positional {
+                if let Some(var_id) = rest.var_id {
+                    seen.push(var_id);
+                }
+            }
+            for named in &sig.named {
+                if let Some(var_id) = named.var_id {
+                    seen.push(var_id);
+                }
+            }
+        }
         Expr::String(_) => {}
         Expr::StringInterpolation(exprs) => {
             for expr in exprs {
@@ -3717,7 +3749,11 @@ pub fn find_captures_in_expr(
             output.extend(&result);
         }
         Expr::Var(var_id) => {
-            if !seen.contains(var_id) {
+            if !seen.contains(var_id) && *var_id == 12 {
+                println!("seen: {:?}", seen);
+                panic!("yup, it's not capturing correctly");
+            }
+            if *var_id > ENV_VARIABLE_ID && !seen.contains(var_id) {
                 output.push(*var_id);
             }
         }

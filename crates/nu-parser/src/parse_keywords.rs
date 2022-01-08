@@ -88,13 +88,33 @@ pub fn parse_def(
         }
         Some(decl_id) => {
             working_set.enter_scope();
-            let (call, mut err) = parse_internal_call(working_set, spans[0], &spans[1..], decl_id);
+            //let (call, mut err) = parse_internal_call(working_set, spans[0], &spans[1..], decl_id);
             working_set.exit_scope();
 
             let call_span = span(spans);
             let decl = working_set.get_decl(decl_id);
+            let sig = decl.signature();
 
-            err = check_call(call_span, &decl.signature(), &call).or(err);
+            // Let's get our block and make sure it has the right signature
+            if let Some(arg) = call.positional.get(2) {
+                match arg {
+                    Expression {
+                        expr: Expr::Block(block_id),
+                        ..
+                    }
+                    | Expression {
+                        expr: Expr::RowCondition(block_id),
+                        ..
+                    } => {
+                        let block = working_set.get_block_mut(*block_id);
+
+                        block.signature = Box::new(sig.clone());
+                    }
+                    _ => {}
+                }
+            }
+
+            err = check_call(call_span, &sig, &call).or(err);
             if err.is_some() || call.has_flag("help") {
                 return (
                     Statement::Pipeline(Pipeline::from_vec(vec![Expression {
