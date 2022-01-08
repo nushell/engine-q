@@ -60,7 +60,7 @@ impl Command for Ls {
     ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
         let all = call.has_flag("all");
         let long = call.has_flag("long");
-        let mut short_names = call.has_flag("short-names");
+        let short_names = call.has_flag("short-names");
 
         let call_span = call.head;
 
@@ -79,7 +79,12 @@ impl Command for Ls {
                 (path, None)
             };
 
-            if path.is_dir() {
+            if path.is_file() {
+                (
+                    path.to_string_lossy().to_string(),
+                    Some(current_dir(engine_state, stack)?),
+                )
+            } else if path.is_dir() {
                 if permission_denied(&path) {
                     #[cfg(unix)]
                     let error_msg = format!(
@@ -105,9 +110,14 @@ impl Command for Ls {
                 if path.is_dir() {
                     path = path.join("*");
                 }
+
+                (
+                    path.to_string_lossy().to_string(),
+                    Some(current_dir(engine_state, stack)?),
+                )
+            } else {
+                (path.to_string_lossy().to_string(), prefix)
             }
-            short_names = true;
-            (path.to_string_lossy().to_string(), prefix)
         } else {
             let cwd = current_dir(engine_state, stack)?;
             (cwd.join("*").to_string_lossy().to_string(), Some(cwd))
