@@ -25,12 +25,6 @@ impl Command for Fmt {
         vec![Example {
             description: "format numbers",
             example: "42 | fmt",
-            // result: None,
-            // result: Some(Value::Record {
-            //     cols: vec![],
-            //     vals: vec![],
-            //     span: Span::test_data(),
-            // }),
             result: Some(Value::Record {
                 cols: vec![
                     "binary".into(),
