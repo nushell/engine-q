@@ -280,6 +280,7 @@ pub fn math_result_type(
                 (Type::Duration, Type::Duration) => (Type::Bool, None),
                 (Type::Filesize, Type::Filesize) => (Type::Bool, None),
 
+                (x, y) if x == y => (Type::Bool, None),
                 (Type::Nothing, _) => (Type::Bool, None),
                 (_, Type::Nothing) => (Type::Bool, None),
                 (Type::Unknown, _) => (Type::Bool, None),
