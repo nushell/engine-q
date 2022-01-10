@@ -70,10 +70,15 @@ impl Command for Ls {
             call.opt::<Spanned<String>>(engine_state, stack, 0)?
         {
             let path = PathBuf::from(&result.item);
+            match path.canonicalize() {
+                Err(_e) => return Err(ShellError::DirectoryNotFound(result.span)),
+                Ok(p) => {
+                    if !p.exists() {
+                        return Err(ShellError::DirectoryNotFound(result.span));
+                    }
+                }
+            };
 
-            if !path.exists() {
-                return Err(ShellError::DirectoryNotFound(result.span));
-            }
             let (mut path, prefix) = if path.is_relative() {
                 let cwd = current_dir(engine_state, stack)?;
                 (cwd.join(path), Some(cwd))
@@ -185,26 +190,23 @@ impl Command for Ls {
 
                     match display_name {
                         Ok(name) => {
-                            let entry = if new_prefix {
-                                let filename = match path.file_name() {
-                                    Some(p) => format!(
-                                        "{}{}",
-                                        prefx.concat(),
-                                        p.to_string_lossy().to_string()
-                                    ),
+                            let filename = if new_prefix {
+                                match path.file_name() {
+                                    Some(p) => {
+                                        format!("{}{}", prefx.concat(), p.to_string_lossy())
+                                    }
                                     None => path.to_string_lossy().to_string(),
-                                };
-                                dir_entry_dict(
-                                    &path,
-                                    filename.as_str(),
-                                    metadata.as_ref(),
-                                    call_span,
-                                    long,
-                                )
+                                }
                             } else {
-                                dir_entry_dict(&path, name, metadata.as_ref(), call_span, long)
+                                name.to_string()
                             };
-
+                            let entry = dir_entry_dict(
+                                &path,
+                                filename.as_str(),
+                                metadata.as_ref(),
+                                call_span,
+                                long,
+                            );
                             match entry {
                                 Ok(value) => Some(value),
                                 Err(err) => Some(Value::Error { error: err }),
