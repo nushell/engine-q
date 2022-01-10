@@ -101,6 +101,13 @@ impl Command for Find {
                 let capture_block = predicate;
                 let block_id = capture_block.block_id;
 
+                if !call.rest::<Value>(&engine_state, stack, 0)?.is_empty() {
+                    return Err(ShellError::IncompatibleParametersSingle(
+                        "expected either a predicate or terms, not both".to_owned(),
+                        span,
+                    ));
+                }
+
                 let block = engine_state.get_block(block_id).clone();
                 let var_id = block.signature.get_positional(0).and_then(|arg| arg.var_id);
 
