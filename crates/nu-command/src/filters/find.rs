@@ -2,8 +2,8 @@ use nu_engine::{eval_block, CallExt};
 use nu_protocol::{
     ast::Call,
     engine::{CaptureBlock, Command, EngineState, Stack},
-    Category, Example, IntoInterruptiblePipelineData, IntoPipelineData, PipelineData, ShellError,
-    Signature, Span, SyntaxShape, Value,
+    Category, Example, IntoInterruptiblePipelineData, PipelineData, ShellError, Signature, Span,
+    SyntaxShape, Value,
 };
 
 #[derive(Clone)]
@@ -27,7 +27,7 @@ impl Command for Find {
     }
 
     fn usage(&self) -> &str {
-        "Searches terms in the input or for an element of the input that satisfies the predicate."
+        "Searches terms in the input or for elements of the input that satisfies the predicate."
     }
 
     fn examples(&self) -> Vec<Example> {
@@ -63,16 +63,22 @@ impl Command for Find {
             },
             Example {
                 description: "Find the first odd value",
-                example: "echo [2 4 3 6 8] | find --predicate { ($it mod 2) == 1 }",
-                result: None,
+                example: "echo [2 4 3 6 5 8] | find --predicate { ($it mod 2) == 1 }",
+                result: Some(Value::List {
+                    vals: vec![Value::test_int(3), Value::test_int(5)],
+                    span: Span::test_data()
+                })
             },
             Example {
                 description: "Find if a service is not running",
                 example: "echo [[version patch]; [0.1.0 $false] [0.1.1 $true] [0.2.0 $false]] | find -p { $it.patch }",
-                result: Some(Value::Record {
-                    cols: vec!["version".to_owned(), "patch".to_owned()],
-                    vals: vec![Value::test_string("0.1.1"), Value::test_bool(true)],
-                    span: Span::test_data(),
+                result: Some(Value::List {
+                    vals: vec![Value::Record {
+                        cols: vec!["version".to_owned(), "patch".to_owned()],
+                        vals: vec![Value::test_string("0.1.1"), Value::test_bool(true)],
+                        span: Span::test_data(),
+                    }],
+                    span: Span::test_data()
                 }),
             },
         ]
@@ -101,8 +107,8 @@ impl Command for Find {
                 let mut stack = stack.captures_to_stack(&capture_block.captures);
 
                 Ok(input
-                    .into_interruptible_iter(ctrlc)
-                    .find(move |value| {
+                    .into_iter()
+                    .filter(move |value| {
                         if let Some(var_id) = var_id {
                             stack.add_var(var_id, value.clone());
                         }
@@ -112,8 +118,7 @@ impl Command for Find {
                                 pipeline_data.into_value(span).is_true()
                             })
                     })
-                    .unwrap_or(Value::Nothing { span })
-                    .into_pipeline_data())
+                    .into_pipeline_data(ctrlc))
             }
             None => {
                 let terms = call.rest::<Value>(&engine_state, stack, 0)?;
