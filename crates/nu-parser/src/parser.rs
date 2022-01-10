@@ -3387,6 +3387,7 @@ pub fn parse_statement(
     match name {
         b"def" => parse_def(working_set, spans),
         b"let" => parse_let(working_set, spans),
+        b"for" => parse_for(working_set, spans),
         b"alias" => parse_alias(working_set, spans),
         b"module" => parse_module(working_set, spans),
         b"use" => parse_use(working_set, spans),
