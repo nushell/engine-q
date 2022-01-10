@@ -18,7 +18,7 @@ impl Command for Find {
         Signature::build(self.name())
             .named(
                 "predicate",
-                SyntaxShape::RowCondition,
+                SyntaxShape::Block(Some(vec![SyntaxShape::Any])),
                 "the predicate to satisfy",
                 Some('p'),
             )
@@ -63,14 +63,12 @@ impl Command for Find {
             },
             Example {
                 description: "Find the first odd value",
-                example: "echo [2 4 3 6 8] | find --predicate ($it mod 2) == 1",
+                example: "echo [2 4 3 6 8] | find --predicate { ($it mod 2) == 1 }",
                 result: None,
-                // result: Some(Value::test_int(3)),
             },
             Example {
                 description: "Find if a service is not running",
-                example: "echo [[version patch]; [0.1.0 $false] [0.1.1 $true] [0.2.0 $false]] | find -p $it.patch",
-                // result: None,
+                example: "echo [[version patch]; [0.1.0 $false] [0.1.1 $true] [0.2.0 $false]] | find -p { $it.patch }",
                 result: Some(Value::Record {
                     cols: vec!["version".to_owned(), "patch".to_owned()],
                     vals: vec![Value::test_string("0.1.1"), Value::test_bool(true)],
