@@ -13,7 +13,7 @@ use nu_protocol::{
     },
     engine::StateWorkingSet,
     span, Flag, PositionalArg, Signature, Span, Spanned, SyntaxShape, Type, Unit, VarId,
-    CONFIG_VARIABLE_ID, ENV_VARIABLE_ID,
+    CONFIG_VARIABLE_ID, ENV_VARIABLE_ID, IN_VARIABLE_ID,
 };
 
 use crate::parse_keywords::{
@@ -3778,7 +3778,7 @@ pub fn find_captures_in_expr(
             output.extend(&result);
         }
         Expr::Var(var_id) => {
-            if *var_id > ENV_VARIABLE_ID && !seen.contains(var_id) {
+            if (*var_id > ENV_VARIABLE_ID || *var_id == IN_VARIABLE_ID) && !seen.contains(var_id) {
                 output.push(*var_id);
             }
         }
