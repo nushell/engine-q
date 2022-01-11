@@ -984,10 +984,6 @@ impl<'a> StateWorkingSet<'a> {
     pub fn add_variable(&mut self, mut name: Vec<u8>, ty: Type) -> VarId {
         let next_id = self.next_var_id();
 
-        if next_id == 27 {
-            println!("{}", String::from_utf8_lossy(&name));
-        }
-
         // correct name if necessary
         if !name.starts_with(b"$") {
             name.insert(0, b'$');

@@ -1,6 +1,6 @@
 use crate::{
     lex, lite_parse,
-    parse_keywords::parse_source,
+    parse_keywords::{parse_for, parse_source},
     type_check::{math_result_type, type_compatible},
     LiteBlock, ParseError, Token, TokenContents,
 };
@@ -3402,6 +3402,7 @@ pub fn parse_statement(
     match name {
         b"def" => parse_def(working_set, spans),
         b"let" => parse_let(working_set, spans),
+        b"for" => parse_for(working_set, spans),
         b"alias" => parse_alias(working_set, spans),
         b"module" => parse_module(working_set, spans),
         b"use" => parse_use(working_set, spans),
@@ -3584,7 +3585,7 @@ pub fn find_captures_in_block(
 ) -> Vec<VarId> {
     let mut output = vec![];
 
-    println!("sig: {:#?}", block.signature);
+    // println!("sig: {:#?}", block.signature);
 
     for flag in &block.signature.named {
         if let Some(var_id) = flag.var_id {
@@ -3725,7 +3726,7 @@ pub fn find_captures_in_expr(
             }
         }
         Expr::Signature(sig) => {
-            println!("Signature found! Adding var_ids");
+            // println!("Signature found! Adding var_ids");
             // Something with a declaration, similar to a var decl, will introduce more VarIds into the stack at eval
             for pos in &sig.required_positional {
                 if let Some(var_id) = pos.var_id {
@@ -3777,10 +3778,6 @@ pub fn find_captures_in_expr(
             output.extend(&result);
         }
         Expr::Var(var_id) => {
-            if !seen.contains(var_id) && *var_id == 12 {
-                println!("seen: {:?}", seen);
-                panic!("yup, it's not capturing correctly");
-            }
             if *var_id > ENV_VARIABLE_ID && !seen.contains(var_id) {
                 output.push(*var_id);
             }
