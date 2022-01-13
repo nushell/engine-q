@@ -2070,7 +2070,9 @@ dependencies = [
 name = "nu-system"
 version = "0.60.0"
 dependencies = [
+ "chrono",
  "errno",
+ "libc",
  "libproc",
  "procfs",
  "users",
