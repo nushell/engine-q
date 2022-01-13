@@ -32,3 +32,9 @@ For full performance build and run in release mode
 ```
 cargo run --release
 ```
+
+If you also want to have access to all ported plugins including dataframe support you need to enable the `extra` features with:
+
+```
+cargo run --features extra
+```
