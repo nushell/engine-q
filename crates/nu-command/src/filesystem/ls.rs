@@ -63,20 +63,17 @@ impl Command for Ls {
         let short_names = call.has_flag("short-names");
 
         let call_span = call.head;
+        // when we're asking for relative paths like ../../, we need to figure out if we need a prefix for display purposes
         let mut new_prefix = false;
-        let mut prefx = vec![];
+        let mut prefx = PathBuf::new();
 
         let (pattern, prefix) = if let Some(result) =
             call.opt::<Spanned<String>>(engine_state, stack, 0)?
         {
-            let path = PathBuf::from(&result.item);
-            match path.canonicalize() {
+            let curr_dir = current_dir(engine_state, stack)?;
+            let path = match nu_path::canonicalize_with(&result.item, curr_dir) {
+                Ok(p) => p,
                 Err(_e) => return Err(ShellError::DirectoryNotFound(result.span)),
-                Ok(p) => {
-                    if !p.exists() {
-                        return Err(ShellError::DirectoryNotFound(result.span));
-                    }
-                }
             };
 
             let (mut path, prefix) = if path.is_relative() {
@@ -113,7 +110,7 @@ impl Command for Ls {
                 if is_empty_dir(&path) {
                     return Ok(PipelineData::new(call_span));
                 }
-
+                // we figure out how to display a relative path which was requested from a subdirectory, e.g., ls ../
                 let curr_dir = current_dir(engine_state, stack)?;
                 new_prefix = curr_dir.ancestors().any(|x| x.to_path_buf() == path);
                 if new_prefix {
@@ -193,7 +190,11 @@ impl Command for Ls {
                             let filename = if new_prefix {
                                 match path.file_name() {
                                     Some(p) => {
-                                        format!("{}{}", prefx.concat(), p.to_string_lossy())
+                                        format!(
+                                            "{}{}",
+                                            prefx.to_string_lossy(),
+                                            p.to_string_lossy()
+                                        )
                                     }
                                     None => path.to_string_lossy().to_string(),
                                 }
