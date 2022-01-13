@@ -65,7 +65,7 @@ impl Command for Ls {
         let call_span = call.head;
         // when we're asking for relative paths like ../../, we need to figure out if we need a prefix for display purposes
         let mut new_prefix = false;
-        let mut prefx = PathBuf::new();
+        let mut prefix_str = PathBuf::new();
 
         let (pattern, prefix) = if let Some(result) =
             call.opt::<Spanned<String>>(engine_state, stack, 0)?
@@ -118,7 +118,7 @@ impl Command for Ls {
                         if a.to_path_buf() == path {
                             break;
                         }
-                        prefx.push(format!("..{}", std::path::MAIN_SEPARATOR));
+                        prefix_str.push(format!("..{}", std::path::MAIN_SEPARATOR));
                     }
                 }
 
@@ -192,7 +192,7 @@ impl Command for Ls {
                                     Some(p) => {
                                         format!(
                                             "{}{}",
-                                            prefx.to_string_lossy(),
+                                            prefix_str.to_string_lossy(),
                                             p.to_string_lossy()
                                         )
                                     }
