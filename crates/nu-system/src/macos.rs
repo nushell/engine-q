@@ -6,6 +6,7 @@ use libproc::libproc::pid_rusage::{pidrusage, RUsageInfoV2};
 use libproc::libproc::proc_pid::{listpidinfo, listpids, pidinfo, ListThreads, ProcType};
 use libproc::libproc::task_info::{TaskAllInfo, TaskInfo};
 use libproc::libproc::thread_info::ThreadInfo;
+use std::cmp;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::thread;
