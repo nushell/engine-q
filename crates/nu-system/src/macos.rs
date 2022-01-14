@@ -69,25 +69,22 @@ pub fn collect_proc(interval: Duration, _with_thread: bool) -> Vec<ProcessInfo> 
         let fds = listpidinfo::<ListFDs>(pid, curr_task.pbsd.pbi_nfiles as usize);
         if let Ok(fds) = fds {
             for fd in fds {
-                match fd.proc_fdtype.into() {
-                    ProcFDType::Socket => {
-                        if let Ok(socket) = pidfdinfo::<SocketFDInfo>(pid, fd.proc_fd) {
-                            match socket.psi.soi_kind.into() {
-                                SocketInfoKind::In => {
-                                    if socket.psi.soi_protocol == libc::IPPROTO_UDP {
-                                        let info = unsafe { socket.psi.soi_proto.pri_in };
-                                        curr_udps.push(info);
-                                    }
+                if let ProcFDType::Socket = fd.proc_fdtype.into() {
+                    if let Ok(socket) = pidfdinfo::<SocketFDInfo>(pid, fd.proc_fd) {
+                        match socket.psi.soi_kind.into() {
+                            SocketInfoKind::In => {
+                                if socket.psi.soi_protocol == libc::IPPROTO_UDP {
+                                    let info = unsafe { socket.psi.soi_proto.pri_in };
+                                    curr_udps.push(info);
                                 }
-                                SocketInfoKind::Tcp => {
-                                    let info = unsafe { socket.psi.soi_proto.pri_tcp };
-                                    curr_tcps.push(info);
-                                }
-                                _ => (),
                             }
+                            SocketInfoKind::Tcp => {
+                                let info = unsafe { socket.psi.soi_proto.pri_tcp };
+                                curr_tcps.push(info);
+                            }
+                            _ => (),
                         }
                     }
-                    _ => (),
                 }
             }
         }
@@ -177,10 +174,10 @@ fn get_path_info(pid: i32, mut size: size_t) -> Option<PathInfo> {
                 ptr as *const c_void,
                 ::std::mem::size_of::<c_int>(),
             );
-            let mut cp = ptr.offset(::std::mem::size_of::<c_int>() as isize);
+            let mut cp = ptr.add(::std::mem::size_of::<c_int>());
             let mut start = cp;
-            if cp < ptr.offset(size as isize) {
-                while cp < ptr.offset(size as isize) && *cp != 0 {
+            if cp < ptr.add(size) {
+                while cp < ptr.add(size) && *cp != 0 {
                     cp = cp.offset(1);
                 }
                 let exe = Path::new(get_unchecked_str(cp, start).as_str()).to_path_buf();
@@ -198,13 +195,13 @@ fn get_path_info(pid: i32, mut size: size_t) -> Option<PathInfo> {
                         need_root = false;
                     }
                 }
-                while cp < ptr.offset(size as isize) && *cp == 0 {
+                while cp < ptr.add(size) && *cp == 0 {
                     cp = cp.offset(1);
                 }
                 start = cp;
                 let mut c = 0;
                 let mut cmd = Vec::new();
-                while c < n_args && cp < ptr.offset(size as isize) {
+                while c < n_args && cp < ptr.add(size) {
                     if *cp == 0 {
                         c += 1;
                         cmd.push(get_unchecked_str(cp, start));
@@ -214,7 +211,7 @@ fn get_path_info(pid: i32, mut size: size_t) -> Option<PathInfo> {
                 }
                 start = cp;
                 let mut env = Vec::new();
-                while cp < ptr.offset(size as isize) {
+                while cp < ptr.add(size) {
                     if *cp == 0 {
                         if cp == start {
                             break;
@@ -224,7 +221,7 @@ fn get_path_info(pid: i32, mut size: size_t) -> Option<PathInfo> {
                     }
                     cp = cp.offset(1);
                 }
-                if need_root == true {
+                if need_root {
                     for env in env.iter() {
                         if env.starts_with("PATH=") {
                             root = Path::new(&env[6..]).to_path_buf();
@@ -368,7 +365,7 @@ impl ProcessInfo {
             6 => "Halted",
             _ => "?",
         };
-        format!("{}", state)
+        state.to_string()
     }
 
     /// CPU usage as a percent of total
