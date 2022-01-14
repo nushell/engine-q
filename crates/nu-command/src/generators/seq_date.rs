@@ -83,24 +83,6 @@ impl Command for SeqDate {
                 result: None,
             },
             Example {
-                description: "Number each item and echo a message",
-                example: "for $it in ['bob' 'fred'] --numbered { $\"($it.index) is ($it.item)\" }",
-                result: Some(Value::List {
-                    vals: vec![
-                        Value::String {
-                            val: "0 is bob".into(),
-                            span,
-                        },
-                        Value::String {
-                            val: "1 is fred".into(),
-                            span,
-                        },
-                    ],
-                    span,
-                }),
-            },
-
-            Example {
                 description: "print the first 10 days in January, 2020",
                 example: "seq date -b '2020-01-01' -e '2020-01-10'",
                 result: Some(Value::List {
