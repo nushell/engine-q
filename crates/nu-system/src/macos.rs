@@ -185,7 +185,7 @@ fn get_path_info(pid: i32, mut size: size_t) -> Option<PathInfo> {
                     .file_name()
                     .unwrap_or_else(|| OsStr::new(""))
                     .to_str()
-                    .unwrap_or_else(|| "")
+                    .unwrap_or("")
                     .to_owned();
                 let mut need_root = true;
                 let mut root = Default::default();
