@@ -168,7 +168,7 @@ pub fn collect_proc(interval: Duration, _with_thread: bool) -> Vec<ProcessInfo> 
                     name: None,
                     domainname: None,
                 });
-                let groups = groups.unwrap_or_else(|| vec![]);
+                let groups = groups.unwrap_or_else(Vec::new);
                 let thread = thread.unwrap_or_default();
 
                 let proc = ProcessInfo {
@@ -440,7 +440,6 @@ fn get_user(handle: HANDLE) -> Option<SidName> {
         );
 
         let mut buf: Vec<u8> = Vec::with_capacity(cb_needed as usize);
-        buf.set_len(cb_needed as usize);
 
         let ret = GetTokenInformation(
             token,
@@ -449,6 +448,7 @@ fn get_user(handle: HANDLE) -> Option<SidName> {
             cb_needed,
             &mut cb_needed,
         );
+        buf.set_len(cb_needed as usize);
 
         if ret == 0 {
             return None;
