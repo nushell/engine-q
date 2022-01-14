@@ -42,6 +42,7 @@ pub struct ProcessInfo {
     pub interval: Duration,
 }
 
+#[derive(Default)]
 pub struct MemoryInfo {
     pub page_fault_count: u64,
     pub peak_working_set_size: u64,
@@ -55,6 +56,7 @@ pub struct MemoryInfo {
     pub private_usage: u64,
 }
 
+#[derive(Default)]
 pub struct DiskInfo {
     pub prev_read: u64,
     pub prev_write: u64,
@@ -62,6 +64,7 @@ pub struct DiskInfo {
     pub curr_write: u64,
 }
 
+#[derive(Default)]
 pub struct CpuInfo {
     pub prev_sys: u64,
     pub prev_user: u64,
@@ -157,15 +160,19 @@ pub fn collect_proc(interval: Duration, _with_thread: bool) -> Vec<ProcessInfo> 
             all_ok &= thread.is_some();
 
             if all_ok {
-                let command = command.unwrap();
+                let command = command.unwrap_or_default();
                 let ppid = ppid.unwrap_or(0);
-                let start_time = start_time.unwrap();
-                let cpu_info = cpu_info.unwrap();
-                let memory_info = memory_info.unwrap();
-                let disk_info = disk_info.unwrap();
-                let user = user.unwrap();
-                let groups = groups.unwrap();
-                let thread = thread.unwrap();
+                let start_time = start_time.unwrap_or_default();
+                let cpu_info = cpu_info.unwrap_or_default();
+                let memory_info = memory_info.unwrap_or_default();
+                let disk_info = disk_info.unwrap_or_or_default();
+                let user = user.unwrap_or_else(|| SidName {
+                    sid: vec![],
+                    name: None,
+                    domainname: None,
+                });
+                let groups = groups.unwrap_or_else(|| vec![]);
+                let thread = thread.unwrap_or_default();
 
                 let proc = ProcessInfo {
                     pid,
@@ -489,7 +496,6 @@ fn get_groups(handle: HANDLE) -> Option<Vec<SidName>> {
         );
 
         let mut buf: Vec<u8> = Vec::with_capacity(cb_needed as usize);
-        buf.set_len(cb_needed as usize);
 
         let ret = GetTokenInformation(
             token,
@@ -498,6 +504,7 @@ fn get_groups(handle: HANDLE) -> Option<Vec<SidName>> {
             cb_needed,
             &mut cb_needed,
         );
+        buf.set_len(cb_needed as usize);
 
         if ret == 0 {
             return None;
@@ -626,7 +633,7 @@ fn from_wide_ptr(ptr: *const u16) -> String {
         assert!(!ptr.is_null());
         let len = (0..std::isize::MAX)
             .position(|i| *ptr.offset(i) == 0)
-            .unwrap();
+            .unwrap_or_default();
         let slice = std::slice::from_raw_parts(ptr, len);
         OsString::from_wide(slice).to_string_lossy().into_owned()
     }
