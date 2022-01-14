@@ -115,7 +115,7 @@ pub fn collect_proc(interval: Duration, _with_thread: bool) -> Vec<ProcessInfo> 
                 let time = base + time;
                 Local.from_utc_datetime(&time)
             } else {
-                Local.from_utc_datetime(NaiveDate::from_ymd(1600, 1, 1).and_hms(0, 0, 0))
+                Local.from_utc_datetime(&NaiveDate::from_ymd(1600, 1, 1).and_hms(0, 0, 0))
             };
 
             let cpu_info = if let Some((_, _, curr_sys, curr_user)) = times {
@@ -150,7 +150,6 @@ pub fn collect_proc(interval: Duration, _with_thread: bool) -> Vec<ProcessInfo> 
 
             let mut all_ok = true;
             all_ok &= command.is_some();
-            all_ok &= start_time.is_some();
             all_ok &= cpu_info.is_some();
             all_ok &= memory_info.is_some();
             all_ok &= disk_info.is_some();
