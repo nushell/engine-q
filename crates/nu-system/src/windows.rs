@@ -113,10 +113,9 @@ pub fn collect_proc(interval: Duration, _with_thread: bool) -> Vec<ProcessInfo> 
                 let time = chrono::Duration::seconds(start as i64 / 10_000_000);
                 let base = NaiveDate::from_ymd(1600, 1, 1).and_hms(0, 0, 0);
                 let time = base + time;
-                let local = Local.from_utc_datetime(&time);
-                Some(local)
+                Local.from_utc_datetime(&time)
             } else {
-                None
+                Local.from_utc_datetime(NaiveDate::from_ymd(1600, 1, 1).and_hms(0, 0, 0))
             };
 
             let cpu_info = if let Some((_, _, curr_sys, curr_user)) = times {
@@ -162,10 +161,9 @@ pub fn collect_proc(interval: Duration, _with_thread: bool) -> Vec<ProcessInfo> 
             if all_ok {
                 let command = command.unwrap_or_default();
                 let ppid = ppid.unwrap_or(0);
-                let start_time = start_time.unwrap_or_default();
                 let cpu_info = cpu_info.unwrap_or_default();
                 let memory_info = memory_info.unwrap_or_default();
-                let disk_info = disk_info.unwrap_or_or_default();
+                let disk_info = disk_info.unwrap_or_default();
                 let user = user.unwrap_or_else(|| SidName {
                     sid: vec![],
                     name: None,
