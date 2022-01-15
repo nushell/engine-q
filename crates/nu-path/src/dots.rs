@@ -111,18 +111,6 @@ pub fn expand_dots(path: impl AsRef<Path>) -> PathBuf {
     dunce::simplified(&result).to_path_buf()
 }
 
-/// Expand "." into nothing
-pub fn expand_single_dots(path: impl AsRef<Path>) -> PathBuf {
-    let path = path.as_ref();
-
-    let path: PathBuf = path
-        .components()
-        .filter(|c| !std::matches!(c, Component::CurDir))
-        .collect();
-
-    dunce::simplified(&path).to_path_buf()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -142,30 +130,6 @@ mod tests {
         let path = Path::new("/foo/./bar/./baz");
 
         assert_eq!(PathBuf::from("/foo/bar/baz"), expand_dots(path));
-    }
-
-    #[test]
-    fn expand_curdir() {
-        let path = Path::new("/foo/bar/.");
-
-        assert_eq!(
-            PathBuf::from("/foo/bar"), // missing path
-            expand_single_dots(path)
-        );
-    }
-
-    #[test]
-    fn expand_multiple_curdirs() {
-        let path = Path::new("/foo/./bar/./baz");
-
-        assert_eq!(PathBuf::from("/foo/bar/baz"), expand_single_dots(path));
-    }
-
-    #[test]
-    fn expand_multiple_curdirs_but_no_parent_dirs() {
-        let path = Path::new(".././foo/./bar/./../baz");
-
-        assert_eq!(PathBuf::from("../foo/bar/../baz"), expand_single_dots(path));
     }
 
     fn check_ndots_expansion(expected: &str, s: &str) {

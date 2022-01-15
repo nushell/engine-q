@@ -1621,13 +1621,10 @@ pub fn parse_filepath(
     trace!("parsing: filepath");
 
     if let Ok(token) = String::from_utf8(bytes.into()) {
-        let filepath = nu_path::expand_single_dots(token);
-        let filepath = filepath.to_string_lossy().to_string();
-        trace!("-- found {}", filepath);
-
+        trace!("-- found {}", token);
         (
             Expression {
-                expr: Expr::Filepath(filepath),
+                expr: Expr::Filepath(token),
                 span,
                 ty: Type::String,
                 custom_completion: None,
@@ -1848,13 +1845,9 @@ pub fn parse_glob_pattern(
 
     if let Ok(token) = String::from_utf8(bytes.into()) {
         trace!("-- found {}", token);
-
-        let filepath = nu_path::expand_single_dots(token);
-        let filepath = filepath.to_string_lossy().to_string();
-
         (
             Expression {
-                expr: Expr::GlobPattern(filepath),
+                expr: Expr::GlobPattern(token),
                 span,
                 ty: Type::String,
                 custom_completion: None,
