@@ -76,12 +76,25 @@ impl Command for Save {
                         input,
                     )?;
 
-                    let output = output.collect_string("", &config)?;
-                    if let Err(err) = file.write_all(output.as_bytes()) {
-                        return Err(ShellError::IOError(err.to_string()));
-                    }
+                    let output = output.into_value(span);
 
-                    Ok(PipelineData::new(span))
+                    match output {
+                        Value::String { val, .. } => {
+                            if let Err(err) = file.write_all(val.as_bytes()) {
+                                return Err(ShellError::IOError(err.to_string()));
+                            }
+
+                            Ok(PipelineData::new(span))
+                        }
+                        Value::Binary { val, .. } => {
+                            if let Err(err) = file.write_all(&val) {
+                                return Err(ShellError::IOError(err.to_string()));
+                            }
+
+                            Ok(PipelineData::new(span))
+                        }
+                        v => Err(ShellError::UnsupportedInput(v.get_type().to_string(), span)),
+                    }
                 }
                 None => {
                     let output = input.collect_string("", &config)?;
