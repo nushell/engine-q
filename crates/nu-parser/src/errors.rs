@@ -61,9 +61,19 @@ pub enum ParseError {
     #[diagnostic(
         code(nu::parser::unexpected_keyword),
         url(docsrs),
-        help("'export' keyword is allowed only in a module.")
+        help("'{0}' keyword is allowed only in a module.")
     )]
     UnexpectedKeyword(String, #[label("unexpected {0}")] Span),
+
+    #[error("Statement used in pipeline.")]
+    #[diagnostic(
+        code(nu::parser::unexpected_keyword),
+        url(docsrs),
+        help(
+            "'{0}' keyword is not allowed in pipeline. Use '{0}' by itself, outside of a pipeline."
+        )
+    )]
+    StatementInPipeline(String, #[label("not allowed in pipeline")] Span),
 
     #[error("Incorrect value")]
     #[diagnostic(code(nu::parser::incorrect_value), url(docsrs), help("{2}"))]
