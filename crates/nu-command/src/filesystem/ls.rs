@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use pathdiff::diff_paths;
 
 use nu_engine::env::current_dir;
 use nu_engine::CallExt;
@@ -12,12 +13,11 @@ use nu_protocol::{
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-use std::path::{Component, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Clone)]
 pub struct Ls;
 
-//NOTE: this is not a real implementation :D. It's just a simple one to test with until we port the real one.
 impl Command for Ls {
     fn name(&self) -> &str {
         "ls"
@@ -45,6 +45,7 @@ impl Command for Ls {
                 "Only print the file names and not the path",
                 Some('s'),
             )
+            .switch("full-paths", "display paths as absolute paths", Some('f'))
             // .switch(
             //     "du",
             //     "Display the apparent directory size in place of the directory metadata size",
@@ -63,44 +64,35 @@ impl Command for Ls {
         let all = call.has_flag("all");
         let long = call.has_flag("long");
         let short_names = call.has_flag("short-names");
+        let full_paths = call.has_flag("full-paths");
 
         let call_span = call.head;
         let cwd = current_dir(engine_state, stack)?;
 
-        let (pattern, prefix, prefix_replacement) =
-            if let Some(path_arg) = call.opt::<Spanned<String>>(engine_state, stack, 0)? {
-                let path = PathBuf::from(path_arg.item);
-                let path = if path.is_relative() {
-                    expand_path_with(path, &cwd)
+        let pattern_arg = call.opt::<Spanned<String>>(engine_state, stack, 0)?;
+
+        let pattern = if let Some(arg) = pattern_arg {
+            let path = PathBuf::from(arg.item);
+            let path = if path.is_relative() {
+                expand_path_with(path, &cwd)
+            } else {
+                path
+            };
+
+            if path.to_string_lossy().contains('*') {
+                // Path is a glob pattern => do not check for existence
+                path
+            } else {
+                let path = if let Ok(p) = canonicalize_with(path, &cwd) {
+                    p
                 } else {
-                    path
+                    return Err(ShellError::DirectoryNotFound(arg.span));
                 };
 
-                let (pattern, prefix) = if path.to_string_lossy().contains('*') {
-                    // Path is a glob pattern => do not check for existence
-                    let mut p = PathBuf::new();
-
-                    // Select the longest prefix until the first '*'
-                    for c in path.components() {
-                        if let Component::Normal(os) = c {
-                            if os.to_string_lossy().contains('*') {
-                                break;
-                            }
-                        }
-                        p.push(c);
-                    }
-                    (path, p)
-                } else {
-                    let path = if let Ok(p) = canonicalize_with(path, &cwd) {
-                        p
-                    } else {
-                        return Err(ShellError::DirectoryNotFound(path_arg.span));
-                    };
-
-                    if path.is_dir() {
-                        if permission_denied(&path) {
-                            #[cfg(unix)]
-                            let error_msg = format!(
+                if path.is_dir() {
+                    if permission_denied(&path) {
+                        #[cfg(unix)]
+                        let error_msg = format!(
                             "The permissions of {:o} do not allow access for this user",
                             path.metadata()
                                 .expect(
@@ -111,62 +103,30 @@ impl Command for Ls {
                                 & 0o0777
                         );
 
-                            #[cfg(not(unix))]
-                            let error_msg = String::from("Permission denied");
+                        #[cfg(not(unix))]
+                        let error_msg = String::from("Permission denied");
 
-                            return Err(ShellError::SpannedLabeledError(
-                                "Permission denied".into(),
-                                error_msg,
-                                path_arg.span,
-                            ));
-                        }
-
-                        if is_empty_dir(&path) {
-                            return Ok(PipelineData::new(call_span));
-                        }
-
-                        (path.join("*"), path)
-                    } else {
-                        (
-                            path.clone(),
-                            if let Some(parent) = path.parent() {
-                                parent.to_path_buf()
-                            } else {
-                                PathBuf::new()
-                            },
-                        )
-                    }
-                };
-
-                let prefix_replacement = if cwd.ancestors().any(|x| x == prefix) {
-                    let mut replacement = PathBuf::new();
-
-                    for a in cwd.ancestors() {
-                        if a == prefix {
-                            break;
-                        }
-                        replacement.push("..");
+                        return Err(ShellError::SpannedLabeledError(
+                            "Permission denied".into(),
+                            error_msg,
+                            arg.span,
+                        ));
                     }
 
-                    Some(replacement)
-                } else if let Ok(p) = prefix.strip_prefix(&cwd) {
-                    Some(p.to_path_buf())
+                    if is_empty_dir(&path) {
+                        return Ok(PipelineData::new(call_span));
+                    }
+
+                    path.join("*")
                 } else {
-                    None
-                };
-
-                (
-                    pattern.to_string_lossy().to_string(),
-                    prefix,
-                    prefix_replacement,
-                )
-            } else {
-                (
-                    cwd.join("*").to_string_lossy().to_string(),
-                    cwd.clone(),
-                    Some(PathBuf::from("")),
-                )
-            };
+                    path
+                }
+            }
+        } else {
+            cwd.join("*")
+        }
+        .to_string_lossy()
+        .to_string();
 
         let glob = glob::glob(&pattern).map_err(|err| {
             nu_protocol::ShellError::SpannedLabeledError(
@@ -199,16 +159,13 @@ impl Command for Ls {
                     }
 
                     let display_name = if short_names {
-                        path.file_name().map(|s| s.to_string_lossy().to_string())
-                    } else if let Some(replacement) = &prefix_replacement {
-                        match path.strip_prefix(&prefix) {
-                            Ok(stripped) => {
-                                Some(replacement.join(stripped).to_string_lossy().to_string())
-                            }
-                            Err(_) => Some(path.to_string_lossy().to_string()),
-                        }
-                    } else {
+                        path.file_name().map(|os| os.to_string_lossy().to_string())
+                    } else if full_paths {
                         Some(path.to_string_lossy().to_string())
+                    } else {
+                        diff_paths(&path, &cwd)
+                            .or_else(|| Some(path.clone()))
+                            .map(|p| p.to_string_lossy().to_string())
                     }
                     .ok_or_else(|| {
                         ShellError::SpannedLabeledError(
