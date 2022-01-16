@@ -78,7 +78,7 @@ impl Command for Table {
             )),
             PipelineData::Value(Value::Binary { val, .. }, ..) => Ok(PipelineData::StringStream(
                 StringStream::from_stream(
-                    vec![Ok(if val.iter().all(|x| x.is_ascii()) {
+                    vec![Ok(if val.iter().all(|x| *x < 128 && *x >= b'0') {
                         format!("{}", String::from_utf8_lossy(&val))
                     } else {
                         format!("{}\n", nu_pretty_hex::pretty_hex(&val))
