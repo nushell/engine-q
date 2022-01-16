@@ -1,6 +1,8 @@
 use chrono::{DateTime, Utc};
+
 use nu_engine::env::current_dir;
 use nu_engine::CallExt;
+use nu_path::{canonicalize_with, expand_path_with};
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
@@ -10,7 +12,7 @@ use nu_protocol::{
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-use std::path::PathBuf;
+use std::path::{Component, PathBuf};
 
 #[derive(Clone)]
 pub struct Ls;
@@ -63,79 +65,108 @@ impl Command for Ls {
         let short_names = call.has_flag("short-names");
 
         let call_span = call.head;
-        // when we're asking for relative paths like ../../, we need to figure out if we need a prefix for display purposes
-        let mut new_prefix = false;
-        let mut prefix_str = PathBuf::new();
+        let cwd = current_dir(engine_state, stack)?;
 
-        let (pattern, prefix) = if let Some(result) =
-            call.opt::<Spanned<String>>(engine_state, stack, 0)?
-        {
-            let curr_dir = current_dir(engine_state, stack)?;
-            let path = match nu_path::canonicalize_with(&result.item, curr_dir) {
-                Ok(p) => p,
-                Err(_e) => return Err(ShellError::DirectoryNotFound(result.span)),
-            };
+        let (pattern, prefix, prefix_replacement) =
+            if let Some(path_arg) = call.opt::<Spanned<String>>(engine_state, stack, 0)? {
+                let path = PathBuf::from(path_arg.item);
+                let path = if path.is_relative() {
+                    expand_path_with(path, &cwd)
+                } else {
+                    path
+                };
 
-            let (mut path, prefix) = if path.is_relative() {
-                let cwd = current_dir(engine_state, stack)?;
-                (cwd.join(path), Some(cwd))
-            } else {
-                (path, None)
-            };
+                let (pattern, prefix) = if path.to_string_lossy().contains('*') {
+                    // Path is a glob pattern => do not check for existence
+                    let mut p = PathBuf::new();
 
-            if path.is_file() {
-                (
-                    path.to_string_lossy().to_string(),
-                    Some(current_dir(engine_state, stack)?),
-                )
-            } else if path.is_dir() {
-                if permission_denied(&path) {
-                    #[cfg(unix)]
-                    let error_msg = format!(
-                        "The permissions of {:o} do not allow access for this user",
-                        path.metadata()
-                            .expect("this shouldn't be called since we already know there is a dir")
-                            .permissions()
-                            .mode()
-                            & 0o0777
-                    );
-                    #[cfg(not(unix))]
-                    let error_msg = String::from("Permission denied");
-                    return Err(ShellError::SpannedLabeledError(
-                        "Permission denied".into(),
-                        error_msg,
-                        result.span,
-                    ));
-                }
-                if is_empty_dir(&path) {
-                    return Ok(PipelineData::new(call_span));
-                }
-                // we figure out how to display a relative path which was requested from a subdirectory, e.g., ls ../
-                let curr_dir = current_dir(engine_state, stack)?;
-                new_prefix = curr_dir.ancestors().any(|x| x.to_path_buf() == path);
-                if new_prefix {
-                    for a in curr_dir.ancestors() {
-                        if a.to_path_buf() == path {
+                    // Select the longest prefix until the first '*'
+                    for c in path.components() {
+                        if let Component::Normal(os) = c {
+                            if os.to_string_lossy().contains('*') {
+                                break;
+                            }
+                        }
+                        p.push(c);
+                    }
+                    (path, p)
+                } else {
+                    let path = if let Ok(p) = canonicalize_with(path, &cwd) {
+                        p
+                    } else {
+                        return Err(ShellError::DirectoryNotFound(path_arg.span));
+                    };
+
+                    if path.is_dir() {
+                        if permission_denied(&path) {
+                            #[cfg(unix)]
+                            let error_msg = format!(
+                            "The permissions of {:o} do not allow access for this user",
+                            path.metadata()
+                                .expect(
+                                    "this shouldn't be called since we already know there is a dir"
+                                )
+                                .permissions()
+                                .mode()
+                                & 0o0777
+                        );
+
+                            #[cfg(not(unix))]
+                            let error_msg = String::from("Permission denied");
+
+                            return Err(ShellError::SpannedLabeledError(
+                                "Permission denied".into(),
+                                error_msg,
+                                path_arg.span,
+                            ));
+                        }
+
+                        if is_empty_dir(&path) {
+                            return Ok(PipelineData::new(call_span));
+                        }
+
+                        (path.join("*"), path)
+                    } else {
+                        (
+                            path.clone(),
+                            if let Some(parent) = path.parent() {
+                                parent.to_path_buf()
+                            } else {
+                                PathBuf::new()
+                            },
+                        )
+                    }
+                };
+
+                let prefix_replacement = if cwd.ancestors().any(|x| x == prefix) {
+                    let mut replacement = PathBuf::new();
+
+                    for a in cwd.ancestors() {
+                        if a == prefix {
                             break;
                         }
-                        prefix_str.push(format!("..{}", std::path::MAIN_SEPARATOR));
+                        replacement.push("..");
                     }
-                }
 
-                if path.is_dir() {
-                    path = path.join("*");
-                }
+                    Some(replacement)
+                } else if let Ok(p) = prefix.strip_prefix(&cwd) {
+                    Some(p.to_path_buf())
+                } else {
+                    None
+                };
+
                 (
-                    path.to_string_lossy().to_string(),
-                    Some(current_dir(engine_state, stack)?),
+                    pattern.to_string_lossy().to_string(),
+                    prefix,
+                    prefix_replacement,
                 )
             } else {
-                (path.to_string_lossy().to_string(), prefix)
-            }
-        } else {
-            let cwd = current_dir(engine_state, stack)?;
-            (cwd.join("*").to_string_lossy().to_string(), Some(cwd))
-        };
+                (
+                    cwd.join("*").to_string_lossy().to_string(),
+                    cwd.clone(),
+                    Some(PathBuf::from("")),
+                )
+            };
 
         let glob = glob::glob(&pattern).map_err(|err| {
             nu_protocol::ShellError::SpannedLabeledError(
@@ -168,14 +199,16 @@ impl Command for Ls {
                     }
 
                     let display_name = if short_names {
-                        path.file_name().and_then(|s| s.to_str())
-                    } else if let Some(pre) = &prefix {
-                        match path.strip_prefix(pre) {
-                            Ok(stripped) => stripped.to_str(),
-                            Err(_) => path.to_str(),
+                        path.file_name().map(|s| s.to_string_lossy().to_string())
+                    } else if let Some(replacement) = &prefix_replacement {
+                        match path.strip_prefix(&prefix) {
+                            Ok(stripped) => {
+                                Some(replacement.join(stripped).to_string_lossy().to_string())
+                            }
+                            Err(_) => Some(path.to_string_lossy().to_string()),
                         }
                     } else {
-                        path.to_str()
+                        Some(path.to_string_lossy().to_string())
                     }
                     .ok_or_else(|| {
                         ShellError::SpannedLabeledError(
@@ -187,27 +220,8 @@ impl Command for Ls {
 
                     match display_name {
                         Ok(name) => {
-                            let filename = if new_prefix {
-                                match path.file_name() {
-                                    Some(p) => {
-                                        format!(
-                                            "{}{}",
-                                            prefix_str.to_string_lossy(),
-                                            p.to_string_lossy()
-                                        )
-                                    }
-                                    None => path.to_string_lossy().to_string(),
-                                }
-                            } else {
-                                name.to_string()
-                            };
-                            let entry = dir_entry_dict(
-                                &path,
-                                filename.as_str(),
-                                metadata.as_ref(),
-                                call_span,
-                                long,
-                            );
+                            let entry =
+                                dir_entry_dict(&path, &name, metadata.as_ref(), call_span, long);
                             match entry {
                                 Ok(value) => Some(value),
                                 Err(err) => Some(Value::Error { error: err }),
