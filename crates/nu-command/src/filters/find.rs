@@ -147,6 +147,7 @@ impl Command for Find {
                             }
                             Value::String { .. }
                             | Value::List { .. }
+                            | Value::CellPath { .. }
                             | Value::CustomValue { .. } => term
                                 .r#in(span, value)
                                 .map_or(false, |value| value.is_true()),
@@ -154,7 +155,6 @@ impl Command for Find {
                                 term.r#in(span, val).map_or(false, |value| value.is_true())
                             }),
                             Value::Binary { .. } => todo!(),
-                            Value::CellPath { .. } => todo!(),
                         })
                     })
                     .into_pipeline_data(ctrlc))

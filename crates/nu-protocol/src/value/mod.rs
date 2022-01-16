@@ -1291,6 +1291,32 @@ impl Value {
                 val: rhs.contains(lhs),
                 span,
             }),
+            (Value::String { .. } | Value::Int { .. }, Value::CellPath { val: rhs, .. }) => {
+                let val = rhs.members.iter().any(|member| match (self, member) {
+                    (Value::Int { val: lhs, .. }, PathMember::Int { val: rhs, .. }) => {
+                        *lhs == *rhs as i64
+                    }
+                    (Value::String { val: lhs, .. }, PathMember::String { val: rhs, .. }) => {
+                        lhs == rhs
+                    }
+                    (Value::String { .. }, PathMember::Int { .. })
+                    | (Value::Int { .. }, PathMember::String { .. }) => false,
+                    _ => unreachable!(
+                        "outer match arm ensures `self` is either a `String` or `Int` variant"
+                    ),
+                });
+
+                Ok(Value::Bool { val, span })
+            }
+            (Value::CellPath { val: lhs, .. }, Value::CellPath { val: rhs, .. }) => {
+                Ok(Value::Bool {
+                    val: rhs
+                        .members
+                        .windows(lhs.members.len())
+                        .any(|member_window| member_window == rhs.members),
+                    span,
+                })
+            }
             (Value::CustomValue { val: lhs, span }, rhs) => {
                 lhs.operation(*span, Operator::In, op, rhs)
             }
@@ -1324,6 +1350,32 @@ impl Value {
                 val: !rhs.contains(lhs),
                 span,
             }),
+            (Value::String { .. } | Value::Int { .. }, Value::CellPath { val: rhs, .. }) => {
+                let val = rhs.members.iter().any(|member| match (self, member) {
+                    (Value::Int { val: lhs, .. }, PathMember::Int { val: rhs, .. }) => {
+                        *lhs != *rhs as i64
+                    }
+                    (Value::String { val: lhs, .. }, PathMember::String { val: rhs, .. }) => {
+                        lhs != rhs
+                    }
+                    (Value::String { .. }, PathMember::Int { .. })
+                    | (Value::Int { .. }, PathMember::String { .. }) => true,
+                    _ => unreachable!(
+                        "outer match arm ensures `self` is either a `String` or `Int` variant"
+                    ),
+                });
+
+                Ok(Value::Bool { val, span })
+            }
+            (Value::CellPath { val: lhs, .. }, Value::CellPath { val: rhs, .. }) => {
+                Ok(Value::Bool {
+                    val: rhs
+                        .members
+                        .windows(lhs.members.len())
+                        .all(|member_window| member_window != rhs.members),
+                    span,
+                })
+            }
             (Value::CustomValue { val: lhs, span }, rhs) => {
                 lhs.operation(*span, Operator::NotIn, op, rhs)
             }
