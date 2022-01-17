@@ -3,11 +3,8 @@ use std::sync::{
     Arc,
 };
 
+use crate::utils::{eval_source, gather_parent_env_vars, report_error};
 use crate::{config_files, prompt_update, reedline_config};
-use crate::{
-    fuzzy_completion,
-    utils::{eval_source, gather_parent_env_vars, report_error},
-};
 use log::trace;
 use miette::{IntoDiagnostic, Result};
 use nu_cli::{NuCompleter, NuHighlighter, NuValidator, NushellPrompt};
@@ -92,9 +89,9 @@ pub(crate) fn evaluate(ctrlc: Arc<AtomicBool>, engine_state: &mut EngineState) -
 
         let line_editor = Reedline::create()
             .into_diagnostic()?
-            .with_completion_action_handler(Box::new(fuzzy_completion::FuzzyCompletion {
-                completer: Box::new(NuCompleter::new(engine_state.clone())),
-            }))
+            // .with_completion_action_handler(Box::new(fuzzy_completion::FuzzyCompletion {
+            //     completer: Box::new(NuCompleter::new(engine_state.clone())),
+            // }))
             // .with_completion_action_handler(Box::new(
             //     ListCompletionHandler::default().with_completer(Box::new(completer)),
             // ))

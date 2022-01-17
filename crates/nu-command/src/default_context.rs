@@ -156,6 +156,7 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             Mv,
             Open,
             Rm,
+            Save,
             Touch,
         };
 
@@ -165,6 +166,7 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             AnsiGradient,
             AnsiStrip,
             Clear,
+            Input,
             Kill,
             Sleep,
         };
@@ -233,6 +235,7 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
 
         // Conversions
         bind_command! {
+            Fmt,
             Into,
             IntoBool,
             IntoBinary,
@@ -241,14 +244,14 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             IntoFilesize,
             IntoInt,
             IntoString,
-            Fmt,
         };
 
         // Env
         bind_command! {
-            LetEnv,
-            WithEnv,
             Env,
+            LetEnv,
+            LoadEnv,
+            WithEnv,
         };
 
         // Math
@@ -295,6 +298,7 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
         // Generators
         bind_command! {
             Cal,
+            Seq,
             SeqDate,
         };
 

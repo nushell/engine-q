@@ -1,14 +1,11 @@
-// use std::path::PathBuf;
-
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use chrono::{DateTime, FixedOffset};
-// use nu_path::expand_path;
 use crate::ast::{CellPath, PathMember};
 use crate::engine::CaptureBlock;
 use crate::ShellError;
 use crate::{Range, Spanned, Value};
+use chrono::{DateTime, FixedOffset};
 
 pub trait FromValue: Sized {
     fn from_value(v: &Value) -> Result<Self, ShellError>;
@@ -346,6 +343,20 @@ impl FromValue for Vec<Value> {
             Value::List { vals, .. } => Ok(vals.clone()),
             v => Err(ShellError::CantConvert(
                 "Vector of values".into(),
+                v.get_type().to_string(),
+                v.span()?,
+            )),
+        }
+    }
+}
+
+// A record
+impl FromValue for (Vec<String>, Vec<Value>) {
+    fn from_value(v: &Value) -> Result<Self, ShellError> {
+        match v {
+            Value::Record { cols, vals, .. } => Ok((cols.clone(), vals.clone())),
+            v => Err(ShellError::CantConvert(
+                "Record".into(),
                 v.get_type().to_string(),
                 v.span()?,
             )),

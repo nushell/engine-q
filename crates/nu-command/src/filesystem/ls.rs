@@ -1,6 +1,9 @@
 use chrono::{DateTime, Utc};
+use pathdiff::diff_paths;
+
 use nu_engine::env::current_dir;
 use nu_engine::CallExt;
+use nu_path::{canonicalize_with, expand_path_with};
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
@@ -10,12 +13,11 @@ use nu_protocol::{
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-use std::path::PathBuf;
+use std::path::{Component, PathBuf};
 
 #[derive(Clone)]
 pub struct Ls;
 
-//NOTE: this is not a real implementation :D. It's just a simple one to test with until we port the real one.
 impl Command for Ls {
     fn name(&self) -> &str {
         "ls"
@@ -43,6 +45,7 @@ impl Command for Ls {
                 "Only print the file names and not the path",
                 Some('s'),
             )
+            .switch("full-paths", "display paths as absolute paths", Some('f'))
             // .switch(
             //     "du",
             //     "Display the apparent directory size in place of the directory metadata size",
@@ -61,54 +64,79 @@ impl Command for Ls {
         let all = call.has_flag("all");
         let long = call.has_flag("long");
         let short_names = call.has_flag("short-names");
+        let full_paths = call.has_flag("full-paths");
 
         let call_span = call.head;
+        let cwd = current_dir(engine_state, stack)?;
 
-        let (pattern, prefix) = if let Some(result) =
-            call.opt::<Spanned<String>>(engine_state, stack, 0)?
-        {
-            let path = PathBuf::from(&result.item);
+        let pattern_arg = call.opt::<Spanned<String>>(engine_state, stack, 0)?;
 
-            let (mut path, prefix) = if path.is_relative() {
-                let cwd = current_dir(engine_state, stack)?;
-                (cwd.join(path), Some(cwd))
+        let (prefix, pattern) = if let Some(arg) = pattern_arg {
+            let path = PathBuf::from(arg.item);
+            let path = if path.is_relative() {
+                expand_path_with(path, &cwd)
             } else {
-                (path, None)
+                path
             };
 
-            if path.is_dir() {
-                if permission_denied(&path) {
-                    #[cfg(unix)]
-                    let error_msg = format!(
-                        "The permissions of {:o} do not allow access for this user",
-                        path.metadata()
-                            .expect("this shouldn't be called since we already know there is a dir")
-                            .permissions()
-                            .mode()
-                            & 0o0777
-                    );
-                    #[cfg(not(unix))]
-                    let error_msg = String::from("Permission denied");
-                    return Err(ShellError::SpannedLabeledError(
-                        "Permission denied".into(),
-                        error_msg,
-                        result.span,
-                    ));
+            if path.to_string_lossy().contains('*') {
+                // Path is a glob pattern => do not check for existence
+                // Select the longest prefix until the first '*'
+                let mut p = PathBuf::new();
+                for c in path.components() {
+                    if let Component::Normal(os) = c {
+                        if os.to_string_lossy().contains('*') {
+                            break;
+                        }
+                    }
+                    p.push(c);
                 }
-                if is_empty_dir(&path) {
-                    return Ok(PipelineData::new(call_span));
-                }
+                (Some(p), path)
+            } else {
+                let path = if let Ok(p) = canonicalize_with(path, &cwd) {
+                    p
+                } else {
+                    return Err(ShellError::DirectoryNotFound(arg.span));
+                };
 
                 if path.is_dir() {
-                    path = path.join("*");
+                    if permission_denied(&path) {
+                        #[cfg(unix)]
+                        let error_msg = format!(
+                            "The permissions of {:o} do not allow access for this user",
+                            path.metadata()
+                                .expect(
+                                    "this shouldn't be called since we already know there is a dir"
+                                )
+                                .permissions()
+                                .mode()
+                                & 0o0777
+                        );
+
+                        #[cfg(not(unix))]
+                        let error_msg = String::from("Permission denied");
+
+                        return Err(ShellError::SpannedLabeledError(
+                            "Permission denied".into(),
+                            error_msg,
+                            arg.span,
+                        ));
+                    }
+
+                    if is_empty_dir(&path) {
+                        return Ok(PipelineData::new(call_span));
+                    }
+
+                    (Some(path.clone()), path.join("*"))
+                } else {
+                    (path.parent().map(|parent| parent.to_path_buf()), path)
                 }
             }
-
-            (path.to_string_lossy().to_string(), prefix)
         } else {
-            let cwd = current_dir(engine_state, stack)?;
-            (cwd.join("*").to_string_lossy().to_string(), Some(cwd))
+            (Some(cwd.clone()), cwd.join("*"))
         };
+
+        let pattern = pattern.to_string_lossy().to_string();
 
         let glob = glob::glob(&pattern).map_err(|err| {
             nu_protocol::ShellError::SpannedLabeledError(
@@ -141,14 +169,23 @@ impl Command for Ls {
                     }
 
                     let display_name = if short_names {
-                        path.file_name().and_then(|s| s.to_str())
-                    } else if let Some(pre) = &prefix {
-                        match path.strip_prefix(pre) {
-                            Ok(stripped) => stripped.to_str(),
-                            Err(_) => path.to_str(),
+                        path.file_name().map(|os| os.to_string_lossy().to_string())
+                    } else if full_paths {
+                        Some(path.to_string_lossy().to_string())
+                    } else if let Some(prefix) = &prefix {
+                        if let Ok(remainder) = path.strip_prefix(&prefix) {
+                            let new_prefix = if let Some(pfx) = diff_paths(&prefix, &cwd) {
+                                pfx
+                            } else {
+                                prefix.to_path_buf()
+                            };
+
+                            Some(new_prefix.join(remainder).to_string_lossy().to_string())
+                        } else {
+                            Some(path.to_string_lossy().to_string())
                         }
                     } else {
-                        path.to_str()
+                        Some(path.to_string_lossy().to_string())
                     }
                     .ok_or_else(|| {
                         ShellError::SpannedLabeledError(
@@ -161,8 +198,7 @@ impl Command for Ls {
                     match display_name {
                         Ok(name) => {
                             let entry =
-                                dir_entry_dict(&path, name, metadata.as_ref(), call_span, long);
-
+                                dir_entry_dict(&path, &name, metadata.as_ref(), call_span, long);
                             match entry {
                                 Ok(value) => Some(value),
                                 Err(err) => Some(Value::Error { error: err }),

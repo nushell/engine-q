@@ -78,11 +78,15 @@ impl Command for Table {
             )),
             PipelineData::Value(Value::Binary { val, .. }, ..) => Ok(PipelineData::StringStream(
                 StringStream::from_stream(
-                    vec![Ok(if val.iter().all(|x| x.is_ascii()) {
-                        format!("{}", String::from_utf8_lossy(&val))
-                    } else {
-                        format!("{}\n", nu_pretty_hex::pretty_hex(&val))
-                    })]
+                    vec![Ok(
+                        if val.iter().all(|x| {
+                            *x < 128 && (*x >= b' ' || *x == b'\t' || *x == b'\r' || *x == b'\n')
+                        }) {
+                            format!("{}", String::from_utf8_lossy(&val))
+                        } else {
+                            format!("{}\n", nu_pretty_hex::pretty_hex(&val))
+                        },
+                    )]
                     .into_iter(),
                     ctrlc,
                 ),
@@ -279,8 +283,10 @@ fn convert_to_table(
                 vec![("string".to_string(), (row_num + row_offset).to_string())];
 
             if headers.is_empty() {
-                // if header row is empty, this is probably a list so format it that way
-                row.push(("list".to_string(), item.into_abbreviated_string(config)))
+                row.push((
+                    item.get_type().to_string(),
+                    item.into_abbreviated_string(config),
+                ))
             } else {
                 for header in headers.iter().skip(1) {
                     let result = match item {

@@ -1,11 +1,12 @@
 mod config_files;
 mod eval_file;
-mod fuzzy_completion;
 mod logger;
 mod prompt_update;
 mod reedline_config;
 mod repl;
 mod utils;
+
+// mod fuzzy_completion;
 
 #[cfg(test)]
 mod tests;
