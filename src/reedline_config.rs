@@ -167,11 +167,7 @@ fn add_keybinding(
 fn parse_event(value: Value, config: &Config) -> Result<ReedlineEvent, ShellError> {
     match value {
         Value::Record { cols, vals, span } => {
-            let event = cols
-                .iter()
-                .position(|col| col.as_str() == "name")
-                .and_then(|index| vals.get(index))
-                .ok_or_else(|| ShellError::MissingConfigValue("name".to_string(), span))?;
+            let event = extract_value("name", &cols, &vals, &span)?;
 
             let event = match event.into_string("", config).as_str() {
                 "ActionHandler" => ReedlineEvent::ActionHandler,
@@ -191,12 +187,7 @@ fn parse_event(value: Value, config: &Config) -> Result<ReedlineEvent, ShellErro
                 "SearchHistory" => ReedlineEvent::SearchHistory,
                 "Repaint" => ReedlineEvent::Repaint,
                 "Edit" => {
-                    let edit = cols
-                        .iter()
-                        .position(|col| col.as_str() == "value")
-                        .and_then(|index| vals.get(index))
-                        .ok_or_else(|| ShellError::MissingConfigValue("value".to_string(), span))?;
-
+                    let edit = extract_value("value", &cols, &vals, &span)?;
                     let edit = parse_edit(edit, config)?;
 
                     ReedlineEvent::Edit(vec![edit])
