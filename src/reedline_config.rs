@@ -199,11 +199,16 @@ fn parse_event(value: Value, config: &Config) -> Result<ReedlineEvent, ShellErro
                         ))
                     }
                 },
-                Err(value_err) => {
+                Err(_) => {
                     let edit = extract_value("edit", &cols, &vals, &span);
                     let edit = match edit {
                         Ok(edit_value) => parse_edit(edit_value, config)?,
-                        Err(_) => return Err(value_err),
+                        Err(_) => {
+                            return Err(ShellError::MissingConfigValue(
+                                "send or edit".to_string(),
+                                span,
+                            ))
+                        }
                     };
 
                     ReedlineEvent::Edit(vec![edit])
