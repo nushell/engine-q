@@ -167,37 +167,46 @@ fn add_keybinding(
 fn parse_event(value: Value, config: &Config) -> Result<ReedlineEvent, ShellError> {
     match value {
         Value::Record { cols, vals, span } => {
-            let event = extract_value("name", &cols, &vals, &span)?;
+            let event = match extract_value("send", &cols, &vals, &span) {
+                Ok(event) => match event.into_string("", config).as_str() {
+                    "ActionHandler" => ReedlineEvent::ActionHandler,
+                    "ClearScreen" => ReedlineEvent::ClearScreen,
+                    "ContextMenu" => ReedlineEvent::ContextMenu,
+                    "Complete" => ReedlineEvent::Complete,
+                    "Enter" => ReedlineEvent::Enter,
+                    "Esc" => ReedlineEvent::Esc,
+                    "Up" => ReedlineEvent::Up,
+                    "Down" => ReedlineEvent::Down,
+                    "Right" => ReedlineEvent::Right,
+                    "Left" => ReedlineEvent::Left,
+                    "NextElement" => ReedlineEvent::NextElement,
+                    "NextHistory" => ReedlineEvent::NextHistory,
+                    "PreviousElement" => ReedlineEvent::PreviousElement,
+                    "PreviousHistory" => ReedlineEvent::PreviousHistory,
+                    "SearchHistory" => ReedlineEvent::SearchHistory,
+                    "Repaint" => ReedlineEvent::Repaint,
+                    "Edit" => {
+                        let edit = extract_value("edit", &cols, &vals, &span)?;
+                        let edit = parse_edit(edit, config)?;
 
-            let event = match event.into_string("", config).as_str() {
-                "ActionHandler" => ReedlineEvent::ActionHandler,
-                "ClearScreen" => ReedlineEvent::ClearScreen,
-                "ContextMenu" => ReedlineEvent::ContextMenu,
-                "Complete" => ReedlineEvent::Complete,
-                "Enter" => ReedlineEvent::Enter,
-                "Esc" => ReedlineEvent::Esc,
-                "Up" => ReedlineEvent::Up,
-                "Down" => ReedlineEvent::Down,
-                "Right" => ReedlineEvent::Right,
-                "Left" => ReedlineEvent::Left,
-                "NextElement" => ReedlineEvent::NextElement,
-                "NextHistory" => ReedlineEvent::NextHistory,
-                "PreviousElement" => ReedlineEvent::PreviousElement,
-                "PreviousHistory" => ReedlineEvent::PreviousHistory,
-                "SearchHistory" => ReedlineEvent::SearchHistory,
-                "Repaint" => ReedlineEvent::Repaint,
-                "Edit" => {
-                    let edit = extract_value("value", &cols, &vals, &span)?;
-                    let edit = parse_edit(edit, config)?;
+                        ReedlineEvent::Edit(vec![edit])
+                    }
+                    v => {
+                        return Err(ShellError::UnsupportedConfigValue(
+                            v.to_string(),
+                            "Reedline event".to_string(),
+                            span,
+                        ))
+                    }
+                },
+                Err(value_err) => {
+                    let edit = extract_value("edit", &cols, &vals, &span);
+                    let edit = match edit {
+                        Ok(edit_value) => parse_edit(edit_value, config)?,
+                        Err(_) => return Err(value_err),
+                    };
 
                     ReedlineEvent::Edit(vec![edit])
-                }
-                v => {
-                    return Err(ShellError::UnsupportedConfigValue(
-                        v.to_string(),
-                        "Reedline event".to_string(),
-                        span,
-                    ))
                 }
             };
 
@@ -226,13 +235,9 @@ fn parse_edit(edit: &Value, config: &Config) -> Result<EditCommand, ShellError> 
             vals: edit_vals,
             span: edit_span,
         } => {
-            let name = edit_cols
-                .iter()
-                .position(|col| col.as_str() == "edit")
-                .and_then(|index| edit_vals.get(index))
-                .ok_or_else(|| ShellError::MissingConfigValue("edit".to_string(), *edit_span))?;
+            let cmd = extract_value("cmd", edit_cols, edit_vals, edit_span)?;
 
-            match name.into_string("", config).as_str() {
+            match cmd.into_string("", config).as_str() {
                 "MoveToStart" => EditCommand::MoveToStart,
                 "MoveToLineStart" => EditCommand::MoveToLineStart,
                 "MoveToEnd" => EditCommand::MoveToEnd,
