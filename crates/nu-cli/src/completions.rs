@@ -41,7 +41,13 @@ impl NuCompleter {
 
                     if let Ok(mut contents) = std::fs::read_dir(path) {
                         while let Some(Ok(item)) = contents.next() {
-                            if matches!(
+                            if !executables.contains(
+                                &item
+                                    .path()
+                                    .file_name()
+                                    .map(|x| x.to_string_lossy().to_string())
+                                    .unwrap_or_default(),
+                            ) && matches!(
                                 item.path()
                                     .file_name()
                                     .map(|x| x.to_string_lossy().starts_with(prefix)),
@@ -110,6 +116,9 @@ impl NuCompleter {
                 }
             }
         }
+
+        output.dedup();
+
         output
     }
 
@@ -183,34 +192,10 @@ impl NuCompleter {
         for stmt in output.stmts.into_iter() {
             if let Statement::Pipeline(pipeline) = stmt {
                 for expr in pipeline.expressions {
-                    if pos >= expr.span.start
-                        && (pos <= (line.len() + offset) || pos <= expr.span.end)
-                    {
-                        let span = Span {
-                            start: expr.span.start,
-                            end: pos,
-                        };
-                        let prefix = working_set.get_span_contents(span);
-
-                        println!("Span: {:?}", span);
-                        println!("Token: {:?}", prefix);
-                        println!("\rn\r\n");
-
-                        if prefix.starts_with(b"$") {
-                            return self.complete_variables(&working_set, prefix, span, offset);
-                        }
-
-                        return self.complete_filepath_and_commands(&working_set, span, offset);
-                    }
-
                     let flattened = flatten_expression(&working_set, &expr);
                     for flat in flattened {
                         if pos >= flat.0.start && pos <= flat.0.end {
                             let prefix = working_set.get_span_contents(flat.0);
-
-                            println!("Span: {:?}", flat.0);
-                            println!("Token: {:?}", flat.1);
-                            println!("\rn\r\n");
 
                             if prefix.starts_with(b"$") {
                                 return self.complete_variables(
