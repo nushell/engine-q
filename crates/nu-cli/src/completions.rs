@@ -26,7 +26,7 @@ impl NuCompleter {
 
         #[cfg(windows)]
         {
-            paths = engine_state.env_vars.get("Path");
+            paths = self.engine_state.env_vars.get("Path");
         }
 
         #[cfg(not(windows))]
