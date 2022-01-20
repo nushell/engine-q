@@ -61,6 +61,58 @@ impl NuCompleter {
         executables
     }
 
+    fn complete_variables(
+        &self,
+        working_set: &StateWorkingSet,
+        prefix: &[u8],
+        span: Span,
+        offset: usize,
+    ) -> Vec<(reedline::Span, String)> {
+        let mut output = vec![];
+
+        let builtins = ["$nu", "$scope", "$in", "$config", "$env"];
+
+        for builtin in builtins {
+            if builtin.as_bytes().starts_with(prefix) {
+                output.push((
+                    reedline::Span {
+                        start: span.start - offset,
+                        end: span.end - offset,
+                    },
+                    builtin.to_string(),
+                ));
+            }
+        }
+
+        for scope in &working_set.delta.scope {
+            for v in &scope.vars {
+                if v.0.starts_with(prefix) {
+                    output.push((
+                        reedline::Span {
+                            start: span.start - offset,
+                            end: span.end - offset,
+                        },
+                        String::from_utf8_lossy(v.0).to_string(),
+                    ));
+                }
+            }
+        }
+        for scope in &self.engine_state.scope {
+            for v in &scope.vars {
+                if v.0.starts_with(prefix) {
+                    output.push((
+                        reedline::Span {
+                            start: span.start - offset,
+                            end: span.end - offset,
+                        },
+                        String::from_utf8_lossy(v.0).to_string(),
+                    ));
+                }
+            }
+        }
+        output
+    }
+
     fn complete_filepath_and_commands(
         &self,
         working_set: &StateWorkingSet,
@@ -140,36 +192,12 @@ impl NuCompleter {
                         };
                         let prefix = working_set.get_span_contents(span);
 
-                        if prefix.starts_with(b"$") {
-                            let mut output = vec![];
+                        println!("Span: {:?}", span);
+                        println!("Token: {:?}", prefix);
+                        println!("\rn\r\n");
 
-                            for scope in &working_set.delta.scope {
-                                for v in &scope.vars {
-                                    if v.0.starts_with(prefix) {
-                                        output.push((
-                                            reedline::Span {
-                                                start: span.start - offset,
-                                                end: span.end - offset,
-                                            },
-                                            String::from_utf8_lossy(v.0).to_string(),
-                                        ));
-                                    }
-                                }
-                            }
-                            for scope in &self.engine_state.scope {
-                                for v in &scope.vars {
-                                    if v.0.starts_with(prefix) {
-                                        output.push((
-                                            reedline::Span {
-                                                start: span.start - offset,
-                                                end: span.end - offset,
-                                            },
-                                            String::from_utf8_lossy(v.0).to_string(),
-                                        ));
-                                    }
-                                }
-                            }
-                            return output;
+                        if prefix.starts_with(b"$") {
+                            return self.complete_variables(&working_set, prefix, span, offset);
                         }
 
                         return self.complete_filepath_and_commands(&working_set, span, offset);
@@ -180,36 +208,17 @@ impl NuCompleter {
                         if pos >= flat.0.start && pos <= flat.0.end {
                             let prefix = working_set.get_span_contents(flat.0);
 
-                            if prefix.starts_with(b"$") {
-                                let mut output = vec![];
+                            println!("Span: {:?}", flat.0);
+                            println!("Token: {:?}", flat.1);
+                            println!("\rn\r\n");
 
-                                for scope in &working_set.delta.scope {
-                                    for v in &scope.vars {
-                                        if v.0.starts_with(prefix) {
-                                            output.push((
-                                                reedline::Span {
-                                                    start: flat.0.start - offset,
-                                                    end: flat.0.end - offset,
-                                                },
-                                                String::from_utf8_lossy(v.0).to_string(),
-                                            ));
-                                        }
-                                    }
-                                }
-                                for scope in &self.engine_state.scope {
-                                    for v in &scope.vars {
-                                        if v.0.starts_with(prefix) {
-                                            output.push((
-                                                reedline::Span {
-                                                    start: flat.0.start - offset,
-                                                    end: flat.0.end - offset,
-                                                },
-                                                String::from_utf8_lossy(v.0).to_string(),
-                                            ));
-                                        }
-                                    }
-                                }
-                                return output;
+                            if prefix.starts_with(b"$") {
+                                return self.complete_variables(
+                                    &working_set,
+                                    prefix,
+                                    flat.0,
+                                    offset,
+                                );
                             }
 
                             match &flat.1 {
