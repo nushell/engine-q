@@ -8,7 +8,7 @@ pub struct TermSize;
 
 impl Command for TermSize {
     fn name(&self) -> &str {
-        "term-size"
+        "term size"
     }
 
     fn usage(&self) -> &str {
@@ -16,7 +16,7 @@ impl Command for TermSize {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("term-size")
+        Signature::build("term size")
             .switch(
                 "columns",
                 "Report only the width of the terminal",
