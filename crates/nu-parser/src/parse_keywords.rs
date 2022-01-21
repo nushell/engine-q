@@ -155,7 +155,8 @@ pub fn parse_for(
         // will come into scope as params. Because of this, we need to recalculated what
         // variables this block will capture from the outside.
         let mut seen = vec![];
-        let captures = find_captures_in_block(working_set, block, &mut seen);
+        let mut seen_decls = vec![];
+        let captures = find_captures_in_block(working_set, block, &mut seen, &mut seen_decls);
 
         let mut block = working_set.get_block_mut(block_id);
         block.captures = captures;
@@ -271,7 +272,8 @@ pub fn parse_def(
             // will come into scope as params. Because of this, we need to recalculated what
             // variables this block will capture from the outside.
             let mut seen = vec![];
-            let captures = find_captures_in_block(working_set, block, &mut seen);
+            let mut seen_decls = vec![];
+            let captures = find_captures_in_block(working_set, block, &mut seen, &mut seen_decls);
 
             let mut block = working_set.get_block_mut(block_id);
             block.captures = captures;
@@ -863,7 +865,9 @@ pub fn parse_use(
         } else {
             // TODO: Do not close over when loading module from file
             // It could be a file
-            if let Ok(module_filename) = String::from_utf8(import_pattern.head.name) {
+            if let Ok(module_filename) =
+                String::from_utf8(trim_quotes(&import_pattern.head.name).to_vec())
+            {
                 if let Ok(module_path) = canonicalize_with(&module_filename, cwd) {
                     let module_name = if let Some(stem) = module_path.file_stem() {
                         stem.to_string_lossy().to_string()
