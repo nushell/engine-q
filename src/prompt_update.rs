@@ -69,7 +69,7 @@ fn get_prompt_string(
             }
             Value::String { val: source, .. } => {
                 let mut working_set = StateWorkingSet::new(engine_state);
-                let (block, err) = parse(&mut working_set, None, source.as_bytes(), true);
+                let (block, _) = parse(&mut working_set, None, source.as_bytes(), true);
                 eval_block(
                     engine_state,
                     stack,
