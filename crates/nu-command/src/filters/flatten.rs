@@ -44,7 +44,17 @@ impl Command for Flatten {
             Example {
                 description: "flatten a table",
                 example: "[[N, u, s, h, e, l, l]] | flatten ",
-                result: Some(Value::test_string("Nushell"))
+                result: Some(Value::List {
+                    vals: vec![
+                        Value::test_string("N"),
+                        Value::test_string("u"),
+                        Value::test_string("s"),
+                        Value::test_string("h"),
+                        Value::test_string("e"),
+                        Value::test_string("l"),
+                        Value::test_string("l")],
+                    span: Span::test_data()
+                })
             },
             Example {
                 description: "flatten a table, get the first item",
