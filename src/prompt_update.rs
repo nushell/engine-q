@@ -1,13 +1,11 @@
 use nu_cli::NushellPrompt;
-use nu_engine::{eval_block, eval_expression};
+use nu_engine::eval_block;
 use nu_parser::parse;
 use nu_protocol::{
     engine::{EngineState, Stack, StateWorkingSet},
     Config, PipelineData, Span, Value,
 };
 use reedline::Prompt;
-
-use crate::utils::eval_source;
 
 // Name of environment variable where the prompt could be stored
 pub(crate) const PROMPT_COMMAND: &str = "PROMPT_COMMAND";
