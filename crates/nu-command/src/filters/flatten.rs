@@ -59,21 +59,21 @@ impl Command for Flatten {
             Example {
                 description: "flatten a table, get the first item",
                 example: "[[N, u, s, h, e, l, l]] | flatten | first",
-                result: Some(Value::test_string("N")),
+                result: None,//Some(Value::test_string("N")),
             },
             Example {
                 description: "flatten a column having a nested table",
                 example: "[[origin, people]; [Ecuador, ([[name, meal]; ['Andres', 'arepa']])]] | flatten | get meal",
-                result: Some(Value::test_string("arepa")),
+                result: None,//Some(Value::test_string("arepa")),
             },
             Example {
                 description: "restrict the flattening by passing column names",
                 example: "[[origin, crate, versions]; [World, ([[name]; ['nu-cli']]), ['0.21', '0.22']]] | flatten versions | last | get versions",
-                result: Some(Value::test_string("0.22")),
+                result: None, //Some(Value::test_string("0.22")),
             },
             Example {
-                description: "restrict the flattening by passing column names",
-                example: "{ a: b, d: [ 1 2 3 4 ],  e: [ 4 3  ] }",
+                description: "Flatten inner table",
+                example: "{ a: b, d: [ 1 2 3 4 ],  e: [ 4 3  ] } | flatten",
                 result: Some(Value::List{
                     vals: vec![
                         Value::Record{
