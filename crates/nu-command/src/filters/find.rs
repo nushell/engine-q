@@ -69,11 +69,10 @@ impl Command for Find {
                 description: "Find if a service is not running",
                 example: "echo [[version patch]; [0.1.0 $false] [0.1.1 $true] [0.2.0 $false]] | find -p { $it.patch }",
                 result: Some(Value::List {
-                    vals: vec![Value::Record {
-                        cols: vec!["version".to_owned(), "patch".to_owned()],
-                        vals: vec![Value::test_string("0.1.1"), Value::test_bool(true)],
-                        span: Span::test_data(),
-                    }],
+                    vals: vec![Value::test_record(
+                            vec!["version", "patch"],
+                            vec![Value::test_string("0.1.1"), Value::test_bool(true)]
+                        )],
                     span: Span::test_data()
                 }),
             },

@@ -204,7 +204,7 @@ This `"#hex"` format allows us to specify 24-bit truecolor tones to different pa
 ---
 The `full "#hex"` format is a take on the `"#hex"` format but allows one to specify the foreground, background, and attributes in one line.
 
-Example: ``{ fg: "#ff0000" bg: "#0000ff" attr: b }`
+Example: `{ fg: "#ff0000" bg: "#0000ff" attr: b }`
 
 * foreground of red in "#hex" format 
 * background of blue in "#hex" format 
@@ -298,7 +298,7 @@ let config = {
 
 ## `FlatShape` values
 
-As mentioned above, `flatshape` is a term used to indicate the sytax coloring. (get better words from jt)
+As mentioned above, `flatshape` is a term used to indicate the sytax coloring.
 
 Here's the current list of flat shapes.
 
@@ -343,6 +343,7 @@ let $config = {
 The nushell prompt is configurable through these environment variables settings.
 
 * `PROMPT_COMMAND`: Code to execute for setting up the prompt (block)
+* `PROMPT_COMMAND_RIGHT`: Code to execute for setting up the *RIGHT* prompt (block) (see oh-my.nu in nu_scripts)
 * `PROMPT_INDICATOR` = "〉": The indicator printed after the prompt (by default ">"-like Unicode symbol)
 * `PROMPT_INDICATOR_VI_INSERT` = ": "
 * `PROMPT_INDICATOR_VI_VISUAL` = "v "
@@ -356,7 +357,7 @@ If you don't like the default `PROMPT_INDICATOR` you could change it like this.
 
 `> let-env PROMPT_INDICATOR = "> "`
 
-Coloring of the prompt is controlled by the `block` in `PROMPT_COMMAND` where you can write your own custom prompt. We've written a slightly fancy one that has git statuses located in the [nu_scripts repo](https://github.com/nushell/nu_scripts/blob/main/prompt/oh-my.nu).
+Coloring of the prompt is controlled by the `block` in `PROMPT_COMMAND` where you can write your own custom prompt. We've written a slightly fancy one that has git statuses located in the [nu_scripts repo](https://github.com/nushell/nu_scripts/blob/main/engine-q/prompt/oh-my.nu).
 
 ## `LS_COLORS` colors for the `ls` command
 

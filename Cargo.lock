@@ -64,12 +64,11 @@ dependencies = [
 
 [[package]]
 name = "ansi-cut"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "116f67a17a90942bc30b3fe78b800941f8276234386844b3e0dee3f9d2782839"
+checksum = "ffe8d2994390ae20a3eb52a909f9518a89f8fd7e6990f3d25d38e51021b2c8ce"
 dependencies = [
  "ansi-parser",
- "strip-ansi-escapes",
 ]
 
 [[package]]
@@ -856,7 +855,6 @@ dependencies = [
  "crossterm",
  "crossterm_winapi",
  "ctrlc",
- "dialoguer",
  "log",
  "miette",
  "nu-ansi-term",
@@ -1432,6 +1430,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06d198e9919d9822d5f7083ba8530e04de87841eaf21ead9af8f2304efd57c89"
 
 [[package]]
+name = "is_executable"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa9acdc6d67b75e626ad644734e8bc6df893d9cd2a834129065d3dd6158ea9c8"
+dependencies = [
+ "winapi",
+]
+
+[[package]]
 name = "itertools"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1891,6 +1898,7 @@ dependencies = [
 name = "nu-cli"
 version = "0.1.0"
 dependencies = [
+ "is_executable",
  "log",
  "miette",
  "nu-ansi-term",
@@ -1938,6 +1946,7 @@ dependencies = [
  "indexmap",
  "itertools",
  "lazy_static",
+ "log",
  "lscolors",
  "md-5",
  "meval",
@@ -1981,6 +1990,7 @@ dependencies = [
  "url",
  "users",
  "uuid",
+ "which",
  "zip",
 ]
 
@@ -2852,7 +2862,7 @@ dependencies = [
 [[package]]
 name = "reedline"
 version = "0.2.0"
-source = "git+https://github.com/nushell/reedline?branch=main#32338dc18aaa1633bf636717c334f22dae8e374a"
+source = "git+https://github.com/nushell/reedline?branch=main#7a07ab2bcca2e0287a1efcf8ccdf9845229428c5"
 dependencies = [
  "chrono",
  "crossterm",

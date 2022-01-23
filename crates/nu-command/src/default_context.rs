@@ -66,7 +66,9 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             First,
             Flatten,
             Get,
+            GroupBy,
             Keep,
+            Merge,
             KeepUntil,
             KeepWhile,
             Last,
@@ -84,6 +86,8 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             Skip,
             SkipUntil,
             SkipWhile,
+            SortBy,
+            Transpose,
             Uniq,
             Update,
             Where,
@@ -112,6 +116,9 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             Ps,
             Sys,
         };
+
+        #[cfg(feature = "which")]
+        bind_command! { Which };
 
         // Strings
         bind_command! {
@@ -170,6 +177,7 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             Input,
             Kill,
             Sleep,
+            TermSize,
         };
 
         // Date
@@ -308,6 +316,7 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             Hash,
             HashMd5::default(),
             HashSha256::default(),
+            Base64,
         };
 
         #[cfg(feature = "plugin")]

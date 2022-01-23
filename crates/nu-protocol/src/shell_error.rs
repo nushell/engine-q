@@ -142,8 +142,8 @@ pub enum ShellError {
     ),
 
     #[error("External command")]
-    #[diagnostic(code(nu::shell::external_command), url(docsrs))]
-    ExternalCommand(String, #[label("{0}")] Span),
+    #[diagnostic(code(nu::shell::external_command), url(docsrs), help("{1}"))]
+    ExternalCommand(String, String, #[label("{0}")] Span),
 
     #[error("Unsupported input")]
     #[diagnostic(code(nu::shell::unsupported_input), url(docsrs))]
@@ -184,6 +184,10 @@ pub enum ShellError {
     #[error("I/O error")]
     #[diagnostic(code(nu::shell::io_error), url(docsrs), help("{0}"))]
     IOError(String),
+
+    #[error("Cannot change to directory")]
+    #[diagnostic(code(nu::shell::cannot_cd_to_directory), url(docsrs))]
+    NotADirectory(#[label("is not a directory")] Span),
 
     #[error("Directory not found")]
     #[diagnostic(code(nu::shell::directory_not_found), url(docsrs))]

@@ -1,5 +1,6 @@
 use crate::{
     lex, lite_parse,
+    lite_parse::LiteCommand,
     parse_keywords::{parse_for, parse_source},
     type_check::{math_result_type, type_compatible},
     LiteBlock, ParseError, Token, TokenContents,
@@ -12,7 +13,7 @@ use nu_protocol::{
         Statement,
     },
     engine::StateWorkingSet,
-    span, Flag, PositionalArg, Signature, Span, Spanned, SyntaxShape, Type, Unit, VarId,
+    span, DeclId, Flag, PositionalArg, Signature, Span, Spanned, SyntaxShape, Type, Unit, VarId,
     CONFIG_VARIABLE_ID, ENV_VARIABLE_ID, IN_VARIABLE_ID,
 };
 
@@ -813,14 +814,14 @@ pub fn parse_call(
                         expr: Expr::Call(mut call),
                         span,
                         ty,
-                        custom_completion: None,
+                        custom_completion,
                     } => {
                         call.head = orig_span;
                         Expression {
                             expr: Expr::Call(call),
                             span,
                             ty,
-                            custom_completion: None,
+                            custom_completion,
                         }
                     }
                     x => x,
@@ -1869,6 +1870,7 @@ pub fn parse_string(
     trace!("parsing: string");
 
     let bytes = working_set.get_span_contents(span);
+
     let bytes = trim_quotes(bytes);
 
     if let Ok(token) = String::from_utf8(bytes.into()) {
@@ -1898,6 +1900,15 @@ pub fn parse_string_strict(
     trace!("parsing: string, with required delimiters");
 
     let bytes = working_set.get_span_contents(span);
+
+    // Check for unbalanced quotes:
+    if (bytes.starts_with(b"\"") || (bytes.starts_with(b"$\""))) && !bytes.ends_with(b"\"") {
+        return (garbage(span), Some(ParseError::Unclosed("\"".into(), span)));
+    }
+    if (bytes.starts_with(b"\'") || (bytes.starts_with(b"$\""))) && !bytes.ends_with(b"\'") {
+        return (garbage(span), Some(ParseError::Unclosed("\'".into(), span)));
+    }
+
     let (bytes, quoted) = if (bytes.starts_with(b"\"") && bytes.ends_with(b"\"") && bytes.len() > 1)
         || (bytes.starts_with(b"\'") && bytes.ends_with(b"\'") && bytes.len() > 1)
     {
@@ -2224,7 +2235,8 @@ pub fn parse_row_condition(
             });
 
             let mut seen = vec![];
-            let captures = find_captures_in_block(working_set, &block, &mut seen);
+            let mut seen_decls = vec![];
+            let captures = find_captures_in_block(working_set, &block, &mut seen, &mut seen_decls);
 
             block.captures = captures;
 
@@ -2812,7 +2824,7 @@ pub fn parse_block_expression(
 
     let source = working_set.get_span_contents(inner_span);
 
-    let (output, err) = lex(source, start, &[], &[], true);
+    let (output, err) = lex(source, start, &[], &[], false);
     error = error.or(err);
 
     working_set.enter_scope();
@@ -2903,7 +2915,8 @@ pub fn parse_block_expression(
     }
 
     let mut seen = vec![];
-    let captures = find_captures_in_block(working_set, &output, &mut seen);
+    let mut seen_decls = vec![];
+    let captures = find_captures_in_block(working_set, &output, &mut seen, &mut seen_decls);
 
     output.captures = captures;
 
@@ -3394,7 +3407,8 @@ pub fn parse_expression(
             })];
 
             let mut seen = vec![];
-            let captures = find_captures_in_block(working_set, &block, &mut seen);
+            let mut seen_decls = vec![];
+            let captures = find_captures_in_block(working_set, &block, &mut seen, &mut seen_decls);
             block.captures = captures;
 
             let block_id = working_set.add_block(block);
@@ -3461,30 +3475,33 @@ pub fn parse_variable(
 
 pub fn parse_statement(
     working_set: &mut StateWorkingSet,
-    spans: &[Span],
+    lite_command: &LiteCommand,
 ) -> (Statement, Option<ParseError>) {
-    let name = working_set.get_span_contents(spans[0]);
+    let name = working_set.get_span_contents(lite_command.parts[0]);
 
     match name {
-        b"def" => parse_def(working_set, spans),
-        b"let" => parse_let(working_set, spans),
+        b"def" => parse_def(working_set, lite_command),
+        b"let" => parse_let(working_set, &lite_command.parts),
         b"for" => {
-            let (expr, err) = parse_for(working_set, spans);
+            let (expr, err) = parse_for(working_set, &lite_command.parts);
             (Statement::Pipeline(Pipeline::from_vec(vec![expr])), err)
         }
-        b"alias" => parse_alias(working_set, spans),
-        b"module" => parse_module(working_set, spans),
-        b"use" => parse_use(working_set, spans),
-        b"source" => parse_source(working_set, spans),
+        b"alias" => parse_alias(working_set, &lite_command.parts),
+        b"module" => parse_module(working_set, &lite_command.parts),
+        b"use" => parse_use(working_set, &lite_command.parts),
+        b"source" => parse_source(working_set, &lite_command.parts),
         b"export" => (
-            garbage_statement(spans),
-            Some(ParseError::UnexpectedKeyword("export".into(), spans[0])),
+            garbage_statement(&lite_command.parts),
+            Some(ParseError::UnexpectedKeyword(
+                "export".into(),
+                lite_command.parts[0],
+            )),
         ),
-        b"hide" => parse_hide(working_set, spans),
+        b"hide" => parse_hide(working_set, &lite_command.parts),
         #[cfg(feature = "plugin")]
-        b"register" => parse_register(working_set, spans),
+        b"register" => parse_register(working_set, &lite_command.parts),
         _ => {
-            let (expr, err) = parse_expression(working_set, spans, true);
+            let (expr, err) = parse_expression(working_set, &lite_command.parts, true);
             (Statement::Pipeline(Pipeline::from_vec(vec![expr])), err)
         }
     }
@@ -3619,7 +3636,7 @@ pub fn parse_block(
                     expressions: output,
                 })
             } else {
-                let (stmt, err) = parse_statement(working_set, &pipeline.commands[0].parts);
+                let (stmt, err) = parse_statement(working_set, &pipeline.commands[0]);
 
                 if error.is_none() {
                     error = err;
@@ -3641,10 +3658,9 @@ pub fn find_captures_in_block(
     working_set: &StateWorkingSet,
     block: &Block,
     seen: &mut Vec<VarId>,
+    seen_decls: &mut Vec<DeclId>,
 ) -> Vec<VarId> {
     let mut output = vec![];
-
-    // println!("sig: {:#?}", block.signature);
 
     for flag in &block.signature.named {
         if let Some(var_id) = flag.var_id {
@@ -3671,7 +3687,7 @@ pub fn find_captures_in_block(
     for stmt in &block.stmts {
         match stmt {
             Statement::Pipeline(pipeline) => {
-                let result = find_captures_in_pipeline(working_set, pipeline, seen);
+                let result = find_captures_in_pipeline(working_set, pipeline, seen, seen_decls);
                 output.extend(&result);
             }
             Statement::Declaration(_) => {}
@@ -3685,10 +3701,11 @@ fn find_captures_in_pipeline(
     working_set: &StateWorkingSet,
     pipeline: &Pipeline,
     seen: &mut Vec<VarId>,
+    seen_decls: &mut Vec<DeclId>,
 ) -> Vec<VarId> {
     let mut output = vec![];
     for expr in &pipeline.expressions {
-        let result = find_captures_in_expr(working_set, expr, seen);
+        let result = find_captures_in_expr(working_set, expr, seen, seen_decls);
         output.extend(&result);
     }
 
@@ -3699,56 +3716,64 @@ pub fn find_captures_in_expr(
     working_set: &StateWorkingSet,
     expr: &Expression,
     seen: &mut Vec<VarId>,
+    seen_decls: &mut Vec<DeclId>,
 ) -> Vec<VarId> {
     let mut output = vec![];
     match &expr.expr {
         Expr::BinaryOp(lhs, _, rhs) => {
-            let lhs_result = find_captures_in_expr(working_set, lhs, seen);
-            let rhs_result = find_captures_in_expr(working_set, rhs, seen);
+            let lhs_result = find_captures_in_expr(working_set, lhs, seen, seen_decls);
+            let rhs_result = find_captures_in_expr(working_set, rhs, seen, seen_decls);
 
             output.extend(&lhs_result);
             output.extend(&rhs_result);
         }
         Expr::Block(block_id) => {
             let block = working_set.get_block(*block_id);
-            let result = find_captures_in_block(working_set, block, seen);
+            let result = find_captures_in_block(working_set, block, seen, seen_decls);
             output.extend(&result);
         }
         Expr::Bool(_) => {}
         Expr::Call(call) => {
             let decl = working_set.get_decl(call.decl_id);
-            if let Some(block_id) = decl.get_block_id() {
-                let block = working_set.get_block(block_id);
-                let result = find_captures_in_block(working_set, block, seen);
-                output.extend(&result);
+            if !seen_decls.contains(&call.decl_id) {
+                if let Some(block_id) = decl.get_block_id() {
+                    let block = working_set.get_block(block_id);
+                    if !block.captures.is_empty() {
+                        output.extend(&block.captures)
+                    } else {
+                        seen_decls.push(call.decl_id);
+                        let result = find_captures_in_block(working_set, block, seen, seen_decls);
+                        output.extend(&result);
+                    }
+                }
             }
 
             for named in &call.named {
                 if let Some(arg) = &named.1 {
-                    let result = find_captures_in_expr(working_set, arg, seen);
+                    let result = find_captures_in_expr(working_set, arg, seen, seen_decls);
                     output.extend(&result);
                 }
             }
 
             for positional in &call.positional {
-                let result = find_captures_in_expr(working_set, positional, seen);
+                let result = find_captures_in_expr(working_set, positional, seen, seen_decls);
                 output.extend(&result);
             }
         }
         Expr::CellPath(_) => {}
         Expr::ExternalCall(head, exprs) => {
-            let result = find_captures_in_expr(working_set, head, seen);
+            let result = find_captures_in_expr(working_set, head, seen, seen_decls);
             output.extend(&result);
 
             for expr in exprs {
-                let result = find_captures_in_expr(working_set, expr, seen);
+                let result = find_captures_in_expr(working_set, expr, seen, seen_decls);
                 output.extend(&result);
             }
         }
         Expr::Filepath(_) => {}
         Expr::Float(_) => {}
         Expr::FullCellPath(cell_path) => {
-            let result = find_captures_in_expr(working_set, &cell_path.head, seen);
+            let result = find_captures_in_expr(working_set, &cell_path.head, seen, seen_decls);
             output.extend(&result);
         }
         Expr::ImportPattern(_) => {}
@@ -3757,34 +3782,44 @@ pub fn find_captures_in_expr(
         Expr::GlobPattern(_) => {}
         Expr::Int(_) => {}
         Expr::Keyword(_, _, expr) => {
-            let result = find_captures_in_expr(working_set, expr, seen);
+            let result = find_captures_in_expr(working_set, expr, seen, seen_decls);
             output.extend(&result);
         }
         Expr::List(exprs) => {
             for expr in exprs {
-                let result = find_captures_in_expr(working_set, expr, seen);
+                let result = find_captures_in_expr(working_set, expr, seen, seen_decls);
                 output.extend(&result);
             }
         }
         Expr::Operator(_) => {}
         Expr::Range(expr1, expr2, expr3, _) => {
             if let Some(expr) = expr1 {
-                let result = find_captures_in_expr(working_set, expr, seen);
+                let result = find_captures_in_expr(working_set, expr, seen, seen_decls);
                 output.extend(&result);
             }
             if let Some(expr) = expr2 {
-                let result = find_captures_in_expr(working_set, expr, seen);
+                let result = find_captures_in_expr(working_set, expr, seen, seen_decls);
                 output.extend(&result);
             }
             if let Some(expr) = expr3 {
-                let result = find_captures_in_expr(working_set, expr, seen);
+                let result = find_captures_in_expr(working_set, expr, seen, seen_decls);
                 output.extend(&result);
             }
         }
         Expr::Record(fields) => {
             for (field_name, field_value) in fields {
-                output.extend(&find_captures_in_expr(working_set, field_name, seen));
-                output.extend(&find_captures_in_expr(working_set, field_value, seen));
+                output.extend(&find_captures_in_expr(
+                    working_set,
+                    field_name,
+                    seen,
+                    seen_decls,
+                ));
+                output.extend(&find_captures_in_expr(
+                    working_set,
+                    field_value,
+                    seen,
+                    seen_decls,
+                ));
             }
         }
         Expr::Signature(sig) => {
@@ -3814,29 +3849,29 @@ pub fn find_captures_in_expr(
         Expr::String(_) => {}
         Expr::StringInterpolation(exprs) => {
             for expr in exprs {
-                let result = find_captures_in_expr(working_set, expr, seen);
+                let result = find_captures_in_expr(working_set, expr, seen, seen_decls);
                 output.extend(&result);
             }
         }
         Expr::RowCondition(block_id) | Expr::Subexpression(block_id) => {
             let block = working_set.get_block(*block_id);
-            let result = find_captures_in_block(working_set, block, seen);
+            let result = find_captures_in_block(working_set, block, seen, seen_decls);
             output.extend(&result);
         }
         Expr::Table(headers, values) => {
             for header in headers {
-                let result = find_captures_in_expr(working_set, header, seen);
+                let result = find_captures_in_expr(working_set, header, seen, seen_decls);
                 output.extend(&result);
             }
             for row in values {
                 for cell in row {
-                    let result = find_captures_in_expr(working_set, cell, seen);
+                    let result = find_captures_in_expr(working_set, cell, seen, seen_decls);
                     output.extend(&result);
                 }
             }
         }
         Expr::ValueWithUnit(expr, _) => {
-            let result = find_captures_in_expr(working_set, expr, seen);
+            let result = find_captures_in_expr(working_set, expr, seen, seen_decls);
             output.extend(&result);
         }
         Expr::Var(var_id) => {
@@ -3878,7 +3913,8 @@ fn wrap_expr_with_collect(working_set: &mut StateWorkingSet, expr: &Expression) 
         };
 
         let mut seen = vec![];
-        let captures = find_captures_in_block(working_set, &block, &mut seen);
+        let mut seen_decls = vec![];
+        let captures = find_captures_in_block(working_set, &block, &mut seen, &mut seen_decls);
 
         block.captures = captures;
 
@@ -3932,7 +3968,7 @@ pub fn parse(
 
     working_set.add_file(name, contents);
 
-    let (output, err) = lex(contents, span_offset, &[], &[], true);
+    let (output, err) = lex(contents, span_offset, &[], &[], false);
     error = error.or(err);
 
     let (output, err) = lite_parse(&output);

@@ -172,6 +172,16 @@ impl Value {
     pub fn as_string(&self) -> Result<String, ShellError> {
         match self {
             Value::String { val, .. } => Ok(val.to_string()),
+            Value::Binary { val, .. } => Ok(match std::str::from_utf8(val) {
+                Ok(s) => s.to_string(),
+                Err(_) => {
+                    return Err(ShellError::CantConvert(
+                        "binary".into(),
+                        "string".into(),
+                        self.span()?,
+                    ))
+                }
+            }),
             x => Err(ShellError::CantConvert(
                 "string".into(),
                 x.get_type().to_string(),
@@ -363,14 +373,14 @@ impl Value {
     }
 
     /// Convert Value into string. Note that Streams will be consumed.
-    pub fn into_string(self, separator: &str, config: &Config) -> String {
+    pub fn into_string(&self, separator: &str, config: &Config) -> String {
         match self {
             Value::Bool { val, .. } => val.to_string(),
             Value::Int { val, .. } => val.to_string(),
             Value::Float { val, .. } => val.to_string(),
-            Value::Filesize { val, .. } => format_filesize(val, config),
-            Value::Duration { val, .. } => format_duration(val),
-            Value::Date { val, .. } => HumanTime::from(val).to_string(),
+            Value::Filesize { val, .. } => format_filesize(*val, config),
+            Value::Duration { val, .. } => format_duration(*val),
+            Value::Date { val, .. } => HumanTime::from(*val).to_string(),
             Value::Range { val, .. } => {
                 format!(
                     "{}..{}",
@@ -378,10 +388,10 @@ impl Value {
                     val.to.into_string(", ", config)
                 )
             }
-            Value::String { val, .. } => val,
+            Value::String { val, .. } => val.clone(),
             Value::List { vals: val, .. } => format!(
                 "[{}]",
-                val.into_iter()
+                val.iter()
                     .map(|x| x.into_string(", ", config))
                     .collect::<Vec<_>>()
                     .join(separator)
@@ -390,7 +400,7 @@ impl Value {
                 "{{{}}}",
                 cols.iter()
                     .zip(vals.iter())
-                    .map(|(x, y)| format!("{}: {}", x, y.clone().into_string(", ", config)))
+                    .map(|(x, y)| format!("{}: {}", x, y.into_string(", ", config)))
                     .collect::<Vec<_>>()
                     .join(separator)
             ),
@@ -415,8 +425,8 @@ impl Value {
             Value::Range { val, .. } => {
                 format!(
                     "{}..{}",
-                    val.from.clone().into_string(", ", config),
-                    val.to.clone().into_string(", ", config)
+                    val.from.into_string(", ", config),
+                    val.to.into_string(", ", config)
                 )
             }
             Value::String { val, .. } => val.to_string(),
@@ -447,18 +457,18 @@ impl Value {
     }
 
     /// Convert Value into a debug string
-    pub fn debug_value(self) -> String {
+    pub fn debug_value(&self) -> String {
         format!("{:#?}", self)
     }
 
     /// Convert Value into string. Note that Streams will be consumed.
-    pub fn debug_string(self, separator: &str, config: &Config) -> String {
+    pub fn debug_string(&self, separator: &str, config: &Config) -> String {
         match self {
             Value::Bool { val, .. } => val.to_string(),
             Value::Int { val, .. } => val.to_string(),
             Value::Float { val, .. } => val.to_string(),
-            Value::Filesize { val, .. } => format_filesize(val, config),
-            Value::Duration { val, .. } => format_duration(val),
+            Value::Filesize { val, .. } => format_filesize(*val, config),
+            Value::Duration { val, .. } => format_duration(*val),
             Value::Date { val, .. } => format!("{:?}", val),
             Value::Range { val, .. } => {
                 format!(
@@ -467,10 +477,10 @@ impl Value {
                     val.to.into_string(", ", config)
                 )
             }
-            Value::String { val, .. } => val,
+            Value::String { val, .. } => val.clone(),
             Value::List { vals: val, .. } => format!(
                 "[{}]",
-                val.into_iter()
+                val.iter()
                     .map(|x| x.into_string(", ", config))
                     .collect::<Vec<_>>()
                     .join(separator)
@@ -479,7 +489,7 @@ impl Value {
                 "{{{}}}",
                 cols.iter()
                     .zip(vals.iter())
-                    .map(|(x, y)| format!("{}: {}", x, y.clone().into_string(", ", config)))
+                    .map(|(x, y)| format!("{}: {}", x, y.into_string(", ", config)))
                     .collect::<Vec<_>>()
                     .join(separator)
             ),
@@ -493,7 +503,7 @@ impl Value {
     }
 
     /// Check if the content is empty
-    pub fn is_empty(self) -> bool {
+    pub fn is_empty(&self) -> bool {
         match self {
             Value::String { val, .. } => val.is_empty(),
             Value::List { vals, .. } => {
@@ -808,6 +818,17 @@ impl Value {
             span: Span::test_data(),
         }
     }
+
+    /// Note: Only use this for test data, *not* live data, as it will point into unknown source
+    /// when used in errors.
+    pub fn test_record(cols: Vec<impl Into<String>>, vals: Vec<Value>) -> Value {
+        Value::Record {
+            cols: cols.into_iter().map(|s| s.into()).collect(),
+            vals,
+
+            span: Span::test_data(),
+        }
+    }
 }
 
 impl Default for Value {
@@ -1117,6 +1138,40 @@ impl Value {
                         val: lhs / rhs,
                         span,
                     })
+                } else {
+                    Err(ShellError::DivisionByZero(op))
+                }
+            }
+            (Value::Filesize { val: lhs, .. }, Value::Filesize { val: rhs, .. }) => {
+                if *rhs != 0 {
+                    if lhs % rhs == 0 {
+                        Ok(Value::Int {
+                            val: lhs / rhs,
+                            span,
+                        })
+                    } else {
+                        Ok(Value::Float {
+                            val: (*lhs as f64) / (*rhs as f64),
+                            span,
+                        })
+                    }
+                } else {
+                    Err(ShellError::DivisionByZero(op))
+                }
+            }
+            (Value::Duration { val: lhs, .. }, Value::Duration { val: rhs, .. }) => {
+                if *rhs != 0 {
+                    if lhs % rhs == 0 {
+                        Ok(Value::Int {
+                            val: lhs / rhs,
+                            span,
+                        })
+                    } else {
+                        Ok(Value::Float {
+                            val: (*lhs as f64) / (*rhs as f64),
+                            span,
+                        })
+                    }
                 } else {
                     Err(ShellError::DivisionByZero(op))
                 }
