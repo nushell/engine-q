@@ -68,6 +68,7 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             GroupBy,
             Keep,
             Merge,
+            Move,
             KeepUntil,
             KeepWhile,
             Last,
