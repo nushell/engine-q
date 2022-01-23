@@ -2,8 +2,7 @@ use nu_engine::{eval_block, CallExt};
 use nu_protocol::{
     ast::Call,
     engine::{CaptureBlock, Command, EngineState, Stack},
-    Category, Example, IntoInterruptiblePipelineData, PipelineData, ShellError, Signature, Span,
-    SyntaxShape, Value,
+    Category, Example, PipelineData, ShellError, Signature, Span, SyntaxShape, Value,
 };
 
 #[derive(Clone)]
@@ -40,10 +39,7 @@ impl Command for Find {
             Example {
                 description: "Search for a term in a string",
                 example: r#"echo Cargo.toml | find toml"#,
-                result: Some(Value::List {
-                    vals: vec![Value::test_string("Cargo.toml".to_owned())],
-                    span: Span::test_data()
-                })
+                result: Some(Value::test_string("Cargo.toml".to_owned()))
             },
             Example {
                 description: "Search a number or a file size in a list of numbers",
@@ -113,9 +109,8 @@ impl Command for Find {
 
                 let mut stack = stack.captures_to_stack(&capture_block.captures);
 
-                Ok(input
-                    .into_iter()
-                    .filter(move |value| {
+                input.filter(
+                    move |value| {
                         if let Some(var_id) = var_id {
                             stack.add_var(var_id, value.clone());
                         }
@@ -124,14 +119,14 @@ impl Command for Find {
                             .map_or(false, |pipeline_data| {
                                 pipeline_data.into_value(span).is_true()
                             })
-                    })
-                    .into_pipeline_data(ctrlc))
+                    },
+                    ctrlc,
+                )
             }
             None => {
                 let terms = call.rest::<Value>(&engine_state, stack, 0)?;
-                Ok(input
-                    .into_iter()
-                    .filter(move |value| {
+                input.filter(
+                    move |value| {
                         terms.iter().any(|term| match value {
                             Value::Bool { .. }
                             | Value::Int { .. }
@@ -154,10 +149,11 @@ impl Command for Find {
                             Value::Record { vals, .. } => vals.iter().any(|val| {
                                 term.r#in(span, val).map_or(false, |value| value.is_true())
                             }),
-                            Value::Binary { .. } => todo!(),
+                            Value::Binary { .. } => false,
                         })
-                    })
-                    .into_pipeline_data(ctrlc))
+                    },
+                    ctrlc,
+                )
             }
         }
     }
