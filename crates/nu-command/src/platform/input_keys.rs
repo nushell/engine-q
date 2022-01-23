@@ -47,10 +47,17 @@ impl Command for InputKeys {
 pub fn print_events() -> Result<Value, ShellError> {
     stdout().flush()?;
     terminal::enable_raw_mode()?;
-    let result = print_events_helper();
+    loop {
+        let event = crossterm::event::read()?;
+        if event == Event::Key(KeyCode::Esc.into()) {
+            break;
+        }
+
+        print_events_helper(event)?;
+    }
     terminal::disable_raw_mode()?;
 
-    result
+    Ok(Value::nothing(Span::test_data()))
 }
 
 // this fn is totally ripped off from crossterm's examples
@@ -58,67 +65,67 @@ pub fn print_events() -> Result<Value, ShellError> {
 // even seeing the events. if you press a key and no events
 // are printed, it's a good chance your terminal is eating
 // those events.
-fn print_events_helper() -> Result<Value, ShellError> {
-    loop {
-        // Wait up to 5s for another event
-        if poll(Duration::from_millis(5_000))? {
-            // It's guaranteed that read() wont block if `poll` returns `Ok(true)`
-            let event = crossterm::event::read()?;
+fn print_events_helper(event: Event) -> Result<Value, ShellError> {
+    // loop {
+    // Wait up to 5s for another event
+    if poll(Duration::from_millis(5_000))? {
+        // It's guaranteed that read() wont block if `poll` returns `Ok(true)`
+        // let event = crossterm::event::read()?;
 
-            if let Event::Key(KeyEvent { code, modifiers }) = event {
-                match code {
-                    KeyCode::Char(c) => {
-                        let record = Value::Record {
-                            cols: vec![
-                                "char".into(),
-                                "code".into(),
-                                "modifier".into(),
-                                "flags".into(),
-                            ],
-                            vals: vec![
-                                Value::string(format!("{}", c), Span::test_data()),
-                                Value::string(format!("{:#08x}", u32::from(c)), Span::test_data()),
-                                Value::string(format!("{:?}", modifiers), Span::test_data()),
-                                Value::string(format!("{:#08b}", modifiers), Span::test_data()),
-                            ],
-                            span: Span::test_data(),
-                        };
-                        return Ok(record);
-                    }
-                    _ => {
-                        let record = Value::Record {
-                            cols: vec!["code".into(), "modifier".into(), "flags".into()],
-                            vals: vec![
-                                Value::string(format!("{:?}", code), Span::test_data()),
-                                Value::string(format!("{:?}", modifiers), Span::test_data()),
-                                Value::string(format!("{:#08b}", modifiers), Span::test_data()),
-                            ],
-                            span: Span::test_data(),
-                        };
-                        return Ok(record);
-                    }
+        if let Event::Key(KeyEvent { code, modifiers }) = event {
+            match code {
+                KeyCode::Char(c) => {
+                    let record = Value::Record {
+                        cols: vec![
+                            "char".into(),
+                            "code".into(),
+                            "modifier".into(),
+                            "flags".into(),
+                        ],
+                        vals: vec![
+                            Value::string(format!("{}", c), Span::test_data()),
+                            Value::string(format!("{:#08x}", u32::from(c)), Span::test_data()),
+                            Value::string(format!("{:?}", modifiers), Span::test_data()),
+                            Value::string(format!("{:#08b}", modifiers), Span::test_data()),
+                        ],
+                        span: Span::test_data(),
+                    };
+                    return Ok(record);
                 }
-            } else {
-                let record = Value::Record {
-                    cols: vec!["event".into()],
-                    vals: vec![Value::string(format!("{:?}", event), Span::test_data())],
-                    span: Span::test_data(),
-                };
-                return Ok(record);
+                _ => {
+                    let record = Value::Record {
+                        cols: vec!["code".into(), "modifier".into(), "flags".into()],
+                        vals: vec![
+                            Value::string(format!("{:?}", code), Span::test_data()),
+                            Value::string(format!("{:?}", modifiers), Span::test_data()),
+                            Value::string(format!("{:#08b}", modifiers), Span::test_data()),
+                        ],
+                        span: Span::test_data(),
+                    };
+                    return Ok(record);
+                }
             }
-
-            // hit the esc key to git out
-            // if event == Event::Key(KeyCode::Esc.into()) {
-            //     break;
-            // }
         } else {
-            // Timeout expired, no event for 5s
-            return Ok(Value::string(
-                "Waiting for you to type...".to_string(),
-                Span::test_data(),
-            ));
+            let record = Value::Record {
+                cols: vec!["event".into()],
+                vals: vec![Value::string(format!("{:?}", event), Span::test_data())],
+                span: Span::test_data(),
+            };
+            return Ok(record);
         }
+
+        // hit the esc key to git out
+        // if event == Event::Key(KeyCode::Esc.into()) {
+        //     break;
+        // }
+    } else {
+        // Timeout expired, no event for 5s
+        return Ok(Value::string(
+            "Waiting for you to type...".to_string(),
+            Span::test_data(),
+        ));
     }
+    // }
 
     // Ok(())
     // Ok(Value::nothing(Span::test_data()))
