@@ -31,6 +31,7 @@ impl Command for Cd {
         let raw_path = call.nth(0);
         let path_val: Option<Value> = call.opt(engine_state, stack, 0)?;
         let cwd = current_dir(engine_state, stack)?;
+
         let (path, span) = match raw_path {
             Some(v) => match &v {
                 Expression {
@@ -59,7 +60,6 @@ impl Command for Cd {
                 _ => match path_val {
                     Some(v) => {
                         let path = v.as_path()?;
-
                         let path = match nu_path::canonicalize_with(path, &cwd) {
                             Ok(p) if p.is_dir() => p,
                             Ok(p) if p.is_file() => {
