@@ -170,20 +170,6 @@ impl Command for Merge {
     }
 }
 
-/*
-fn merge_values(
-left: &UntaggedValue,
-right: &UntaggedValue,
-) -> Result<UntaggedValue, (&'static str, &'static str)> {
-match (left, right) {
-(UntaggedValue::Row(columns), UntaggedValue::Row(columns_b)) => {
-Ok(UntaggedValue::Row(columns.merge_from(columns_b)))
-}
-(left, right) => Err((left.type_name(), right.type_name())),
-}
-}
-*/
-
 #[cfg(test)]
 mod test {
     use super::*;
