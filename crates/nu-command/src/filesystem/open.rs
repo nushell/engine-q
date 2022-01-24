@@ -2,7 +2,7 @@ use nu_engine::{get_full_help, CallExt};
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
-    ByteStream, Category, IntoPipelineData, PipelineData, ShellError, Signature, Spanned,
+    ByteStream, Category, Example, IntoPipelineData, PipelineData, ShellError, Signature, Spanned,
     SyntaxShape, Value,
 };
 use std::io::{BufRead, BufReader, Read};
@@ -150,6 +150,26 @@ impl Command for Open {
                 Ok(output)
             }
         }
+    }
+
+    fn examples(&self) -> Vec<nu_protocol::Example> {
+        vec![
+            Example {
+                description: "Open a file, with structure (based on file extension)",
+                example: "open myfile.json",
+                result: None,
+            },
+            Example {
+                description: "Open a file, as raw bytes",
+                example: "open myfile.json --raw",
+                result: None,
+            },
+            Example {
+                description: "Open a file, using the input to get filename",
+                example: "echo 'myfile.txt' | open",
+                result: None,
+            },
+        ]
     }
 }
 
