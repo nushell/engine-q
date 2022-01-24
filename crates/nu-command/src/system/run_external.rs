@@ -303,19 +303,57 @@ impl<'call> ExternalCommand<'call> {
                 arg
             };
 
-            let new_arg;
+            if arg.contains('*') {
+                if let Ok(matches) = glob::glob(&arg) {
+                    for m in matches {
+                        if let Ok(arg) = m {
+                            let arg = arg.to_string_lossy().to_string();
 
-            #[cfg(windows)]
-            {
-                new_arg = arg.replace("\\", "\\\\");
+                            let new_arg;
+
+                            #[cfg(windows)]
+                            {
+                                new_arg = arg.replace("\\", "\\\\");
+                            }
+
+                            #[cfg(not(windows))]
+                            {
+                                new_arg = arg;
+                            }
+
+                            process.arg(&new_arg);
+                        } else {
+                            let new_arg;
+
+                            #[cfg(windows)]
+                            {
+                                new_arg = arg.replace("\\", "\\\\");
+                            }
+
+                            #[cfg(not(windows))]
+                            {
+                                new_arg = arg.clone();
+                            }
+
+                            process.arg(&new_arg);
+                        }
+                    }
+                }
+            } else {
+                let new_arg;
+
+                #[cfg(windows)]
+                {
+                    new_arg = arg.replace("\\", "\\\\");
+                }
+
+                #[cfg(not(windows))]
+                {
+                    new_arg = arg;
+                }
+
+                process.arg(&new_arg);
             }
-
-            #[cfg(not(windows))]
-            {
-                new_arg = arg;
-            }
-
-            process.arg(&new_arg);
         }
 
         process
