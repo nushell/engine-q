@@ -3,9 +3,10 @@ use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
     Category, Example, IntoInterruptiblePipelineData, IntoPipelineData, PipelineData, ShellError,
-    Signature, Span, SyntaxShape, Value,
+    Signature, Span, Spanned, SyntaxShape, Value,
 };
 
+#[derive(Clone, Debug)]
 enum BeforeOrAfter {
     Before(String),
     After(String),
@@ -85,13 +86,19 @@ impl Command for Move {
         call: &Call,
         input: PipelineData,
     ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
-        let columns: Vec<String> = call.rest(engine_state, stack, 0)?;
-        let after: Option<String> = call.get_flag(engine_state, stack, "after")?;
-        let before: Option<String> = call.get_flag(engine_state, stack, "before")?;
+        let columns: Vec<Value> = call.rest(engine_state, stack, 0)?;
+        let after: Option<Value> = call.get_flag(engine_state, stack, "after")?;
+        let before: Option<Value> = call.get_flag(engine_state, stack, "before")?;
 
         let before_or_after = match (after, before) {
-            (Some(s), None) => BeforeOrAfter::After(s),
-            (None, Some(s)) => BeforeOrAfter::Before(s),
+            (Some(v), None) => Spanned {
+                item: BeforeOrAfter::After(v.as_string()?),
+                span: v.span()?,
+            },
+            (None, Some(v)) => Spanned {
+                item: BeforeOrAfter::Before(v.as_string()?),
+                span: v.span()?,
+            },
             (Some(_), Some(_)) => {
                 return Err(ShellError::SpannedLabeledError(
                     "Cannot move columns".to_string(),
@@ -158,27 +165,60 @@ impl Command for Move {
     }
 }
 
+// Move columns within a record
 fn move_record_columns(
     inp_cols: &[String],
     inp_vals: &[Value],
-    columns: &[String],
-    before_or_after: &BeforeOrAfter,
+    columns: &[Value],
+    before_or_after: &Spanned<BeforeOrAfter>,
     span: Span,
 ) -> Result<Value, ShellError> {
     let mut column_idx: Vec<usize> = Vec::with_capacity(columns.len());
 
-    // Find indices of columns to be moved
-    for column in columns.iter() {
-        if let Some(idx) = inp_cols.iter().position(|inp_col| column == inp_col) {
-            column_idx.push(idx);
+    // Check if before/after column exist
+    match &before_or_after.item {
+        BeforeOrAfter::After(after) => {
+            if !inp_cols.contains(after) {
+                return Err(ShellError::SpannedLabeledError(
+                    "Cannot move columns".to_string(),
+                    "column does not exist".to_string(),
+                    before_or_after.span,
+                ));
+            }
+        }
+        BeforeOrAfter::Before(before) => {
+            if !inp_cols.contains(before) {
+                return Err(ShellError::SpannedLabeledError(
+                    "Cannot move columns".to_string(),
+                    "column does not exist".to_string(),
+                    before_or_after.span,
+                ));
+            }
         }
     }
+
+    // Find indices of columns to be moved
+    for column in columns.iter() {
+        let column_str = column.as_string()?;
+
+        if let Some(idx) = inp_cols.iter().position(|inp_col| &column_str == inp_col) {
+            column_idx.push(idx);
+        } else {
+            return Err(ShellError::SpannedLabeledError(
+                "Cannot move columns".to_string(),
+                "column does not exist".to_string(),
+                column.span()?,
+            ));
+        }
+    }
+
+    if columns.is_empty() {}
 
     let mut out_cols: Vec<String> = Vec::with_capacity(inp_cols.len());
     let mut out_vals: Vec<Value> = Vec::with_capacity(inp_vals.len());
 
     for (i, (inp_col, inp_val)) in inp_cols.iter().zip(inp_vals).enumerate() {
-        match before_or_after {
+        match &before_or_after.item {
             BeforeOrAfter::After(after) if after == inp_col => {
                 out_cols.push(inp_col.into());
                 out_vals.push(inp_val.clone());
