@@ -2,7 +2,10 @@ use itertools::Itertools;
 use nu_engine::CallExt;
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
-use nu_protocol::{Category, Example, PipelineData, ShellError, Signature, SyntaxShape};
+use nu_protocol::{
+    Category, Example, IntoPipelineData, PipelineData, ShellError, Signature, Span, SyntaxShape,
+    Value,
+};
 
 #[derive(Clone)]
 pub struct Tutor;
@@ -25,6 +28,7 @@ impl Command for Tutor {
                 "Search tutorial for a phrase",
                 Some('f'),
             )
+            .category(Category::Core)
     }
 
     fn usage(&self) -> &str {
@@ -36,9 +40,9 @@ impl Command for Tutor {
         engine_state: &EngineState,
         stack: &mut Stack,
         call: &Call,
-        input: PipelineData,
+        _input: PipelineData,
     ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
-        tutor(engine_state, stack, call, input)
+        tutor(engine_state, stack, call)
     }
 
     fn examples(&self) -> Vec<Example> {
@@ -61,7 +65,6 @@ fn tutor(
     engine_state: &EngineState,
     stack: &mut Stack,
     call: &Call,
-    input: PipelineData,
 ) -> Result<PipelineData, ShellError> {
     let span = call.head;
 
@@ -111,15 +114,15 @@ fn tutor(
             results.into_iter().map(|x| format!("- {}", x)).join("\n")
         );
 
-        return Ok(display(tag, &scope, &message));
+        return Ok(display(&message, engine_state, stack, span));
     } else if let Some(search) = search {
         for search_group in search_space {
             if search_group.0.contains(&search.as_str()) {
-                return Ok(display(tag, &scope, search_group.1));
+                return Ok(display(search_group.1, engine_state, stack, span));
             }
         }
     }
-    Ok(display(tag, &scope, default_tutor()))
+    Ok(display(default_tutor(), engine_state, stack, span))
 }
 
 fn default_tutor() -> &'static str {
@@ -406,38 +409,58 @@ current scripts:
 "#
 }
 
-fn display(tag: Tag, scope: &Scope, help: &str) -> OutputStream {
+fn display(help: &str, engine_state: &EngineState, stack: &mut Stack, span: Span) -> PipelineData {
     let help = help.split('`');
 
     let mut build = String::new();
     let mut code_mode = false;
-    let palette = nu_engine::DefaultPalette {};
 
     for item in help {
         if code_mode {
             code_mode = false;
 
             //TODO: support no-color mode
-            let colored_example = nu_engine::Painter::paint_string(item, scope, &palette);
-            build.push_str(&colored_example);
+            if let Some(highlighter) = engine_state.find_decl(b"nu-highlight") {
+                let decl = engine_state.get_decl(highlighter);
+
+                if let Ok(output) = decl.run(
+                    engine_state,
+                    stack,
+                    &Call::new(),
+                    Value::String {
+                        val: item.to_string(),
+                        span: Span { start: 0, end: 0 },
+                    }
+                    .into_pipeline_data(),
+                ) {
+                    let result = output.into_value(Span { start: 0, end: 0 });
+                    match result.as_string() {
+                        Ok(s) => {
+                            build.push_str(&s);
+                        }
+                        _ => {
+                            build.push_str(item);
+                        }
+                    }
+                }
+            }
         } else {
             code_mode = true;
             build.push_str(item);
         }
     }
 
-    OutputStream::one(UntaggedValue::string(build).into_value(tag))
+    Value::string(build, span).into_pipeline_data()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::ShellError;
-    use super::Tutor;
+    use super::*;
 
     #[test]
-    fn examples_work_as_expected() -> Result<(), ShellError> {
-        use crate::examples::test as test_examples;
+    fn test_examples() {
+        use crate::test_examples;
 
-        test_examples(Tutor {})
+        test_examples(Tutor)
     }
 }
