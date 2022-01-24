@@ -31,13 +31,13 @@ impl Command for Move {
                 "after",
                 SyntaxShape::String,
                 "the column that will precede the columns moved",
-                Some('a'),
+                None,
             )
             .named(
                 "before",
                 SyntaxShape::String,
                 "the column that will be the next after the columns moved",
-                Some('b'),
+                None,
             )
             .category(Category::Filters)
     }
@@ -45,36 +45,56 @@ impl Command for Move {
     fn examples(&self) -> Vec<Example> {
         vec![
             Example {
-                example: "",
+                example: "[[name value index]; [foo a 1] [bar b 2] [baz c 3]] | move index --before name",
                 description: "Move a column before the first column",
-                result: None,
-                // Some(Value::List {
-                //     vals: vec![
-                //         Value::test_record(
-                //             vec!["name", "index"],
-                //             vec![Value::test_string("a"), Value::test_int(1)],
-                //         ),
-                //         Value::test_record(
-                //             vec!["name", "index"],
-                //             vec![Value::test_string("b"), Value::test_int(2)],
-                //         ),
-                //         Value::test_record(
-                //             vec!["name", "index"],
-                //             vec![Value::test_string("c"), Value::test_int(3)],
-                //         ),
-                //     ],
-                //     span: Span::test_data(),
-                // }),
+                result:
+                    Some(Value::List {
+                        vals: vec![
+                            Value::test_record(
+                                vec!["index", "name", "value"],
+                                vec![Value::test_int(1), Value::test_string("foo"), Value::test_string("a")],
+                            ),
+                            Value::test_record(
+                                vec!["index", "name", "value"],
+                                vec![Value::test_int(2), Value::test_string("bar"), Value::test_string("b")],
+                            ),
+                            Value::test_record(
+                                vec!["index", "name", "value"],
+                                vec![Value::test_int(3), Value::test_string("baz"), Value::test_string("c")],
+                            ),
+                        ],
+                        span: Span::test_data(),
+                    })
             },
             Example {
-                example: "",
-                description: "Move multiple columns after a column",
-                result: None,
+                example: "[[name value index]; [foo a 1] [bar b 2] [baz c 3]] | move value name --after index",
+                description: "Move multiple columns after the last column and reorder them",
+                result:
+                    Some(Value::List {
+                        vals: vec![
+                            Value::test_record(
+                                vec!["index", "value", "name"],
+                                vec![Value::test_int(1), Value::test_string("a"), Value::test_string("foo")],
+                            ),
+                            Value::test_record(
+                                vec!["index", "value", "name"],
+                                vec![Value::test_int(2), Value::test_string("b"), Value::test_string("bar")],
+                            ),
+                            Value::test_record(
+                                vec!["index", "value", "name"],
+                                vec![Value::test_int(3), Value::test_string("c"), Value::test_string("baz")],
+                            ),
+                        ],
+                        span: Span::test_data(),
+                    })
             },
             Example {
-                example: "",
-                description: "Move columns of a record to the end",
-                result: None,
+                example: "{ name: foo, value: a, index: 1 } | move name --before index",
+                description: "Move columns of a record",
+                result: Some(Value::test_record(
+                    vec!["value", "name", "index"],
+                    vec![Value::test_string("a"), Value::test_string("foo"), Value::test_int(1)],
+                ))
             },
         ]
     }
