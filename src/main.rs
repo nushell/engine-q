@@ -51,8 +51,41 @@ fn main() -> Result<()> {
     engine_state.ctrlc = Some(engine_state_ctrlc);
     // End ctrl-c protection section
 
+    let mut args_to_nushell = vec![];
+    let mut script_name = String::new();
+    let mut args_to_script = vec![];
+
+    // Would be nice if we had a way to parse this. The first flags we see will be going to nushell
+    // then it'll be the script name
+    // then the args to the script
+
+    let mut collect_arg_nushell = false;
+    for arg in std::env::args().skip(1) {
+        if !script_name.is_empty() {
+            args_to_script.push(arg);
+        } else if collect_arg_nushell {
+            args_to_nushell.push(arg);
+            collect_arg_nushell = false;
+        } else if arg.starts_with('-') {
+            // Cool, it's a flag
+            if arg == "-c"
+                || arg == "--commands"
+                || arg == "--develop"
+                || arg == "--debug"
+                || arg == "--loglevel"
+                || arg == "--config-file"
+            {
+                collect_arg_nushell = true;
+            }
+            args_to_nushell.push(arg);
+        } else {
+            // Our script file
+            script_name = arg;
+        }
+    }
+
     if let Some(path) = std::env::args().nth(1) {
-        eval_file::evaluate(path, init_cwd, &mut engine_state)
+        eval_file::evaluate(path, &args_to_script, init_cwd, &mut engine_state)
     } else {
         repl::evaluate(ctrlc, &mut engine_state)
     }
