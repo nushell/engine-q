@@ -1,7 +1,7 @@
 use nu_protocol::{
     ast::Call,
     engine::{Command, EngineState, Stack},
-    Category, Example, PipelineData, ShellError, Signature, Spanned, SyntaxShape,
+    Category, Example, PipelineData, ShellError, Signature, SyntaxShape,
 };
 
 #[derive(Clone)]
@@ -66,6 +66,7 @@ fn exec(
     use std::os::unix::process::CommandExt;
 
     use nu_engine::{current_dir, env_to_strings, CallExt};
+    use nu_protocol::Spanned;
 
     use super::run_external::ExternalCommand;
 
@@ -107,7 +108,7 @@ fn exec(
 ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
     Err(ShellError::SpannedLabeledError(
         "Error on exec".to_string(),
-        "exec is not supported on your platform",
+        "exec is not supported on your platform".to_string(),
         call.head,
     ))
 }
