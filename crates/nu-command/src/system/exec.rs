@@ -102,8 +102,8 @@ fn exec(
 
 #[cfg(not(unix))]
 fn exec(
-    engine_state: &EngineState,
-    stack: &mut Stack,
+    _engine_state: &EngineState,
+    _stack: &mut Stack,
     call: &Call,
 ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
     Err(ShellError::SpannedLabeledError(
