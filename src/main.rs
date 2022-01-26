@@ -11,7 +11,7 @@ mod tests;
 
 use miette::Result;
 use nu_command::{create_default_context, BufferedReader};
-use nu_engine::{get_full_help, CallExt};
+use nu_engine::get_full_help;
 use nu_parser::parse;
 use nu_protocol::{
     ast::{Call, Expr, Expression, Pipeline, Statement},

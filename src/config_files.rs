@@ -1,8 +1,5 @@
 use crate::utils::{eval_source, report_error};
-use nu_protocol::{
-    engine::{EngineState, Stack, StateDelta, StateWorkingSet},
-    PipelineData, Span,
-};
+use nu_protocol::engine::{EngineState, Stack, StateDelta, StateWorkingSet};
 use std::path::PathBuf;
 
 const NUSHELL_FOLDER: &str = "nushell";

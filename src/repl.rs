@@ -19,7 +19,7 @@ use nu_engine::convert_env_values;
 use nu_parser::lex;
 use nu_protocol::{
     engine::{EngineState, StateWorkingSet},
-    Config, PipelineData, ShellError, Span, Value, CONFIG_VARIABLE_ID,
+    Config, ShellError, Span, Value, CONFIG_VARIABLE_ID,
 };
 use reedline::{DefaultHinter, Emacs, Vi};
 
