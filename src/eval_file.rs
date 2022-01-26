@@ -16,6 +16,7 @@ pub(crate) fn evaluate(
     args: &[String],
     init_cwd: PathBuf,
     engine_state: &mut EngineState,
+    input: PipelineData,
 ) -> Result<()> {
     // First, set up env vars as strings only
     gather_parent_env_vars(engine_state);
@@ -83,12 +84,7 @@ pub(crate) fn evaluate(
         std::process::exit(1);
     }
 
-    match eval_block(
-        engine_state,
-        &mut stack,
-        &block,
-        PipelineData::new(Span::new(0, 0)), // Don't try this at home, 0 span is ignored
-    ) {
+    match eval_block(engine_state, &mut stack, &block, input) {
         Ok(pipeline_data) => {
             for item in pipeline_data {
                 if let Value::Error { error } = item {
@@ -130,7 +126,7 @@ pub(crate) fn evaluate(
                 engine_state,
                 &mut stack,
                 &block,
-                PipelineData::new(Span::new(0, 0)), // Don't try this at home, 0 span is ignored
+                input, // Don't try this at home, 0 span is ignored
             ) {
                 Ok(pipeline_data) => {
                     for item in pipeline_data {
