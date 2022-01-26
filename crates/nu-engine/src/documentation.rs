@@ -206,7 +206,10 @@ pub fn get_documentation(
         }
 
         if let Some(rest_positional) = &sig.rest_positional {
-            long_desc.push_str(&format!("  ...args: {}\n", rest_positional.desc));
+            long_desc.push_str(&format!(
+                "  ...{}: {}\n",
+                rest_positional.name, rest_positional.desc
+            ));
         }
     }
 
