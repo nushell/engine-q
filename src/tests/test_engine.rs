@@ -182,3 +182,11 @@ fn let_sees_in_variable() -> TestResult {
         "3",
     )
 }
+
+#[test]
+fn let_sees_in_variable2() -> TestResult {
+    run_test(
+        r#"def c [] { let x = ($in | str length); $x }; 'bob' | c"#,
+        "3",
+    )
+}

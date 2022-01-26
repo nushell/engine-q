@@ -440,7 +440,6 @@ pub fn eval_expression_with_input(
         }
 
         elem => {
-            stack.add_var(nu_protocol::IN_VARIABLE_ID, input.into_value(expr.span));
             input = eval_expression(engine_state, stack, elem)?.into_pipeline_data();
         }
     }
