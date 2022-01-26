@@ -16,8 +16,8 @@ use nu_parser::parse;
 use nu_protocol::{
     ast::{Call, Expr, Expression, Pipeline, Statement},
     engine::{Command, EngineState, Stack, StateWorkingSet},
-    ByteStream, Category, IntoPipelineData, PipelineData, ShellError, Signature, Span, Spanned,
-    Value,
+    ByteStream, Category, Example, IntoPipelineData, PipelineData, ShellError, Signature, Span,
+    Spanned, SyntaxShape, Value, CONFIG_VARIABLE_ID,
 };
 use std::{
     io::BufReader,
@@ -160,6 +160,16 @@ fn parse_commandline_args(
 
     let _ = engine_state.merge_delta(delta, None, init_cwd);
 
+    let mut stack = Stack::new();
+    stack.add_var(
+        CONFIG_VARIABLE_ID,
+        Value::Record {
+            cols: vec![],
+            vals: vec![],
+            span: Span::new(0, 0),
+        },
+    );
+
     // We should have a successful parse now
     if let Some(Statement::Pipeline(Pipeline { expressions })) = block.stmts.get(0) {
         if let Some(Expression {
@@ -169,18 +179,22 @@ fn parse_commandline_args(
         {
             let redirect_stdin = call.get_named_arg("stdin");
 
+            let help = call.has_flag("help");
+
+            if help {
+                let full_help =
+                    get_full_help(&Nu.signature(), &Nu.examples(), engine_state, &mut stack);
+                print!("{}", full_help);
+                std::process::exit(1);
+            }
+
             return Ok(NushellConfig { redirect_stdin });
         }
     }
 
     // Just give the help and exit if the above fails
-    let full_help = get_full_help(
-        &Nu.signature(),
-        &Nu.examples(),
-        engine_state,
-        &mut Stack::new(),
-    );
-    println!("{}", full_help);
+    let full_help = get_full_help(&Nu.signature(), &Nu.examples(), engine_state, &mut stack);
+    print!("{}", full_help);
     std::process::exit(1);
 }
 
@@ -198,7 +212,18 @@ impl Command for Nu {
 
     fn signature(&self) -> Signature {
         Signature::build("nu")
+            .desc("The nushell language and shell.")
             .switch("stdin", "redirect the stdin", None)
+            .optional(
+                "script file",
+                SyntaxShape::Filepath,
+                "name of the optional script file to run",
+            )
+            .rest(
+                "script args",
+                SyntaxShape::String,
+                "parameters to the script file",
+            )
             .category(Category::System)
     }
 
@@ -218,5 +243,20 @@ impl Command for Nu {
             span: call.head,
         }
         .into_pipeline_data())
+    }
+
+    fn examples(&self) -> Vec<nu_protocol::Example> {
+        vec![
+            Example {
+                description: "Run a script",
+                example: "nu myfile.nu",
+                result: None,
+            },
+            Example {
+                description: "Run nushell interactively (as a shell or REPL)",
+                example: "nu",
+                result: None,
+            },
+        ]
     }
 }
