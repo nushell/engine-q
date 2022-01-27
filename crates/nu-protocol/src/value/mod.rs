@@ -627,9 +627,9 @@ impl Value {
                                 hasvalue = true;
                                 output.push(result);
                             } else if hasvalue {
-                                output.push(Value::String{
-                                    val : "none".to_string(),
-                                    span: Span { start: 0, end: 0 }
+                                output.push(Value::String {
+                                    val: "none".to_string(),
+                                    span: Span { start: 0, end: 0 },
                                 });
                             } else {
                                 return temp;
