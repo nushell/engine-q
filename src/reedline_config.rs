@@ -231,8 +231,8 @@ fn add_keybinding(
         "control | alt | shift" => KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SHIFT,
         _ => {
             return Err(ShellError::UnsupportedConfigValue(
-                keybinding.modifier.into_abbreviated_string(config),
                 "CONTROL, SHIFT, ALT or NONE".to_string(),
+                keybinding.modifier.into_abbreviated_string(config),
                 keybinding.modifier.span()?,
             ))
         }
@@ -250,8 +250,8 @@ fn add_keybinding(
             let char = c.replace("char_", "");
             let char = char.chars().next().ok_or({
                 ShellError::UnsupportedConfigValue(
+                    "char_<CHAR: unicode codepoint>".to_string(),
                     c.to_string(),
-                    "char_ plus char".to_string(),
                     keybinding.keycode.span()?,
                 )
             })?;
@@ -275,8 +275,8 @@ fn add_keybinding(
                 .ok()
                 .filter(|num| matches!(num, 1..=12))
                 .ok_or(ShellError::UnsupportedConfigValue(
-                    c.to_string(),
-                    "Unknown function key (f1,f2,...,f12)".to_string(),
+                    "(f1|f2|...|f12)".to_string(),
+                    format!("unknown function key: {}", c),
                     keybinding.keycode.span()?,
                 ))?;
             KeyCode::F(fn_num)
@@ -285,8 +285,8 @@ fn add_keybinding(
         "esc" | "escape" => KeyCode::Esc,
         _ => {
             return Err(ShellError::UnsupportedConfigValue(
-                keybinding.keycode.into_abbreviated_string(config),
                 "crossterm KeyCode".to_string(),
+                keybinding.keycode.into_abbreviated_string(config),
                 keybinding.keycode.span()?,
             ))
         }
@@ -386,8 +386,8 @@ fn parse_event(value: Value, config: &Config) -> Result<ReedlineEvent, ShellErro
             }
         }
         v => Err(ShellError::UnsupportedConfigValue(
-            v.into_abbreviated_string(config),
             "record or list of records".to_string(),
+            v.into_abbreviated_string(config),
             v.span()?,
         )),
     }
@@ -475,8 +475,8 @@ fn parse_edit(edit: &Value, config: &Config) -> Result<EditCommand, ShellError> 
                 }
                 e => {
                     return Err(ShellError::UnsupportedConfigValue(
-                        e.to_string(),
                         "reedline EditCommand".to_string(),
+                        e.to_string(),
                         edit.span()?,
                     ))
                 }
@@ -484,8 +484,8 @@ fn parse_edit(edit: &Value, config: &Config) -> Result<EditCommand, ShellError> 
         }
         e => {
             return Err(ShellError::UnsupportedConfigValue(
-                e.into_abbreviated_string(config),
                 "record with EditCommand".to_string(),
+                e.into_abbreviated_string(config),
                 edit.span()?,
             ))
         }
