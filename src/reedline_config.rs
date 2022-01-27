@@ -247,14 +247,19 @@ fn add_keybinding(
         "backspace" => KeyCode::Backspace,
         "enter" => KeyCode::Enter,
         c if c.starts_with("char_") => {
-            let char = c.replace("char_", "");
-            let char = char.chars().next().ok_or({
-                ShellError::UnsupportedConfigValue(
+            let mut char_iter = c.chars().skip(5);
+            let pos1 = char_iter.next();
+            let pos2 = char_iter.next();
+
+            let char = match (pos1, pos2) {
+                (Some(char), None) => Ok(char),
+                _ => Err(ShellError::UnsupportedConfigValue(
                     "char_<CHAR: unicode codepoint>".to_string(),
                     c.to_string(),
                     keybinding.keycode.span()?,
-                )
-            })?;
+                )),
+            }?;
+
             KeyCode::Char(char)
         }
         "down" => KeyCode::Down,
