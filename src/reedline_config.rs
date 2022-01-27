@@ -269,7 +269,18 @@ fn add_keybinding(
         "backtab" => KeyCode::BackTab,
         "delete" => KeyCode::Delete,
         "insert" => KeyCode::Insert,
-        // TODO: Add KeyCode::F(u8) for function keys
+        c if c.starts_with('f') => {
+            let fn_num: u8 = c[1..]
+                .parse()
+                .ok()
+                .filter(|num| matches!(num, 1..=12))
+                .ok_or(ShellError::UnsupportedConfigValue(
+                    c.to_string(),
+                    "Unknown function key (f1,f2,...,f12)".to_string(),
+                    keybinding.keycode.span()?,
+                ))?;
+            KeyCode::F(fn_num)
+        }
         "null" => KeyCode::Null,
         "esc" | "escape" => KeyCode::Esc,
         _ => {
