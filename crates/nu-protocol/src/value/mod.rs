@@ -617,18 +617,23 @@ impl Value {
                     }
                     Value::List { vals, span } => {
                         let mut output = vec![];
+                        let mut hasvalue = false;
                         for val in vals {
-                            output.push(val.clone().follow_cell_path(&[PathMember::String {
+                            let temp = val.clone().follow_cell_path(&[PathMember::String {
                                 val: column_name.clone(),
                                 span: *origin_span,
-                            }])?);
-                            // if let Value::Record { cols, vals, .. } = val {
-                            //     for col in cols.iter().enumerate() {
-                            //         if col.1 == column_name {
-                            //             output.push(vals[col.0].clone());
-                            //         }
-                            //     }
-                            // }
+                            }]);
+                            if let Ok(result) = temp {
+                                hasvalue = true;
+                                output.push(result);
+                            } else if hasvalue {
+                                output.push(Value::String{
+                                    val : "none".to_string(),
+                                    span: Span { start: 0, end: 0 }
+                                });
+                            } else {
+                                return temp;
+                            }
                         }
 
                         current = Value::List {
