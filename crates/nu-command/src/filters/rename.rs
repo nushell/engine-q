@@ -24,7 +24,7 @@ impl Command for Rename {
             .rest(
                 "rest",
                 SyntaxShape::String,
-                "the new name for additional columns",
+                "the new names for the columns",
             )
             .category(Category::Filters)
     }
