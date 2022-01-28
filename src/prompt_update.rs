@@ -83,10 +83,22 @@ fn get_prompt_string(
             _ => None,
         })
         .and_then(|pipeline_data| {
-            pipeline_data
-                .collect_string("", config)
-                .ok()
-                .map(|x| x.trim_end().to_string())
+            let output = pipeline_data.collect_string("", config).ok();
+
+            match output {
+                Some(mut x) => {
+                    // Just remove the very last newline.
+                    if x.ends_with('\n') {
+                        x.pop();
+                    }
+
+                    if x.ends_with('\r') {
+                        x.pop();
+                    }
+                    Some(x)
+                }
+                None => None,
+            }
         })
 }
 
