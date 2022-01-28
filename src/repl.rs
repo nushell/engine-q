@@ -1,11 +1,6 @@
-use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-    time::Instant,
-};
+use std::{sync::atomic::Ordering, time::Instant};
 
+use crate::reedline_config::{add_completion_menu, add_history_menu};
 use crate::{config_files, prompt_update, reedline_config};
 use crate::{
     reedline_config::KeybindingsMode,
@@ -23,7 +18,7 @@ use nu_protocol::{
 };
 use reedline::{DefaultHinter, Emacs, Vi};
 
-pub(crate) fn evaluate(ctrlc: Arc<AtomicBool>, engine_state: &mut EngineState) -> Result<()> {
+pub(crate) fn evaluate(engine_state: &mut EngineState) -> Result<()> {
     use crate::logger::{configure, logger};
     use reedline::{FileBackedHistory, Reedline, Signal};
 
@@ -97,16 +92,12 @@ pub(crate) fn evaluate(ctrlc: Arc<AtomicBool>, engine_state: &mut EngineState) -
         };
 
         //Reset the ctrl-c handler
-        ctrlc.store(false, Ordering::SeqCst);
+        if let Some(ctrlc) = &mut engine_state.ctrlc {
+            ctrlc.store(false, Ordering::SeqCst);
+        }
 
-        let line_editor = Reedline::create()
+        let mut line_editor = Reedline::create()
             .into_diagnostic()?
-            // .with_completion_action_handler(Box::new(fuzzy_completion::FuzzyCompletion {
-            //     completer: Box::new(NuCompleter::new(engine_state.clone())),
-            // }))
-            // .with_completion_action_handler(Box::new(
-            //     ListCompletionHandler::default().with_completer(Box::new(completer)),
-            // ))
             .with_highlighter(Box::new(NuHighlighter {
                 engine_state: engine_state.clone(),
                 config: config.clone(),
@@ -115,19 +106,18 @@ pub(crate) fn evaluate(ctrlc: Arc<AtomicBool>, engine_state: &mut EngineState) -
             .with_validator(Box::new(NuValidator {
                 engine_state: engine_state.clone(),
             }))
-            .with_ansi_colors(config.use_ansi_coloring)
-            .with_menu_completer(
-                Box::new(NuCompleter::new(engine_state.clone())),
-                reedline_config::create_menu_input(&config),
-            )
-            .with_history_menu(reedline_config::create_history_input(&config));
+            .with_completer(Box::new(NuCompleter::new(engine_state.clone())))
+            .with_ansi_colors(config.use_ansi_coloring);
+
+        line_editor = add_completion_menu(line_editor, &config);
+        line_editor = add_history_menu(line_editor, &config);
 
         //FIXME: if config.use_ansi_coloring is false then we should
         // turn off the hinter but I don't see any way to do that yet.
 
         let color_hm = get_color_config(&config);
 
-        let line_editor = if let Some(history_path) = history_path.clone() {
+        line_editor = if let Some(history_path) = history_path.clone() {
             let history = std::fs::read_to_string(&history_path);
             if history.is_ok() {
                 line_editor
@@ -150,7 +140,7 @@ pub(crate) fn evaluate(ctrlc: Arc<AtomicBool>, engine_state: &mut EngineState) -
         };
 
         // Changing the line editor based on the found keybindings
-        let mut line_editor = match reedline_config::create_keybindings(&config) {
+        line_editor = match reedline_config::create_keybindings(&config) {
             Ok(keybindings) => match keybindings {
                 KeybindingsMode::Emacs(keybindings) => {
                     let edit_mode = Box::new(Emacs::new(keybindings));

@@ -253,7 +253,11 @@ fn parse_long_flag(
     spans: &[Span],
     spans_idx: &mut usize,
     sig: &Signature,
-) -> (Option<String>, Option<Expression>, Option<ParseError>) {
+) -> (
+    Option<Spanned<String>>,
+    Option<Expression>,
+    Option<ParseError>,
+) {
     let arg_span = spans[*spans_idx];
     let arg_contents = working_set.get_span_contents(arg_span);
 
@@ -267,19 +271,41 @@ fn parse_long_flag(
                 if let Some(arg_shape) = &flag.arg {
                     if split.len() > 1 {
                         // and we also have the argument
+                        let long_name_len = long_name.len();
                         let mut span = arg_span;
-                        span.start += long_name.len() + 1; //offset by long flag and '='
+                        span.start += long_name_len + 3; //offset by long flag and '='
+
                         let (arg, err) = parse_value(working_set, span, arg_shape);
 
-                        (Some(long_name), Some(arg), err)
+                        (
+                            Some(Spanned {
+                                item: long_name,
+                                span: Span {
+                                    start: arg_span.start,
+                                    end: arg_span.start + long_name_len + 2,
+                                },
+                            }),
+                            Some(arg),
+                            err,
+                        )
                     } else if let Some(arg) = spans.get(*spans_idx + 1) {
                         let (arg, err) = parse_value(working_set, *arg, arg_shape);
 
                         *spans_idx += 1;
-                        (Some(long_name), Some(arg), err)
+                        (
+                            Some(Spanned {
+                                item: long_name,
+                                span: arg_span,
+                            }),
+                            Some(arg),
+                            err,
+                        )
                     } else {
                         (
-                            Some(long_name),
+                            Some(Spanned {
+                                item: long_name,
+                                span: arg_span,
+                            }),
                             None,
                             Some(ParseError::MissingFlagParam(
                                 arg_shape.to_string(),
@@ -289,11 +315,21 @@ fn parse_long_flag(
                     }
                 } else {
                     // A flag with no argument
-                    (Some(long_name), None, None)
+                    (
+                        Some(Spanned {
+                            item: long_name,
+                            span: arg_span,
+                        }),
+                        None,
+                        None,
+                    )
                 }
             } else {
                 (
-                    Some(long_name.clone()),
+                    Some(Spanned {
+                        item: long_name.clone(),
+                        span: arg_span,
+                    }),
                     None,
                     Some(ParseError::UnknownFlag(
                         sig.name.clone(),
@@ -303,7 +339,14 @@ fn parse_long_flag(
                 )
             }
         } else {
-            (Some("--".into()), None, Some(ParseError::NonUtf8(arg_span)))
+            (
+                Some(Spanned {
+                    item: "--".into(),
+                    span: arg_span,
+                }),
+                None,
+                Some(ParseError::NonUtf8(arg_span)),
+            )
         }
     } else {
         (None, None, None)
@@ -625,13 +668,7 @@ pub fn parse_internal_call(
         if let Some(long_name) = long_name {
             // We found a long flag, like --bar
             error = error.or(err);
-            call.named.push((
-                Spanned {
-                    item: long_name,
-                    span: arg_span,
-                },
-                arg,
-            ));
+            call.named.push((long_name, arg));
             spans_idx += 1;
             continue;
         }
@@ -3610,7 +3647,8 @@ pub fn parse_block(
     let block: Block = lite_block
         .block
         .iter()
-        .map(|pipeline| {
+        .enumerate()
+        .map(|(idx, pipeline)| {
             if pipeline.commands.len() > 1 {
                 let mut output = pipeline
                     .commands
@@ -3636,7 +3674,42 @@ pub fn parse_block(
                     expressions: output,
                 })
             } else {
-                let (stmt, err) = parse_statement(working_set, &pipeline.commands[0]);
+                let (mut stmt, err) = parse_statement(working_set, &pipeline.commands[0]);
+
+                if idx == 0 {
+                    if let Some(let_decl_id) = working_set.find_decl(b"let") {
+                        if let Some(let_env_decl_id) = working_set.find_decl(b"let-env") {
+                            if let Statement::Pipeline(pipeline) = &mut stmt {
+                                for expr in pipeline.expressions.iter_mut() {
+                                    if let Expression {
+                                        expr: Expr::Call(call),
+                                        ..
+                                    } = expr
+                                    {
+                                        if call.decl_id == let_decl_id
+                                            || call.decl_id == let_env_decl_id
+                                        {
+                                            // Do an expansion
+                                            if let Some(Expression {
+                                                expr: Expr::Keyword(_, _, expr),
+                                                ..
+                                            }) = call.positional.get_mut(1)
+                                            {
+                                                if expr.has_in_variable(working_set) {
+                                                    *expr = Box::new(wrap_expr_with_collect(
+                                                        working_set,
+                                                        expr,
+                                                    ));
+                                                }
+                                            }
+                                            continue;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
                 if error.is_none() {
                     error = err;

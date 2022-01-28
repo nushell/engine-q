@@ -57,6 +57,7 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             Collect,
             Columns,
             Compact,
+            Default,
             Drop,
             DropColumn,
             DropNth,
@@ -114,6 +115,7 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
         // System
         bind_command! {
             Benchmark,
+            Exec,
             External,
             Ps,
             Sys,

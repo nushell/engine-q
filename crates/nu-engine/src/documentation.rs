@@ -186,6 +186,10 @@ pub fn get_documentation(
         long_desc.push('\n');
     }
 
+    if !sig.named.is_empty() {
+        long_desc.push_str(&get_flags_section(sig))
+    }
+
     if !sig.required_positional.is_empty()
         || !sig.optional_positional.is_empty()
         || sig.rest_positional.is_some()
@@ -202,16 +206,17 @@ pub fn get_documentation(
         }
 
         if let Some(rest_positional) = &sig.rest_positional {
-            long_desc.push_str(&format!("  ...args: {}\n", rest_positional.desc));
+            long_desc.push_str(&format!(
+                "  ...{}: {}\n",
+                rest_positional.name, rest_positional.desc
+            ));
         }
-    }
-    if !sig.named.is_empty() {
-        long_desc.push_str(&get_flags_section(sig))
     }
 
     if !examples.is_empty() {
         long_desc.push_str("\nExamples:");
     }
+
     for example in examples {
         long_desc.push('\n');
         long_desc.push_str("  ");
@@ -222,7 +227,7 @@ pub fn get_documentation(
         } else if let Some(highlighter) = engine_state.find_decl(b"nu-highlight") {
             let decl = engine_state.get_decl(highlighter);
 
-            if let Ok(output) = decl.run(
+            match decl.run(
                 engine_state,
                 stack,
                 &Call::new(),
@@ -232,16 +237,23 @@ pub fn get_documentation(
                 }
                 .into_pipeline_data(),
             ) {
-                let result = output.into_value(Span { start: 0, end: 0 });
-                match result.as_string() {
-                    Ok(s) => {
-                        long_desc.push_str(&format!("\n  > {}\n", s));
-                    }
-                    _ => {
-                        long_desc.push_str(&format!("\n  > {}\n", example.example));
+                Ok(output) => {
+                    let result = output.into_value(Span { start: 0, end: 0 });
+                    match result.as_string() {
+                        Ok(s) => {
+                            long_desc.push_str(&format!("\n  > {}\n", s));
+                        }
+                        _ => {
+                            long_desc.push_str(&format!("\n  > {}\n", example.example));
+                        }
                     }
                 }
+                Err(_) => {
+                    long_desc.push_str(&format!("\n  > {}\n", example.example));
+                }
             }
+        } else {
+            long_desc.push_str(&format!("\n  > {}\n", example.example));
         }
     }
 
@@ -258,7 +270,7 @@ fn get_flags_section(signature: &Signature) -> String {
             if let Some(short) = flag.short {
                 if flag.required {
                     format!(
-                        "  -{}{} (required parameter) {:?} {}\n",
+                        "  -{}{} (required parameter) {:?}\n      {}\n",
                         short,
                         if !flag.long.is_empty() {
                             format!(", --{}", flag.long)
@@ -270,7 +282,7 @@ fn get_flags_section(signature: &Signature) -> String {
                     )
                 } else {
                     format!(
-                        "  -{}{} {:?} {}\n",
+                        "  -{}{} <{:?}>\n      {}\n",
                         short,
                         if !flag.long.is_empty() {
                             format!(", --{}", flag.long)
@@ -283,16 +295,16 @@ fn get_flags_section(signature: &Signature) -> String {
                 }
             } else if flag.required {
                 format!(
-                    "  --{} (required parameter) {:?} {}\n",
+                    "  --{} (required parameter) <{:?}>\n      {}\n",
                     flag.long, arg, flag.desc
                 )
             } else {
-                format!("  --{} {:?} {}\n", flag.long, arg, flag.desc)
+                format!("  --{} {:?}\n      {}\n", flag.long, arg, flag.desc)
             }
         } else if let Some(short) = flag.short {
             if flag.required {
                 format!(
-                    "  -{}{} (required parameter) {}\n",
+                    "  -{}{} (required parameter)\n      {}\n",
                     short,
                     if !flag.long.is_empty() {
                         format!(", --{}", flag.long)
@@ -303,7 +315,7 @@ fn get_flags_section(signature: &Signature) -> String {
                 )
             } else {
                 format!(
-                    "  -{}{} {}\n",
+                    "  -{}{}\n      {}\n",
                     short,
                     if !flag.long.is_empty() {
                         format!(", --{}", flag.long)
@@ -314,9 +326,12 @@ fn get_flags_section(signature: &Signature) -> String {
                 )
             }
         } else if flag.required {
-            format!("  --{} (required parameter) {}\n", flag.long, flag.desc)
+            format!(
+                "  --{} (required parameter)\n      {}\n",
+                flag.long, flag.desc
+            )
         } else {
-            format!("  --{} {}\n", flag.long, flag.desc)
+            format!("  --{}\n      {}\n", flag.long, flag.desc)
         };
         long_desc.push_str(&msg);
     }

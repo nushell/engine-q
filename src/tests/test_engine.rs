@@ -72,7 +72,7 @@ fn in_variable_6() -> TestResult {
 
 #[test]
 fn help_works_with_missing_requirements() -> TestResult {
-    run_test(r#"each --help | lines | length"#, "15")
+    run_test(r#"each --help | lines | length"#, "17")
 }
 
 #[test]
@@ -165,4 +165,28 @@ fn divide_filesize() -> TestResult {
 #[test]
 fn date_comparison() -> TestResult {
     run_test(r#"(date now) < ((date now) + 2min)"#, "true")
+}
+
+#[test]
+fn let_sees_input() -> TestResult {
+    run_test(
+        r#"def c [] { let x = str length; $x }; "hello world" | c"#,
+        "11",
+    )
+}
+
+#[test]
+fn let_sees_in_variable() -> TestResult {
+    run_test(
+        r#"def c [] { let x = $in.name; $x | str length }; {name: bob, size: 100 } | c"#,
+        "3",
+    )
+}
+
+#[test]
+fn let_sees_in_variable2() -> TestResult {
+    run_test(
+        r#"def c [] { let x = ($in | str length); $x }; 'bob' | c"#,
+        "3",
+    )
 }
