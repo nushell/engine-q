@@ -98,7 +98,7 @@ fn into_binary(
     let column_paths: Vec<CellPath> = call.rest(engine_state, stack, 0)?;
 
     match input {
-        PipelineData::ByteStream(..) => Ok(input),
+        PipelineData::RawStream(..) => Ok(input),
         _ => input.map(
             move |v| {
                 if column_paths.is_empty() {
