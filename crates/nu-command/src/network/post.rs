@@ -148,7 +148,6 @@ fn helper(
     let password = args.password;
     let location = url;
     let raw = args.raw;
-    let allow_insecure = args.insecure.unwrap();
     let login = match (user, password) {
         (Some(user), Some(password)) => Some(encode(&format!("{}:{}", user, password))),
         (Some(user), _) => Some(encode(&format!("{}:", user))),
@@ -158,7 +157,7 @@ fn helper(
     if let Some(body_val) = args.body {
         match &body_val {
             Value::Binary { val: bytes, .. } => {
-                let mut request = http_client(allow_insecure)
+                let mut request = http_client(args.insecure.is_some())
                     .post(location)
                     .body(bytes.clone());
                 if let Some(login) = login {
@@ -167,7 +166,7 @@ fn helper(
                 match request.send() {
                     Ok(resp) => match resp.headers().get("content-type") {
                         Some(_content_type) => {
-                            todo!("post")
+                            todo!("posted must handle")
                         }
                         None => Ok(response_to_buffer(resp, engine_state, span)),
                     },
