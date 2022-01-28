@@ -132,6 +132,14 @@ fn helper(
             call.head,
         ));
     };
+    let body = if let Some(body) = args.body {
+        body
+    } else {
+        return Err(ShellError::UnsupportedInput(
+            "Expecting a body parameter but got nothing".to_string(),
+            call.head,
+        ));
+    };
     let span = url_value.span()?;
     let requested_url = url_value.as_string()?;
     let url = match url::Url::parse(&requested_url) {
@@ -154,57 +162,47 @@ fn helper(
         _ => None,
     };
 
-    if let Some(body_val) = args.body {
-        match &body_val {
-            Value::Binary { val: bytes, .. } => {
-                let mut request = http_client(args.insecure.is_some())
-                    .post(location)
-                    .body(bytes.clone());
-                if let Some(login) = login {
-                    request = request.header("Authorization", format!("Basic {}", login));
-                }
-                match request.send() {
-                    Ok(resp) => match resp.headers().get("content-type") {
-                        Some(_content_type) => {
-                            todo!("posted must handle")
-                        }
-                        None => Ok(response_to_buffer(resp, engine_state, span)),
-                    },
-                    Err(e) if e.is_status() => match e.status() {
-                        Some(err_code) if err_code == StatusCode::NOT_FOUND => {
-                            Err(ShellError::NetworkFailure(
-                                format!("Requested file not found (404): {:?}", requested_url),
-                                span,
-                            ))
-                        }
-                        Some(err_code) if err_code == StatusCode::MOVED_PERMANENTLY => {
-                            Err(ShellError::NetworkFailure(
-                                format!("Resource moved permanently (301): {:?}", requested_url),
-                                span,
-                            ))
-                        }
-                        Some(err_code) if err_code == StatusCode::BAD_REQUEST => {
-                            Err(ShellError::NetworkFailure(
-                                format!("Bad request (400) to {:?}", requested_url),
-                                span,
-                            ))
-                        }
-                        Some(err_code) if err_code == StatusCode::FORBIDDEN => {
-                            Err(ShellError::NetworkFailure(
-                                format!("Access forbidden (403) to {:?}", requested_url),
-                                span,
-                            ))
-                        }
-                        _ => Err(ShellError::NetworkFailure(
-                            format!(
-                                "Cannot make request to {:?}. Error is {:?}",
-                                requested_url,
-                                e.to_string()
-                            ),
+    match &body {
+        Value::Binary { val: bytes, .. } => {
+            let mut request = http_client(args.insecure.is_some())
+                .post(location)
+                .body(bytes.clone());
+            if let Some(login) = login {
+                request = request.header("Authorization", format!("Basic {}", login));
+            }
+            match request.send() {
+                Ok(resp) => match resp.headers().get("content-type") {
+                    Some(_content_type) => {
+                        todo!("posted must handle")
+                    }
+                    None => Ok(response_to_buffer(resp, engine_state, span)),
+                },
+                Err(e) if e.is_status() => match e.status() {
+                    Some(err_code) if err_code == StatusCode::NOT_FOUND => {
+                        Err(ShellError::NetworkFailure(
+                            format!("Requested file not found (404): {:?}", requested_url),
                             span,
-                        )),
-                    },
-                    Err(e) => Err(ShellError::NetworkFailure(
+                        ))
+                    }
+                    Some(err_code) if err_code == StatusCode::MOVED_PERMANENTLY => {
+                        Err(ShellError::NetworkFailure(
+                            format!("Resource moved permanently (301): {:?}", requested_url),
+                            span,
+                        ))
+                    }
+                    Some(err_code) if err_code == StatusCode::BAD_REQUEST => {
+                        Err(ShellError::NetworkFailure(
+                            format!("Bad request (400) to {:?}", requested_url),
+                            span,
+                        ))
+                    }
+                    Some(err_code) if err_code == StatusCode::FORBIDDEN => {
+                        Err(ShellError::NetworkFailure(
+                            format!("Access forbidden (403) to {:?}", requested_url),
+                            span,
+                        ))
+                    }
+                    _ => Err(ShellError::NetworkFailure(
                         format!(
                             "Cannot make request to {:?}. Error is {:?}",
                             requested_url,
@@ -212,12 +210,18 @@ fn helper(
                         ),
                         span,
                     )),
-                }
+                },
+                Err(e) => Err(ShellError::NetworkFailure(
+                    format!(
+                        "Cannot make request to {:?}. Error is {:?}",
+                        requested_url,
+                        e.to_string()
+                    ),
+                    span,
+                )),
             }
-            _ => Err(ShellError::IOError("unsupported body input".into())),
         }
-    } else {
-        Err(ShellError::IOError("no body".into()))
+        _ => Err(ShellError::IOError("unsupported body input".into())),
     }
 }
 
