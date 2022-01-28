@@ -6,7 +6,7 @@ use nu_protocol::ast::{Call, PathMember};
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
     Category, Config, DataSource, IntoPipelineData, ListStream, PipelineData, PipelineMetadata,
-    RawStream, ShellError, Signature, Span, StringStream, SyntaxShape, Value,
+    RawStream, ShellError, Signature, Span, SyntaxShape, Value,
 };
 use nu_table::{StyledString, TextStyle, Theme};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -66,25 +66,14 @@ impl Command for Table {
             PipelineData::Value(Value::Binary { val, .. }, ..) => Ok(PipelineData::RawStream(
                 RawStream::new(
                     Box::new(
-                        vec![Ok(
-                            if val.iter().all(|x| {
-                                *x < 128
-                                    && (*x >= b' ' || *x == b'\t' || *x == b'\r' || *x == b'\n')
-                            }) {
-                                format!("{}", String::from_utf8_lossy(&val))
-                                    .as_bytes()
-                                    .to_vec()
-                            } else {
-                                format!("{}\n", nu_pretty_hex::pretty_hex(&val))
-                                    .as_bytes()
-                                    .to_vec()
-                            },
-                        )]
+                        vec![Ok(format!("{}\n", nu_pretty_hex::pretty_hex(&val))
+                            .as_bytes()
+                            .to_vec())]
                         .into_iter(),
                     ),
                     ctrlc,
                 ),
-                call.head,
+                head,
                 None,
             )),
             PipelineData::Value(Value::List { vals, .. }, ..) => {

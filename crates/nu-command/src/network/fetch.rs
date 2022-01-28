@@ -2,7 +2,7 @@ use base64::encode;
 use nu_engine::CallExt;
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
-use nu_protocol::{ByteStream, RawStream};
+use nu_protocol::RawStream;
 
 use nu_protocol::{
     Category, Example, PipelineData, ShellError, Signature, Span, SyntaxShape, Value,

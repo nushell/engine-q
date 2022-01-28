@@ -1,9 +1,6 @@
 use std::sync::{atomic::AtomicBool, Arc};
 
-use crate::{
-    ast::PathMember, ByteStream, Config, ListStream, RawStream, ShellError, Span, StringStream,
-    Value,
-};
+use crate::{ast::PathMember, Config, ListStream, RawStream, ShellError, Span, Value};
 
 /// The foundational abstraction for input and output to commands
 ///
@@ -38,8 +35,6 @@ use crate::{
 pub enum PipelineData {
     Value(Value, Option<PipelineMetadata>),
     ListStream(ListStream, Option<PipelineMetadata>),
-    // StringStream(StringStream, Span, Option<PipelineMetadata>),
-    // ByteStream(ByteStream, Span, Option<PipelineMetadata>),
     RawStream(RawStream, Span, Option<PipelineMetadata>),
 }
 
@@ -65,8 +60,6 @@ impl PipelineData {
     pub fn metadata(&self) -> Option<PipelineMetadata> {
         match self {
             PipelineData::ListStream(_, x) => x.clone(),
-            // PipelineData::ByteStream(_, _, x) => x.clone(),
-            // PipelineData::StringStream(_, _, x) => x.clone(),
             PipelineData::RawStream(_, _, x) => x.clone(),
             PipelineData::Value(_, x) => x.clone(),
         }
@@ -75,8 +68,6 @@ impl PipelineData {
     pub fn set_metadata(mut self, metadata: Option<PipelineMetadata>) -> Self {
         match &mut self {
             PipelineData::ListStream(_, x) => *x = metadata,
-            // PipelineData::ByteStream(_, _, x) => *x = metadata,
-            // PipelineData::StringStream(_, _, x) => *x = metadata,
             PipelineData::RawStream(_, _, x) => *x = metadata,
             PipelineData::Value(_, x) => *x = metadata,
         }
@@ -156,10 +147,6 @@ impl PipelineData {
         match self {
             PipelineData::Value(v, ..) => Ok(v.into_string(separator, config)),
             PipelineData::ListStream(s, ..) => Ok(s.into_string(separator, config)),
-            // PipelineData::StringStream(s, ..) => s.into_string(separator),
-            // PipelineData::ByteStream(s, ..) => {
-            //     Ok(String::from_utf8_lossy(&s.into_vec()?).to_string())
-            // }
             PipelineData::RawStream(s, ..) => {
                 let mut items = vec![];
 
@@ -238,13 +225,7 @@ impl PipelineData {
                 Ok(vals.into_iter().map(f).into_pipeline_data(ctrlc))
             }
             PipelineData::ListStream(stream, ..) => Ok(stream.map(f).into_pipeline_data(ctrlc)),
-            // PipelineData::StringStream(stream, span, ..) => Ok(stream
-            //     .map(move |x| match x {
-            //         Ok(s) => f(Value::String { val: s, span }),
-            //         Err(err) => Value::Error { error: err },
-            //     })
-            //     .into_pipeline_data(ctrlc)),
-            PipelineData::RawStream(stream, span, ..) => Ok(stream
+            PipelineData::RawStream(stream, ..) => Ok(stream
                 .map(move |x| match x {
                     Ok(v) => f(v),
                     Err(err) => Value::Error { error: err },
@@ -258,11 +239,6 @@ impl PipelineData {
                 Value::Error { error } => Err(error),
                 v => Ok(v.into_pipeline_data()),
             },
-            // PipelineData::ByteStream(_, span, ..) => Err(ShellError::UnsupportedInput(
-            //     "Binary output from this command may need to be decoded using the 'decode' command"
-            //         .into(),
-            //     span,
-            // )),
         }
     }
 
@@ -293,24 +269,11 @@ impl PipelineData {
                 .map(f)
                 .flatten()
                 .into_pipeline_data(ctrlc)),
-            // PipelineData::StringStream(stream, span, ..) => Ok(stream
-            //     .map(move |x| match x {
-            //         Ok(s) => Value::String { val: s, span },
-            //         Err(err) => Value::Error { error: err },
-            //     })
-            //     .map(f)
-            //     .flatten()
-            //     .into_pipeline_data(ctrlc)),
             PipelineData::Value(Value::Range { val, .. }, ..) => match val.into_range_iter() {
                 Ok(iter) => Ok(iter.map(f).flatten().into_pipeline_data(ctrlc)),
                 Err(error) => Err(error),
             },
             PipelineData::Value(v, ..) => Ok(f(v).into_iter().into_pipeline_data(ctrlc)),
-            // PipelineData::ByteStream(_, span, ..) => Err(ShellError::UnsupportedInput(
-            //     "Binary output from this command may need to be decoded using the 'decode' command"
-            //         .into(),
-            //     span,
-            // )),
         }
     }
 
@@ -328,14 +291,6 @@ impl PipelineData {
                 Ok(vals.into_iter().filter(f).into_pipeline_data(ctrlc))
             }
             PipelineData::ListStream(stream, ..) => Ok(stream.filter(f).into_pipeline_data(ctrlc)),
-            // PipelineData::StringStream(stream, span, ..) => Ok(stream
-            //     .map(move |x| match x {
-            //         Ok(s) => Value::String { val: s, span },
-            //         Err(err) => Value::Error { error: err },
-            //     })
-            //     .filter(f)
-            //     .into_pipeline_data(ctrlc)),
-
             PipelineData::RawStream(stream, ..) => Ok(stream
                 .map(move |x| match x {
                     Ok(v) => v,
@@ -353,11 +308,6 @@ impl PipelineData {
                     Ok(Value::Nothing { span: v.span()? }.into_pipeline_data())
                 }
             }
-            // PipelineData::ByteStream(_, span, ..) => Err(ShellError::UnsupportedInput(
-            //     "Binary output from this command may need to be decoded using the 'decode' command"
-            //         .into(),
-            //     span,
-            // )),
         }
     }
 }
@@ -415,20 +365,6 @@ impl Iterator for PipelineIterator {
                 Ok(x) => x,
                 Err(err) => Value::Error { error: err },
             }),
-            // PipelineData::StringStream(stream, span, ..) => stream.next().map(|x| match x {
-            //     Ok(x) => Value::String {
-            //         val: x,
-            //         span: *span,
-            //     },
-            //     Err(err) => Value::Error { error: err },
-            // }),
-            // PipelineData::ByteStream(stream, span, ..) => stream.next().map(|x| match x {
-            //     Ok(x) => Value::Binary {
-            //         val: x,
-            //         span: *span,
-            //     },
-            //     Err(err) => Value::Error { error: err },
-            // }),
         }
     }
 }

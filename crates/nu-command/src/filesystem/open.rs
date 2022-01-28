@@ -2,8 +2,8 @@ use nu_engine::{get_full_help, CallExt};
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
-    ByteStream, Category, Example, IntoPipelineData, PipelineData, RawStream, ShellError,
-    Signature, Spanned, SyntaxShape, Value,
+    Category, Example, IntoPipelineData, PipelineData, RawStream, ShellError, Signature, Spanned,
+    SyntaxShape, Value,
 };
 use std::io::{BufRead, BufReader, Read};
 

@@ -17,8 +17,8 @@ use nu_parser::parse;
 use nu_protocol::{
     ast::{Call, Expr, Expression, Pipeline, Statement},
     engine::{Command, EngineState, Stack, StateWorkingSet},
-    ByteStream, Category, Example, IntoPipelineData, PipelineData, RawStream, ShellError,
-    Signature, Span, Spanned, SyntaxShape, Value, CONFIG_VARIABLE_ID,
+    Category, Example, IntoPipelineData, PipelineData, RawStream, ShellError, Signature, Span,
+    Spanned, SyntaxShape, Value, CONFIG_VARIABLE_ID,
 };
 use std::{
     io::BufReader,

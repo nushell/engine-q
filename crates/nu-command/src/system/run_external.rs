@@ -8,7 +8,7 @@ use std::sync::mpsc;
 use nu_engine::env_to_strings;
 use nu_protocol::engine::{EngineState, Stack};
 use nu_protocol::{ast::Call, engine::Command, ShellError, Signature, SyntaxShape, Value};
-use nu_protocol::{ByteStream, Category, Config, PipelineData, RawStream, Span, Spanned};
+use nu_protocol::{Category, Config, PipelineData, RawStream, Span, Spanned};
 
 use itertools::Itertools;
 

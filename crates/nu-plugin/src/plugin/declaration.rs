@@ -6,7 +6,7 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
 use nu_protocol::engine::{Command, EngineState, Stack};
-use nu_protocol::{ast::Call, Signature, Value};
+use nu_protocol::{ast::Call, Signature};
 use nu_protocol::{PipelineData, ShellError};
 
 #[derive(Clone)]
