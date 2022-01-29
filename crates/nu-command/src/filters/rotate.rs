@@ -26,7 +26,7 @@ impl Command for Rotate {
     }
 
     fn usage(&self) -> &str {
-        "Rotates the table by 90 degrees clockwise."
+        "Rotates a table clockwise (default) or counter-clockwise (use --ccw flag)."
     }
 
     fn examples(&self) -> Vec<Example> {
