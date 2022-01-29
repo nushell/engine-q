@@ -36,39 +36,7 @@ impl Command for Rename {
         call: &Call,
         input: PipelineData,
     ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
-        let specified_column: Option<Vec<String>> = call.get_flag(engine_state, stack, "column")?;
-        let mut list_span = call.head;
-        let specified_col_span = if let Some(Value::List {
-            vals: columns,
-            span: column_span,
-        }) = call.get_flag(engine_state, stack, "column")?
-        {
-            list_span = column_span;
-            Some(columns[0].span()?)
-        } else {
-            None
-        };
-
-        if let Some(ref cols) = specified_column {
-            if cols.len() != 2 {
-                return Err(ShellError::UnsupportedInput(
-                    "The list must contain only two values: the column's name and its replacement value"
-                        .to_string(),
-                        list_span,
-                ));
-            }
-        }
-
-        let columns: Vec<String> = call.rest(engine_state, stack, 0)?;
-        let span = call.head;
-        rename(
-            engine_state,
-            span,
-            input,
-            columns,
-            specified_column,
-            specified_col_span,
-        )
+        rename(engine_state, stack, call, input)
     }
 
     fn examples(&self) -> Vec<Example> {
@@ -115,12 +83,34 @@ impl Command for Rename {
 
 fn rename(
     engine_state: &EngineState,
-    _span: Span,
+    stack: &mut Stack,
+    call: &Call,
     input: PipelineData,
-    columns: Vec<String>,
-    specified_column: Option<Vec<String>>,
-    specified_col_span: Option<Span>,
 ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
+    let specified_column: Option<Vec<String>> = call.get_flag(engine_state, stack, "column")?;
+    // get the span for the column's name to be changed and for the given list
+    let (specified_col_span, list_span) = if let Some(Value::List {
+        vals: columns,
+        span: column_span,
+    }) = call.get_flag(engine_state, stack, "column")?
+    {
+        (Some(columns[0].span()?), column_span)
+    } else {
+        (None, call.head)
+    };
+
+    if let Some(ref cols) = specified_column {
+        if cols.len() != 2 {
+            return Err(ShellError::UnsupportedInput(
+                    "The list must contain only two values: the column's name and its replacement value"
+                        .to_string(),
+                        list_span,
+                ));
+        }
+    }
+
+    let columns: Vec<String> = call.rest(engine_state, stack, 0)?;
+
     input.map(
         move |item| match item {
             Value::Record {
@@ -140,7 +130,7 @@ fn rename(
                             };
                         }
                         for (idx, val) in cols.iter_mut().enumerate() {
-                            if val.to_string() == c[0].to_string() {
+                            if *val == c[0] {
                                 cols[idx] = c[1].to_string();
                                 break;
                             }
