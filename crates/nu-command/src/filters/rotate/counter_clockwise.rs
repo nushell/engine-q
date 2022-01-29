@@ -89,13 +89,13 @@ pub fn rotate(
     input: PipelineData,
 ) -> Result<PipelineData, ShellError> {
     let col_given_names: Vec<String> = call.rest(engine_state, stack, 0)?;
-    let values = input.into_iter().map(|i| i).collect::<Vec<_>>();
+    let values = input.into_iter().collect::<Vec<_>>();
     let mut old_column_names = vec![];
     let mut new_values = vec![];
     let mut not_a_record = false;
     let total_rows = &values.len();
 
-    if values.len() != 0 {
+    if !values.is_empty() {
         for val in values.into_iter() {
             match val {
                 Value::Record {
@@ -126,6 +126,11 @@ pub fn rotate(
                 }
             }
         }
+    } else {
+        return Err(ShellError::UnsupportedInput(
+            "Rotate command requires a Nu value as input".to_string(),
+            call.head,
+        ));
     }
 
     let total_columns = &old_column_names.len();
@@ -140,7 +145,7 @@ pub fn rotate(
     };
 
     // we got new names for columns from the input, so we need to swap those we already made
-    if col_given_names.len() != 0 {
+    if !col_given_names.is_empty() {
         for (idx, val) in col_given_names.into_iter().enumerate() {
             if idx > new_column_names.len() - 1 {
                 break;
@@ -167,11 +172,10 @@ pub fn rotate(
     // the number of initial columns will be our number of rows, so we iterate through that to get the new number of rows that we need to make
     // as we're rotating counter clockwise, we're iterating from right to left
     for (idx, val) in old_column_names.iter().enumerate().rev() {
-        let mut res = vec![];
-        res.push(Value::String {
+        let mut res = vec![Value::String {
             val: val.to_string(),
             span: call.head,
-        });
+        }];
 
         let new_vals = {
             // move through the array every 2 elements, starting from our old column's index
