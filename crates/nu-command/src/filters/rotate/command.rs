@@ -166,6 +166,7 @@ pub fn rotate(
     let mut final_values = vec![];
 
     // the number of initial columns will be our number of rows, so we iterate through that to get the new number of rows that we need to make
+    // as we're rotating clockwise, we're iterating from left to right
     for (idx, val) in old_column_names.iter().enumerate() {
         let new_vals = {
             let mut res = vec![];

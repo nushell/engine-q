@@ -165,6 +165,7 @@ pub fn rotate(
     let mut final_values = vec![];
 
     // the number of initial columns will be our number of rows, so we iterate through that to get the new number of rows that we need to make
+    // as we're rotating counter clockwise, we're iterating from right to left
     for (idx, val) in old_column_names.iter().enumerate().rev() {
         let mut res = vec![];
         res.push(Value::String {
@@ -174,7 +175,7 @@ pub fn rotate(
 
         let new_vals = {
             // move through the array every 2 elements, starting from our old column's index
-            // so if initial data was like this [[a b]; [1 2] [3 4]] - we basically iterate on this [3 4 1 2] array, so we pick 3, then 1, and then when idx increases, we pick 4 and 2
+            // so if initial data was like this [[a b]; [1 2] [3 4]] - we basically iterate on this [1 2 3 4] array, so we pick 2, then 4, and then when idx decreases (notice the .rev()), we pick 1 and 3
             for i in (idx..new_values.len()).step_by(2) {
                 res.push(new_values[i].clone());
             }
