@@ -25,7 +25,7 @@ impl Command for SubCommand {
     }
 
     fn usage(&self) -> &str {
-        "Rotates the table by 90 degrees counter clockwise."
+        "Rotates the table by -90 degrees (counter clockwise)."
     }
 
     fn examples(&self) -> Vec<Example> {
@@ -43,6 +43,45 @@ impl Command for SubCommand {
                         Value::Record {
                             cols: vec!["Column0".to_string(), "Column1".to_string()],
                             vals: vec![Value::test_string("a"), Value::test_int(1)],
+                            span: Span::test_data(),
+                        },
+                    ],
+                    span: Span::test_data(),
+                }),
+            },
+            Example {
+                description: "Rotate table",
+                example: "[[a b]; [1 2] [3 4] [5 6]] | rotate counter-clockwise",
+                result: Some(Value::List {
+                    vals: vec![
+                        Value::Record {
+                            cols: vec![
+                                "Column0".to_string(),
+                                "Column1".to_string(),
+                                "Column2".to_string(),
+                                "Column3".to_string(),
+                            ],
+                            vals: vec![
+                                Value::test_string("b"),
+                                Value::test_int(2),
+                                Value::test_int(4),
+                                Value::test_int(6),
+                            ],
+                            span: Span::test_data(),
+                        },
+                        Value::Record {
+                            cols: vec![
+                                "Column0".to_string(),
+                                "Column1".to_string(),
+                                "Column2".to_string(),
+                                "Column3".to_string(),
+                            ],
+                            vals: vec![
+                                Value::test_string("a"),
+                                Value::test_int(1),
+                                Value::test_int(3),
+                                Value::test_int(5),
+                            ],
                             span: Span::test_data(),
                         },
                     ],
@@ -93,7 +132,7 @@ pub fn rotate(
     let mut old_column_names = vec![];
     let mut new_values = vec![];
     let mut not_a_record = false;
-    let total_rows = &values.len();
+    let total_rows = &mut values.len();
 
     if !values.is_empty() {
         for val in values.into_iter() {
@@ -115,12 +154,10 @@ pub fn rotate(
                     }
                 }
                 Value::String { val, span } => {
-                    old_column_names = vec!["".to_string()];
                     not_a_record = true;
                     new_values.push(Value::String { val, span })
                 }
                 x => {
-                    old_column_names = vec!["".to_string()];
                     not_a_record = true;
                     new_values.push(x)
                 }
@@ -135,10 +172,13 @@ pub fn rotate(
 
     let total_columns = &old_column_names.len();
 
+    if *total_columns == 0 {
+        *total_rows -= 1;
+    }
     // holder for the new column names, particularly if none are provided by the user we create names as Column0, Column1, etc.
     let mut new_column_names = {
         let mut res = vec![];
-        for idx in 0..(total_rows + total_columns) - 1 {
+        for idx in 0..(*total_rows + 1) {
             res.push(format!("Column{}", idx));
         }
         res.to_vec()
@@ -180,7 +220,7 @@ pub fn rotate(
         let new_vals = {
             // move through the array every 2 elements, starting from our old column's index
             // so if initial data was like this [[a b]; [1 2] [3 4]] - we basically iterate on this [1 2 3 4] array, so we pick 2, then 4, and then when idx decreases (notice the .rev()), we pick 1 and 3
-            for i in (idx..new_values.len()).step_by(2) {
+            for i in (idx..new_values.len()).step_by(new_values.len() / *total_rows) {
                 res.push(new_values[i].clone());
             }
 
