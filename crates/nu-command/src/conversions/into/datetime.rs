@@ -56,6 +56,11 @@ impl Command for SubCommand {
 
     fn signature(&self) -> Signature {
         Signature::build("into datetime")
+            .switch(
+                "list",
+                "lists strftime cheatsheet",
+                Some('l'),
+                )
             .named(
                 "timezone",
                 SyntaxShape::String,
@@ -158,6 +163,8 @@ fn operate(
         }),
     };
 
+    let list_flag = call.has_flag("list");
+
     let format_options = options
         .format
         .as_ref()
@@ -165,8 +172,10 @@ fn operate(
 
     input.map(
         move |v| {
-            if options.column_paths.is_empty() {
+            if options.column_paths.is_empty() && !list_flag {
                 action(&v, &zone_options, &format_options, head)
+            } else if list_flag {
+                generate_strfttime_list(head)
             } else {
                 let mut ret = v;
                 for path in &options.column_paths {
@@ -187,6 +196,241 @@ fn operate(
     )
 }
 
+fn generate_strfttime_list(head: Span) -> Value {
+    let mut code = vec![];
+    let mut description = vec![];
+    code.push("code".into());
+    description.push(Value::String {
+        val: "Description".into(),
+        span: head,
+    });
+    code.push("%F".into());
+    description.push(Value::String {
+        val: "Year-month-day format. Same to %Y".into(),
+        span: head,
+    });
+    code.push("%Y".into());
+    description.push(Value::String {
+        val: "The full proleptic Gregorian year, zero-padded to 4 digits(Example: 2001).".into(),
+        span: head,
+    });
+    code.push("%C".into());
+    description.push(Value::String {
+        val: "The proleptic Gregorian year divided by 100, zero-padded to 2 digits. (Example: 20)"
+            .into(),
+        span: head,
+    });
+    code.push("%y".into());
+    description.push(Value::String {
+        val: "The proleptic Gregorian year modulo 100, zero-padded to 2 digits. (Example: 01)"
+            .into(),
+        span: head,
+    });
+    code.push("%m".into());
+    description.push(Value::String {
+        val: "Month number (01--12), zero-padded to 2 digits.(Example: 07)".into(),
+        span: head,
+    });
+    code.push("%b".into());
+    description.push(Value::String {
+        val: "Abbreviated month name. Always 3 letters.(Example: Jul)".into(),
+        span: head,
+    });
+    code.push("%B".into());
+    description.push(Value::String {
+        val: "Full month name. Also accepts corresponding abbreviation in parsing.(Example: July)"
+            .into(),
+        span: head,
+    });
+    code.push("%h".into());
+    description.push(Value::String {
+        val: "Same to %b".into(),
+        span: head,
+    });
+    code.push("%d".into());
+    description.push(Value::String {
+        val: "Day number (01--31), zero-padded to 2 digits.(Example: 08)".into(),
+        span: head,
+    });
+    code.push("%e".into());
+    description.push(Value::String {
+        val: "Same to %d".into(),
+        span: head,
+    });
+    code.push("%a".into());
+    description.push(Value::String {
+        val: "Abbreviated weekday name. Always 3 letters.(Example: Sun)".into(),
+        span: head,
+    });
+    code.push("%A".into());
+    description.push(Value::String {val: "Full weekday name. Also accepts corresponding abbreviation in parsing.(Example: Sunday)".into(),span:head});
+    code.push("%w".into());
+    description.push(Value::String {
+        val: "Sunday = 0, Monday = 1, ..., Saturday = 6.(Example: 0)".into(),
+        span: head,
+    });
+    code.push("%u".into());
+    description.push(Value::String {
+        val: "Monday = 1, Tuesday = 2, ..., Sunday = 7. (ISO 8601)(Example: 7)".into(),
+        span: head,
+    });
+    code.push("%U".into());
+    description.push(Value::String {
+        val: "Week number starting with Sunday (00--53), zero-padded to 2 digits. (Example: 28)"
+            .into(),
+        span: head,
+    });
+    code.push("%W".into());
+    description.push(Value::String {
+        val: "Same to %U".into(),
+        span: head,
+    });
+    code.push("%G".into());
+    description.push(Value::String {
+        val: "Same to %Y".into(),
+        span: head,
+    });
+    code.push("%g".into());
+    description.push(Value::String {
+        val: "Same to %y".into(),
+        span: head,
+    });
+    code.push("%V".into());
+    description.push(Value::String {
+        val: "Same to %U".into(),
+        span: head,
+    });
+    code.push("%j".into());
+    description.push(Value::String {
+        val: "Day of the year (001--366), zero-padded to 3 digits.(Example: 189)".into(),
+        span: head,
+    });
+    code.push("%x".into());
+    description.push(Value::String {
+        val: "Same to %D".into(),
+        span: head,
+    });
+    code.push("%F".into());
+    description.push(Value::String {
+        val: "Year-month-day format (ISO 8601). Same to %Y".into(),
+        span: head,
+    });
+    code.push("%v".into());
+    description.push(Value::String {
+        val: "Day-month-year format. Same to %e".into(),
+        span: head,
+    });
+    code.push("%H".into());
+    description.push(Value::String {
+        val: "Hour number (00--23), zero-padded to 2 digits.(Example: 00)".into(),
+        span: head,
+    });
+    code.push("%k".into());
+    description.push(Value::String {
+        val: "Same to %H".into(),
+        span: head,
+    });
+    code.push("%I".into());
+    description.push(Value::String {
+        val: "Hour number in 12-hour clocks (01--12), zero-padded to 2 digits.(Example: 12)".into(),
+        span: head,
+    });
+    code.push("%l".into());
+    description.push(Value::String {
+        val: "Same to %I".into(),
+        span: head,
+    });
+    code.push("%P".into());
+    description.push(Value::String {
+        val: "am or pm in 12-hour clocks.(Example: am)".into(),
+        span: head,
+    });
+    code.push("%p".into());
+    description.push(Value::String {
+        val: "AM or PM in 12-hour clocks.(Example: AM)".into(),
+        span: head,
+    });
+    code.push("%M".into());
+    description.push(Value::String {
+        val: "Minute number (00--59), zero-padded to 2 digits.(Example: 34)".into(),
+        span: head,
+    });
+    code.push("%S".into());
+    description.push(Value::String {
+        val: "Second number (00--60), zero-padded to 2 digits. (Example: 60)".into(),
+        span: head,
+    });
+    code.push("%f".into());
+    description.push(Value::String {
+        val:
+            "The fractional seconds (in nanoseconds) since last whole second. (Example: 026490000)"
+                .into(),
+        span: head,
+    });
+    code.push("%R".into());
+    description.push(Value::String {
+        val: "Hour-minute format. Same to %H".into(),
+        span: head,
+    });
+    code.push("%T".into());
+    description.push(Value::String {
+        val: "Hour-minute-second format. Same to %H".into(),
+        span: head,
+    });
+    code.push("%X".into());
+    description.push(Value::String {
+        val: "Same to %T".into(),
+        span: head,
+    });
+    code.push("%r".into());
+    description.push(Value::String {
+        val: "Hour-minute-second format in 12-hour clocks. Same to %I".into(),
+        span: head,
+    });
+    code.push("%Z".into());
+    description.push(Value::String {
+        val: "Formatting only: Local time zone name.(Example: ACST)".into(),
+        span: head,
+    });
+    code.push("%z".into());
+    description.push(Value::String {
+        val: "Offset from the local time to UTC (with UTC being +0000).(Example: +0930)".into(),
+        span: head,
+    });
+    code.push("%c".into());
+    description.push(Value::String {
+        val: "ctime date & time format. Same to %a".into(),
+        span: head,
+    });
+    code.push("%s".into());
+    description.push(Value::String {
+        val:
+            "UNIX timestamp, the number of seconds since 1970-01-01 00:00 UTC. (Example: 994518299)"
+                .into(),
+        span: head,
+    });
+    code.push("%t".into());
+    description.push(Value::String {
+        val: "Literal tab (\\t).".into(),
+        span: head,
+    });
+    code.push("%n".into());
+    description.push(Value::String {
+        val: "Literal newline (\\n).)".into(),
+        span: head,
+    });
+    code.push("%%".into());
+    description.push(Value::String {
+        val: "Percent sign.".into(),
+        span: head,
+    });
+
+    Value::Record {
+        cols: code,
+        vals: description,
+        span: head,
+    }
+}
 fn action(
     input: &Value,
     timezone: &Option<Spanned<Zone>>,
