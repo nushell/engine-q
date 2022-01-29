@@ -218,7 +218,7 @@ pub fn rotate(
         }];
 
         let new_vals = {
-            // move through the array every 2 elements, starting from our old column's index
+            // move through the array with a step, which is every new_values size / total rows, starting from our old column's index
             // so if initial data was like this [[a b]; [1 2] [3 4]] - we basically iterate on this [1 2 3 4] array, so we pick 2, then 4, and then when idx decreases (notice the .rev()), we pick 1 and 3
             for i in (idx..new_values.len()).step_by(new_values.len() / *total_rows) {
                 res.push(new_values[i].clone());
