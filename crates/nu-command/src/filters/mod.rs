@@ -68,7 +68,7 @@ pub use range::Range;
 pub use reduce::Reduce;
 pub use reject::Reject;
 pub use reverse::Reverse;
-pub use rotate::*;
+pub use rotate::Rotate;
 pub use select::Select;
 pub use shuffle::Shuffle;
 pub use skip::*;
