@@ -21,11 +21,7 @@ impl Command for Rename {
                 "column name to be changed",
                 Some('c'),
             )
-            .rest(
-                "rest",
-                SyntaxShape::String,
-                "the new names for the columns",
-            )
+            .rest("rest", SyntaxShape::String, "the new names for the columns")
             .category(Category::Filters)
     }
 
