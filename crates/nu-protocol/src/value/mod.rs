@@ -618,25 +618,28 @@ impl Value {
                     Value::List { vals, span } => {
                         let mut output = vec![];
                         let mut hasvalue = false;
+                        let mut temp: Result<Value, ShellError> =
+                            Err(ShellError::IOError("can't follow stream paths".into()));
                         for val in vals {
-                            let temp = val.clone().follow_cell_path(&[PathMember::String {
+                            temp = val.clone().follow_cell_path(&[PathMember::String {
                                 val: column_name.clone(),
                                 span: *origin_span,
                             }]);
-                            if let Ok(result) = temp {
+                            if let Ok(result) = temp.clone() {
                                 hasvalue = true;
                                 output.push(result);
-                            } else if hasvalue {
-                                output.push(Value::Nothing{span:*span});
                             } else {
-                                return temp;
+                                output.push(Value::Nothing { span: *span });
                             }
                         }
-
-                        current = Value::List {
-                            vals: output,
-                            span: *span,
-                        };
+                        if hasvalue {
+                            current = Value::List {
+                                vals: output,
+                                span: *span,
+                            };
+                        } else {
+                            return temp;
+                        }
                     }
                     Value::CustomValue { val, .. } => {
                         current = val.follow_path_string(column_name.clone(), *origin_span)?;
