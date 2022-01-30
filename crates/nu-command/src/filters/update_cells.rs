@@ -188,15 +188,21 @@ impl Iterator for UpdateCellIterator {
                         vals: cols
                             .iter()
                             .zip(vals.into_iter())
-                            .map(|(col, val)| match &self.columns {
-                                Some(columns) if columns.contains(col) => process_cell(
-                                    val,
-                                    &self.engine_state,
-                                    &mut self.stack,
-                                    &self.block,
-                                    span,
-                                ),
-                                _ => val,
+                            .map(|(col, val)| {
+                                if self.columns.is_none()
+                                    || (self.columns.is_some()
+                                        && self.columns.as_ref().unwrap().contains(col))
+                                {
+                                    process_cell(
+                                        val,
+                                        &self.engine_state,
+                                        &mut self.stack,
+                                        &self.block,
+                                        span,
+                                    )
+                                } else {
+                                    val
+                                }
                             })
                             .collect(),
                         cols,
