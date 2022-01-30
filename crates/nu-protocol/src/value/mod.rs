@@ -619,7 +619,7 @@ impl Value {
                         let mut output = vec![];
                         let mut hasvalue = false;
                         let mut temp: Result<Value, ShellError> =
-                            Err(ShellError::IOError("can't follow stream paths".into()));
+                            Err(ShellError::NotFound(span));
                         for val in vals {
                             temp = val.clone().follow_cell_path(&[PathMember::String {
                                 val: column_name.clone(),
