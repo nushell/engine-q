@@ -145,6 +145,9 @@ fn update_cell_path_1() -> TestResult {
 
 #[test]
 fn missing_column_error() -> TestResult {
+    // Before it is get size, but in the size column there is an empyt value, But I
+    // think it is empty, however, before ,this test think it is error.
+    // My fix is let it get the length column , It must not exist
     fail_test(
         r#"([([[name, size]; [ABC, 10], [DEF, 20]]).1, ([[name]; [HIJ]]).0]).length | table"#,
         "did you mean 'name'?",

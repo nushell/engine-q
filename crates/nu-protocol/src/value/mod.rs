@@ -618,8 +618,7 @@ impl Value {
                     Value::List { vals, span } => {
                         let mut output = vec![];
                         let mut hasvalue = false;
-                        let mut temp: Result<Value, ShellError> =
-                            Err(ShellError::NotFound(*span));
+                        let mut temp: Result<Value, ShellError> = Err(ShellError::NotFound(*span));
                         for val in vals {
                             temp = val.clone().follow_cell_path(&[PathMember::String {
                                 val: column_name.clone(),
