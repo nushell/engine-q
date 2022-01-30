@@ -14,13 +14,13 @@ impl Command for View {
     }
 
     fn usage(&self) -> &str {
-        "View a block"
+        "View a block, module, or a definition"
     }
 
     fn signature(&self) -> nu_protocol::Signature {
         Signature::build("view")
             .desc(self.usage())
-            .required("block", SyntaxShape::Any, "the block to view")
+            .required("item", SyntaxShape::Any, "name or block to view")
             .category(Category::Core)
     }
 
@@ -94,19 +94,5 @@ impl Command for View {
                 arg_span,
             )),
         }
-
-        // let mut stack = stack.captures_to_stack(&block.captures);
-        // let block = engine_state.get_block(block.block_id);
-
-        // if let Some(span) = block.span {
-        //     let contents = engine_state.get_span_contents(&span);
-        //     Ok(Value::string(String::from_utf8_lossy(contents), call.head).into_pipeline_data())
-        // } else {
-        //     Err(ShellError::SpannedLabeledError(
-        //         "Cannot view block".to_string(),
-        //         "block does not have any span".to_string(),
-        //         call.head,
-        //     ))
-        // }
     }
 }
