@@ -142,7 +142,7 @@ impl Command for UpdateCells {
             Some(val) => {
                 let cols = val
                     .as_list()?
-                    .into_iter()
+                    .iter()
                     .map(|val| val.as_string())
                     .collect::<Result<Vec<String>, ShellError>>()?;
                 Some(HashSet::from_iter(cols.into_iter()))
@@ -188,21 +188,15 @@ impl Iterator for UpdateCellIterator {
                         vals: cols
                             .iter()
                             .zip(vals.into_iter())
-                            .map(|(col, val)| {
-                                if self.columns.is_none()
-                                    || (self.columns.is_some()
-                                        && self.columns.as_ref().unwrap().contains(col))
-                                {
-                                    process_cell(
-                                        val,
-                                        &self.engine_state,
-                                        &mut self.stack,
-                                        &self.block,
-                                        span,
-                                    )
-                                } else {
-                                    val
-                                }
+                            .map(|(col, val)| match &self.columns {
+                                Some(cols) if !cols.contains(col) => val,
+                                _ => process_cell(
+                                    val,
+                                    &self.engine_state,
+                                    &mut self.stack,
+                                    &self.block,
+                                    span,
+                                ),
                             })
                             .collect(),
                         cols,
