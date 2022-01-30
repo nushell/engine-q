@@ -1,4 +1,4 @@
-use crate::tests::{fail_test, run_test, TestResult};
+use crate::tests::{run_test, TestResult};
 
 #[test]
 fn cell_path_subexpr1() -> TestResult {
@@ -148,10 +148,15 @@ fn missing_column_error() -> TestResult {
     // Before it is get size, but in the size column there is an empyt value, But I
     // think it is empty, however, before ,this test think it is error.
     // My fix is let it get the length column , It must not exist
-    fail_test(
-        r#"([([[name, size]; [ABC, 10], [DEF, 20]]).1, ([[name]; [HIJ]]).0]).length | table"#,
-        "did you mean 'name'?",
+    // test if it is nothing
+    run_test(
+        r#"[ { name: ABC, size: 20 }, { name: HIJ } ].size.1 == $nothing"#,
+        "true",
     )
+    //fail_test(
+    //    r#"([([[name, size]; [ABC, 10], [DEF, 20]]).1, ([[name]; [HIJ]]).0]).length | table"#,
+    //    "did you mean 'name'?",
+    //)
 }
 
 #[test]
