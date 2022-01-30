@@ -330,7 +330,7 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
 
         // Experimental
         bind_command! {
-            View,
+            ViewSource,
         };
 
         #[cfg(feature = "plugin")]

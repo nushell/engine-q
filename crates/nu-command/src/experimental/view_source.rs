@@ -6,11 +6,11 @@ use nu_protocol::{
 };
 
 #[derive(Clone)]
-pub struct View;
+pub struct ViewSource;
 
-impl Command for View {
+impl Command for ViewSource {
     fn name(&self) -> &str {
-        "view"
+        "view-source"
     }
 
     fn usage(&self) -> &str {
@@ -18,7 +18,7 @@ impl Command for View {
     }
 
     fn signature(&self) -> nu_protocol::Signature {
-        Signature::build("view")
+        Signature::build("view-source")
             .desc(self.usage())
             .required("item", SyntaxShape::Any, "name or block to view")
             .category(Category::Core)
