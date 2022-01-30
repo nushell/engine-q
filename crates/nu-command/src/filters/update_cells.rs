@@ -202,22 +202,6 @@ impl Iterator for UpdateCellIterator {
                         cols,
                         span,
                     }),
-                    // FIXME: is stepping into nested lists desired?
-                    Value::List { vals, span } => Some(Value::List {
-                        vals: vals
-                            .into_iter()
-                            .map(|val| {
-                                process_cell(
-                                    val,
-                                    &self.engine_state,
-                                    &mut self.stack,
-                                    &self.block,
-                                    span,
-                                )
-                            })
-                            .collect(),
-                        span,
-                    }),
                     val => Some(process_cell(
                         val,
                         &self.engine_state,
@@ -243,8 +227,6 @@ fn process_cell(
         if let Some(var_id) = &var.var_id {
             stack.add_var(*var_id, val.clone());
         }
-    } else {
-        // FIXME: Do we set the $it variable here?
     }
     match eval_block(engine_state, stack, block, val.into_pipeline_data()) {
         Ok(pd) => pd.into_value(span),
