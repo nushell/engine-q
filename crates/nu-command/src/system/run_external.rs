@@ -187,7 +187,7 @@ impl ExternalCommand {
 
                     child = process.spawn();
                 }
-                Ok(child) => {
+                Ok(process) => {
                     child = Ok(process);
                 }
             }
@@ -394,19 +394,7 @@ impl ExternalCommand {
                     }
                 }
             } else {
-                let new_arg;
-
-                #[cfg(windows)]
-                {
-                    new_arg = arg.item.replace("\\", "\\\\");
-                }
-
-                #[cfg(not(windows))]
-                {
-                    new_arg = arg.item;
-                }
-
-                process.arg(&new_arg);
+                process.arg(&arg.item);
             }
         }
 
