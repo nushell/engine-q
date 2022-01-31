@@ -290,10 +290,10 @@ mod tests {
     </ul>
 "#;
 
-    #[test]
-    fn test_first_child_is_not_empty() {
-        assert!(!execute_selector_query(SIMPLE_LIST, "li:first-child", false).is_empty())
-    }
+    // #[test]
+    // fn test_first_child_is_not_empty() {
+    //     assert!(!execute_selector_query(SIMPLE_LIST, "li:first-child", false).is_empty())
+    // }
 
     // #[test]
     // fn test_first_child() {
