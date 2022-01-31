@@ -8,7 +8,7 @@ use std::sync::mpsc;
 use nu_engine::env_to_strings;
 use nu_protocol::engine::{EngineState, Stack};
 use nu_protocol::{ast::Call, engine::Command, ShellError, Signature, SyntaxShape, Value};
-use nu_protocol::{Category, Config, PipelineData, RawStream, Span, Spanned};
+use nu_protocol::{Category, PipelineData, RawStream, Span, Spanned};
 
 use itertools::Itertools;
 
@@ -96,7 +96,7 @@ impl Command for External {
             last_expression,
             env_vars: env_vars_str,
         };
-        command.run_with_input(engine_state, input, config)
+        command.run_with_input(engine_state, stack, input)
     }
 }
 
@@ -111,8 +111,8 @@ impl ExternalCommand {
     pub fn run_with_input(
         &self,
         engine_state: &EngineState,
+        stack: &mut Stack,
         input: PipelineData,
-        config: Config,
     ) -> Result<PipelineData, ShellError> {
         let head = self.name.span;
 
@@ -148,40 +148,97 @@ impl ExternalCommand {
             process.stdin(Stdio::piped());
         }
 
-        match process.spawn() {
+        let child;
+
+        #[cfg(windows)]
+        {
+            match process.spawn() {
+                Err(_) => {
+                    let mut process = self.spawn_cmd_command();
+                    if let Some(d) = self.env_vars.get("PWD") {
+                        process.current_dir(d);
+                    } else {
+                        return Err(ShellError::SpannedLabeledErrorHelp(
+                            "Current directory not found".to_string(),
+                            "did not find PWD environment variable".to_string(),
+                            head,
+                            concat!(
+                                "The environment variable 'PWD' was not found. ",
+                                "It is required to define the current directory when running an external command."
+                            ).to_string(),
+                        ));
+                    };
+
+                    process.envs(&self.env_vars);
+
+                    // If the external is not the last command, its output will get piped
+                    // either as a string or binary
+                    if !self.last_expression {
+                        process.stdout(Stdio::piped());
+                    }
+
+                    // If there is an input from the pipeline. The stdin from the process
+                    // is piped so it can be used to send the input information
+                    if !matches!(input, PipelineData::Value(Value::Nothing { .. }, ..)) {
+                        process.stdin(Stdio::piped());
+                    }
+
+                    child = process.spawn();
+                }
+                Ok(process) => {
+                    child = Ok(process);
+                }
+            }
+        }
+
+        #[cfg(not(windows))]
+        {
+            child = process.spawn()
+        }
+
+        match child {
             Err(err) => Err(ShellError::ExternalCommand(
                 "can't run executable".to_string(),
                 err.to_string(),
                 self.name.span,
             )),
             Ok(mut child) => {
-                // if there is a string or a stream, that is sent to the pipe std
-                if let Some(mut stdin_write) = child.stdin.take() {
-                    std::thread::spawn(move || {
-                        for value in input.into_iter() {
-                            match value {
-                                Value::String { val, span: _ } => {
-                                    if stdin_write.write(val.as_bytes()).is_err() {
-                                        return Ok(());
-                                    }
-                                }
-                                Value::Binary { val, span: _ } => {
-                                    if stdin_write.write(&val).is_err() {
-                                        return Ok(());
-                                    }
-                                }
-                                x => {
-                                    if stdin_write
-                                        .write(x.into_string(", ", &config).as_bytes())
-                                        .is_err()
-                                    {
+                if !input.is_nothing() {
+                    let engine_state = engine_state.clone();
+                    let mut stack = stack.clone();
+                    stack.update_config(
+                        "use_ansi_coloring",
+                        Value::Bool {
+                            val: false,
+                            span: Span::new(0, 0),
+                        },
+                    );
+                    // if there is a string or a stream, that is sent to the pipe std
+                    if let Some(mut stdin_write) = child.stdin.take() {
+                        std::thread::spawn(move || {
+                            let input = crate::Table::run(
+                                &crate::Table,
+                                &engine_state,
+                                &mut stack,
+                                &Call::new(),
+                                input,
+                            );
+
+                            if let Ok(input) = input {
+                                for value in input.into_iter() {
+                                    if let Value::String { val, span: _ } = value {
+                                        if stdin_write.write(val.as_bytes()).is_err() {
+                                            return Ok(());
+                                        }
+                                    } else {
                                         return Err(());
                                     }
                                 }
                             }
-                        }
-                        Ok(())
-                    });
+
+                            Ok(())
+                        });
+                    }
                 }
 
                 let last_expression = self.last_expression;
@@ -280,21 +337,7 @@ impl ExternalCommand {
             head
         };
 
-        //let head = head.replace("\\", "\\\\");
-
-        let new_head;
-
-        #[cfg(windows)]
-        {
-            new_head = head.replace("\\", "\\\\");
-        }
-
-        #[cfg(not(windows))]
-        {
-            new_head = head;
-        }
-
-        let mut process = std::process::Command::new(&new_head);
+        let mut process = std::process::Command::new(&head);
 
         for arg in self.args.iter() {
             let mut arg = Spanned {
@@ -341,50 +384,15 @@ impl ExternalCommand {
                             } else {
                                 arg.to_string_lossy().to_string()
                             };
-                            let new_arg;
 
-                            #[cfg(windows)]
-                            {
-                                new_arg = arg.replace("\\", "\\\\");
-                            }
-
-                            #[cfg(not(windows))]
-                            {
-                                new_arg = arg;
-                            }
-
-                            process.arg(&new_arg);
+                            process.arg(&arg);
                         } else {
-                            let new_arg;
-
-                            #[cfg(windows)]
-                            {
-                                new_arg = arg.item.replace("\\", "\\\\");
-                            }
-
-                            #[cfg(not(windows))]
-                            {
-                                new_arg = arg.item.clone();
-                            }
-
-                            process.arg(&new_arg);
+                            process.arg(&arg.item);
                         }
                     }
                 }
             } else {
-                let new_arg;
-
-                #[cfg(windows)]
-                {
-                    new_arg = arg.item.replace("\\", "\\\\");
-                }
-
-                #[cfg(not(windows))]
-                {
-                    new_arg = arg.item;
-                }
-
-                process.arg(&new_arg);
+                process.arg(&arg.item);
             }
         }
 

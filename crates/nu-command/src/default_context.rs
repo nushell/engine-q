@@ -71,6 +71,7 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             Flatten,
             Get,
             GroupBy,
+            SplitBy,
             Keep,
             Merge,
             Move,
@@ -97,6 +98,7 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             Transpose,
             Uniq,
             Update,
+            UpdateCells,
             Where,
             Wrap,
             Zip,
@@ -327,6 +329,11 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             HashMd5::default(),
             HashSha256::default(),
             Base64,
+        };
+
+        // Experimental
+        bind_command! {
+            ViewSource,
         };
 
         #[cfg(feature = "plugin")]
