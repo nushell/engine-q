@@ -8,7 +8,7 @@ use std::sync::mpsc;
 use nu_engine::env_to_strings;
 use nu_protocol::engine::{EngineState, Stack};
 use nu_protocol::{ast::Call, engine::Command, ShellError, Signature, SyntaxShape, Value};
-use nu_protocol::{Category, Config, PipelineData, RawStream, Span, Spanned};
+use nu_protocol::{Category, PipelineData, RawStream, Span, Spanned, CONFIG_VARIABLE_ID};
 
 use itertools::Itertools;
 
@@ -96,7 +96,7 @@ impl Command for External {
             last_expression,
             env_vars: env_vars_str,
         };
-        command.run_with_input(engine_state, input, config)
+        command.run_with_input(engine_state, input)
     }
 }
 
@@ -112,7 +112,6 @@ impl ExternalCommand {
         &self,
         engine_state: &EngineState,
         input: PipelineData,
-        config: Config,
     ) -> Result<PipelineData, ShellError> {
         let head = self.name.span;
 
@@ -155,26 +154,38 @@ impl ExternalCommand {
                 self.name.span,
             )),
             Ok(mut child) => {
+                let engine_state = engine_state.clone();
                 // if there is a string or a stream, that is sent to the pipe std
                 if let Some(mut stdin_write) = child.stdin.take() {
                     std::thread::spawn(move || {
-                        for value in input.into_iter() {
-                            match value {
-                                Value::String { val, span: _ } => {
-                                    if stdin_write.write(val.as_bytes()).is_err() {
-                                        return Ok(());
-                                    }
-                                }
-                                Value::Binary { val, span: _ } => {
-                                    if stdin_write.write(&val).is_err() {
-                                        return Ok(());
-                                    }
-                                }
-                                x => {
-                                    if stdin_write
-                                        .write(x.into_string(", ", &config).as_bytes())
-                                        .is_err()
-                                    {
+                        let mut stack = Stack::new();
+                        stack.vars.insert(
+                            CONFIG_VARIABLE_ID,
+                            Value::Record {
+                                cols: vec!["use_ansi_coloring".to_string()],
+                                vals: vec![Value::Bool {
+                                    val: false,
+                                    span: Span::new(0, 0),
+                                }],
+                                span: Span::new(0, 0),
+                            },
+                        );
+                        if !input.is_nothing() {
+                            let input = crate::Table::run(
+                                &crate::Table,
+                                &engine_state,
+                                &mut stack,
+                                &Call::new(),
+                                input,
+                            );
+
+                            if let Ok(input) = input {
+                                for value in input.into_iter() {
+                                    if let Value::String { val, span: _ } = value {
+                                        if stdin_write.write(val.as_bytes()).is_err() {
+                                            return Ok(());
+                                        }
+                                    } else {
                                         return Err(());
                                     }
                                 }

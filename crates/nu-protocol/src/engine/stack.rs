@@ -178,10 +178,7 @@ impl Stack {
 
         match config {
             Ok(config) => config.into_config(),
-            Err(e) => {
-                println!("Can't find {} in {:?}", CONFIG_VARIABLE_ID, self);
-                Err(e)
-            }
+            Err(e) => Err(e),
         }
     }
 
