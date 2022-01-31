@@ -154,11 +154,9 @@ impl ExternalCommand {
         {
             match process.spawn() {
                 Err(_) => {
-                    let process = self.spawn_cmd_command();
-                    let mut process = if let Some(d) = self.env_vars.get("PWD") {
-                        let mut process = self.create_command(d)?;
+                    let mut process = self.spawn_cmd_command();
+                    if let Some(d) = self.env_vars.get("PWD") {
                         process.current_dir(d);
-                        process
                     } else {
                         return Err(ShellError::SpannedLabeledErrorHelp(
                             "Current directory not found".to_string(),
