@@ -1,9 +1,9 @@
 use gjson::Value as gjValue;
 use nu_plugin::{EvaluatedCall, LabeledError};
-use nu_protocol::{IntoInterruptiblePipelineData, Span, Spanned, Value};
+use nu_protocol::{Span, Spanned, Value};
 
 pub fn execute_json_query(
-    name: &str,
+    _name: &str,
     call: &EvaluatedCall,
     input: &Value,
     query: Option<Spanned<String>>,
