@@ -28,11 +28,13 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             Alias,
             Debug,
             Def,
+            DefEnv,
             Describe,
             Do,
             Echo,
             ExportCommand,
             ExportDef,
+            ExportDefEnv,
             ExportEnv,
             For,
             Help,
@@ -69,6 +71,7 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             Flatten,
             Get,
             GroupBy,
+            SplitBy,
             Keep,
             Merge,
             Move,
@@ -83,7 +86,9 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             Range,
             Reduce,
             Reject,
+            Rename,
             Reverse,
+            Rotate,
             Select,
             Shuffle,
             Skip,
@@ -93,6 +98,7 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             Transpose,
             Uniq,
             Update,
+            UpdateCells,
             Where,
             Wrap,
             Zip,
@@ -129,6 +135,7 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             BuildString,
             Char,
             Decode,
+            DetectColumns,
             Format,
             Parse,
             Size,
@@ -322,6 +329,11 @@ pub fn create_default_context(cwd: impl AsRef<Path>) -> EngineState {
             HashMd5::default(),
             HashSha256::default(),
             Base64,
+        };
+
+        // Experimental
+        bind_command! {
+            ViewSource,
         };
 
         #[cfg(feature = "plugin")]

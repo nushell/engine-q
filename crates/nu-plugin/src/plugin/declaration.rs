@@ -6,7 +6,7 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
 use nu_protocol::engine::{Command, EngineState, Stack};
-use nu_protocol::{ast::Call, Signature, Value};
+use nu_protocol::{ast::Call, Signature};
 use nu_protocol::{PipelineData, ShellError};
 
 #[derive(Clone)]
@@ -70,33 +70,7 @@ impl Command for PluginDeclaration {
             )
         })?;
 
-        let input = match input {
-            PipelineData::Value(value, ..) => value,
-            PipelineData::ListStream(stream, ..) => {
-                let values = stream.collect::<Vec<Value>>();
-
-                Value::List {
-                    vals: values,
-                    span: call.head,
-                }
-            }
-            PipelineData::StringStream(stream, ..) => {
-                let val = stream.into_string("")?;
-
-                Value::String {
-                    val,
-                    span: call.head,
-                }
-            }
-            PipelineData::ByteStream(stream, ..) => {
-                let val = stream.into_vec()?;
-
-                Value::Binary {
-                    val,
-                    span: call.head,
-                }
-            }
-        };
+        let input = input.into_value(call.head);
 
         // Create message to plugin to indicate that signature is required and
         // send call to plugin asking for signature
@@ -118,28 +92,26 @@ impl Command for PluginDeclaration {
             let reader = stdout_reader;
             let mut buf_read = BufReader::with_capacity(OUTPUT_BUFFER_SIZE, reader);
 
-            let response = self
-                .encoding
-                .decode_response(&mut buf_read)
-                .map_err(|err| {
-                    let decl = engine_state.get_decl(call.decl_id);
-                    ShellError::SpannedLabeledError(
-                        format!("Unable to decode call for {}", decl.name()),
-                        err.to_string(),
-                        call.head,
-                    )
-                })?;
+            let response = self.encoding.decode_response(&mut buf_read).map_err(|err| {
+                let decl = engine_state.get_decl(call.decl_id);
+                ShellError::SpannedLabeledError(
+                    format!("Unable to decode call for {}", decl.name()),
+                    err.to_string(),
+                    call.head,
+                )
+            });
 
             match response {
-                PluginResponse::Value(value) => {
+                Ok(PluginResponse::Value(value)) => {
                     Ok(PipelineData::Value(value.as_ref().clone(), None))
                 }
-                PluginResponse::Error(err) => Err(err.into()),
-                PluginResponse::Signature(..) => Err(ShellError::SpannedLabeledError(
+                Ok(PluginResponse::Error(err)) => Err(err.into()),
+                Ok(PluginResponse::Signature(..)) => Err(ShellError::SpannedLabeledError(
                     "Plugin missing value".into(),
                     "Received a signature from plugin instead of value".into(),
                     call.head,
                 )),
+                Err(err) => Err(err),
             }
         } else {
             Err(ShellError::SpannedLabeledError(
@@ -147,11 +119,12 @@ impl Command for PluginDeclaration {
                 "no stdout reader".into(),
                 call.head,
             ))
-        }?;
+        };
 
-        // There is no need to wait for the child process to finish
-        // The response has been collected from the plugin call
-        Ok(pipeline_data)
+        // We need to call .wait() on the child, or we'll risk summoning the zombie horde
+        let _ = child.wait();
+
+        pipeline_data
     }
 
     fn is_plugin(&self) -> Option<(&PathBuf, &str, &Option<PathBuf>)> {

@@ -1,4 +1,4 @@
-use crate::tests::{fail_test, run_test, TestResult};
+use crate::tests::{run_test, TestResult};
 
 #[test]
 fn cell_path_subexpr1() -> TestResult {
@@ -104,6 +104,15 @@ fn command_filter_reject_3() -> TestResult {
 }
 
 #[test]
+#[rustfmt::skip]
+fn command_filter_reject_4() -> TestResult {
+    run_test(
+        "[[lang, gems, grade]; [nu, 100, a]] | reject gems | to json -r",
+        r#"[{"lang": "nu","grade": "a"}]"#,
+    )
+}
+
+#[test]
 fn command_drop_column_1() -> TestResult {
     run_test(
         "[[lang, gems, grade]; [nu, 100, a]] | drop column 2 | to json",
@@ -144,10 +153,11 @@ fn update_cell_path_1() -> TestResult {
 }
 
 #[test]
-fn missing_column_error() -> TestResult {
-    fail_test(
-        r#"([([[name, size]; [ABC, 10], [DEF, 20]]).1, ([[name]; [HIJ]]).0]).size | table"#,
-        "did you mean 'name'?",
+fn missing_column_fills_in_nothing() -> TestResult {
+    // The empty value will be replaced with $nothing when fetching a column
+    run_test(
+        r#"[ { name: ABC, size: 20 }, { name: HIJ } ].size.1 == $nothing"#,
+        "true",
     )
 }
 

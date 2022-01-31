@@ -175,11 +175,14 @@ impl Value {
             Value::Binary { val, .. } => Ok(match std::str::from_utf8(val) {
                 Ok(s) => s.to_string(),
                 Err(_) => {
+                    // println!("{:?}", e);
+                    // println!("bytes: {}", pretty_hex::pretty_hex(&val));
+                    // panic!("let's see it");
                     return Err(ShellError::CantConvert(
-                        "binary".into(),
                         "string".into(),
+                        "binary".into(),
                         self.span()?,
-                    ))
+                    ));
                 }
             }),
             x => Err(ShellError::CantConvert(
@@ -203,8 +206,8 @@ impl Value {
                 },
                 Err(_) => {
                     return Err(ShellError::CantConvert(
-                        "binary".into(),
                         "string".into(),
+                        "binary".into(),
                         self.span()?,
                     ))
                 }
@@ -233,6 +236,18 @@ impl Value {
             Value::Block { val, .. } => Ok(*val),
             x => Err(ShellError::CantConvert(
                 "block".into(),
+                x.get_type().to_string(),
+                self.span()?,
+            )),
+        }
+    }
+
+    pub fn as_binary(&self) -> Result<&[u8], ShellError> {
+        match self {
+            Value::Binary { val, .. } => Ok(val),
+            Value::String { val, .. } => Ok(val.as_bytes()),
+            x => Err(ShellError::CantConvert(
+                "binary".into(),
                 x.get_type().to_string(),
                 self.span()?,
             )),
@@ -287,7 +302,7 @@ impl Value {
         match self {
             Value::Int { val, .. } => Ok(*val),
             x => Err(ShellError::CantConvert(
-                "float".into(),
+                "integer".into(),
                 x.get_type().to_string(),
                 self.span()?,
             )),
@@ -617,24 +632,28 @@ impl Value {
                     }
                     Value::List { vals, span } => {
                         let mut output = vec![];
+                        let mut hasvalue = false;
+                        let mut temp: Result<Value, ShellError> = Err(ShellError::NotFound(*span));
                         for val in vals {
-                            output.push(val.clone().follow_cell_path(&[PathMember::String {
+                            temp = val.clone().follow_cell_path(&[PathMember::String {
                                 val: column_name.clone(),
                                 span: *origin_span,
-                            }])?);
-                            // if let Value::Record { cols, vals, .. } = val {
-                            //     for col in cols.iter().enumerate() {
-                            //         if col.1 == column_name {
-                            //             output.push(vals[col.0].clone());
-                            //         }
-                            //     }
-                            // }
+                            }]);
+                            if let Ok(result) = temp.clone() {
+                                hasvalue = true;
+                                output.push(result);
+                            } else {
+                                output.push(Value::Nothing { span: *span });
+                            }
                         }
-
-                        current = Value::List {
-                            vals: output,
-                            span: *span,
-                        };
+                        if hasvalue {
+                            current = Value::List {
+                                vals: output,
+                                span: *span,
+                            };
+                        } else {
+                            return temp;
+                        }
                     }
                     Value::CustomValue { val, .. } => {
                         current = val.follow_path_string(column_name.clone(), *origin_span)?;

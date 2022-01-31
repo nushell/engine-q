@@ -1,5 +1,5 @@
 use nu_cli::NushellPrompt;
-use nu_engine::eval_block;
+use nu_engine::eval_subexpression;
 use nu_parser::parse;
 use nu_protocol::{
     engine::{EngineState, Stack, StateWorkingSet},
@@ -59,7 +59,8 @@ fn get_prompt_string(
         .and_then(|v| match v {
             Value::Block { val: block_id, .. } => {
                 let block = engine_state.get_block(block_id);
-                eval_block(
+                // Use eval_subexpression to force a redirection of output, so we can use everything in prompt
+                eval_subexpression(
                     engine_state,
                     stack,
                     block,
@@ -70,7 +71,8 @@ fn get_prompt_string(
             Value::String { val: source, .. } => {
                 let mut working_set = StateWorkingSet::new(engine_state);
                 let (block, _) = parse(&mut working_set, None, source.as_bytes(), true);
-                eval_block(
+                // Use eval_subexpression to force a redirection of output, so we can use everything in prompt
+                eval_subexpression(
                     engine_state,
                     stack,
                     &block,
@@ -80,7 +82,24 @@ fn get_prompt_string(
             }
             _ => None,
         })
-        .and_then(|pipeline_data| pipeline_data.collect_string("", config).ok())
+        .and_then(|pipeline_data| {
+            let output = pipeline_data.collect_string("", config).ok();
+
+            match output {
+                Some(mut x) => {
+                    // Just remove the very last newline.
+                    if x.ends_with('\n') {
+                        x.pop();
+                    }
+
+                    if x.ends_with('\r') {
+                        x.pop();
+                    }
+                    Some(x)
+                }
+                None => None,
+            }
+        })
 }
 
 pub(crate) fn update_prompt<'prompt>(
