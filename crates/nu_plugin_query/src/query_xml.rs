@@ -20,7 +20,7 @@ pub fn execute_xpath_query(
         }
     };
 
-    let xpath = build_xpath(&query_string, span)?;
+    let xpath = build_xpath(query_string, span)?;
     let input_string = input.as_string()?;
     let package = parser::parse(&input_string);
 

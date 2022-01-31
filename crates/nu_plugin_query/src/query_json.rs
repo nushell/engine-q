@@ -41,9 +41,9 @@ pub fn execute_json_query(
         });
     }
 
-    let val: gjValue = gjson::get(&input_string, &query_string);
+    let val: gjValue = gjson::get(&input_string, query_string);
 
-    if query_contains_modifiers(&query_string) {
+    if query_contains_modifiers(query_string) {
         let json_str = val.json();
         Ok(Value::string(json_str, Span::test_data()))
     } else {
@@ -75,7 +75,7 @@ fn convert_gjson_value_to_nu_value(v: &gjValue, span: &Span) -> Value {
         gjson::Kind::Array => {
             let mut vals = vec![];
             v.each(|_k, v| {
-                vals.push(convert_gjson_value_to_nu_value(&v, &span));
+                vals.push(convert_gjson_value_to_nu_value(&v, span));
                 true
             });
 
@@ -98,7 +98,7 @@ fn convert_gjson_value_to_nu_value(v: &gjValue, span: &Span) -> Value {
             let mut vals = vec![];
             v.each(|k, v| {
                 cols.push(k.to_string());
-                vals.push(convert_gjson_value_to_nu_value(&v, &span));
+                vals.push(convert_gjson_value_to_nu_value(&v, span));
                 true
             });
             Value::Record {
