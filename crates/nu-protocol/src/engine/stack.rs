@@ -182,6 +182,19 @@ impl Stack {
         }
     }
 
+    pub fn update_config(&mut self, name: &str, value: Value) {
+        if let Some(Value::Record { cols, vals, .. }) = self.vars.get_mut(&CONFIG_VARIABLE_ID) {
+            for col_val in cols.iter().zip(vals.iter_mut()) {
+                if col_val.0 == name {
+                    *col_val.1 = value;
+                    return;
+                }
+            }
+            cols.push(name.to_string());
+            vals.push(value);
+        }
+    }
+
     pub fn print_stack(&self) {
         println!("vars:");
         for (var, val) in &self.vars {
