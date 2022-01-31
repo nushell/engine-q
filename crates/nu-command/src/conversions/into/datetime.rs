@@ -197,240 +197,916 @@ fn operate(
 }
 
 fn generate_strfttime_list(head: Span) -> Value {
-    let mut code = vec![];
-    let mut description = vec![];
-    code.push("code".into());
-    description.push(Value::String {
-        val: "Description".into(),
-        span: head,
-    });
-    code.push("%F".into());
-    description.push(Value::String {
-        val: "Year-month-day format. Same to %Y".into(),
-        span: head,
-    });
-    code.push("%Y".into());
-    description.push(Value::String {
-        val: "The full proleptic Gregorian year, zero-padded to 4 digits(Example: 2001).".into(),
-        span: head,
-    });
-    code.push("%C".into());
-    description.push(Value::String {
-        val: "The proleptic Gregorian year divided by 100, zero-padded to 2 digits. (Example: 20)"
-            .into(),
-        span: head,
-    });
-    code.push("%y".into());
-    description.push(Value::String {
-        val: "The proleptic Gregorian year modulo 100, zero-padded to 2 digits. (Example: 01)"
-            .into(),
-        span: head,
-    });
-    code.push("%m".into());
-    description.push(Value::String {
-        val: "Month number (01--12), zero-padded to 2 digits.(Example: 07)".into(),
-        span: head,
-    });
-    code.push("%b".into());
-    description.push(Value::String {
-        val: "Abbreviated month name. Always 3 letters.(Example: Jul)".into(),
-        span: head,
-    });
-    code.push("%B".into());
-    description.push(Value::String {
-        val: "Full month name. Also accepts corresponding abbreviation in parsing.(Example: July)"
-            .into(),
-        span: head,
-    });
-    code.push("%h".into());
-    description.push(Value::String {
-        val: "Same to %b".into(),
-        span: head,
-    });
-    code.push("%d".into());
-    description.push(Value::String {
-        val: "Day number (01--31), zero-padded to 2 digits.(Example: 08)".into(),
-        span: head,
-    });
-    code.push("%e".into());
-    description.push(Value::String {
-        val: "Same to %d".into(),
-        span: head,
-    });
-    code.push("%a".into());
-    description.push(Value::String {
-        val: "Abbreviated weekday name. Always 3 letters.(Example: Sun)".into(),
-        span: head,
-    });
-    code.push("%A".into());
-    description.push(Value::String {val: "Full weekday name. Also accepts corresponding abbreviation in parsing.(Example: Sunday)".into(),span:head});
-    code.push("%w".into());
-    description.push(Value::String {
-        val: "Sunday = 0, Monday = 1, ..., Saturday = 6.(Example: 0)".into(),
-        span: head,
-    });
-    code.push("%u".into());
-    description.push(Value::String {
-        val: "Monday = 1, Tuesday = 2, ..., Sunday = 7. (ISO 8601)(Example: 7)".into(),
-        span: head,
-    });
-    code.push("%U".into());
-    description.push(Value::String {
-        val: "Week number starting with Sunday (00--53), zero-padded to 2 digits. (Example: 28)"
-            .into(),
-        span: head,
-    });
-    code.push("%W".into());
-    description.push(Value::String {
-        val: "Same to %U".into(),
-        span: head,
-    });
-    code.push("%G".into());
-    description.push(Value::String {
-        val: "Same to %Y".into(),
-        span: head,
-    });
-    code.push("%g".into());
-    description.push(Value::String {
-        val: "Same to %y".into(),
-        span: head,
-    });
-    code.push("%V".into());
-    description.push(Value::String {
-        val: "Same to %U".into(),
-        span: head,
-    });
-    code.push("%j".into());
-    description.push(Value::String {
-        val: "Day of the year (001--366), zero-padded to 3 digits.(Example: 189)".into(),
-        span: head,
-    });
-    code.push("%x".into());
-    description.push(Value::String {
-        val: "Same to %D".into(),
-        span: head,
-    });
-    code.push("%F".into());
-    description.push(Value::String {
-        val: "Year-month-day format (ISO 8601). Same to %Y".into(),
-        span: head,
-    });
-    code.push("%v".into());
-    description.push(Value::String {
-        val: "Day-month-year format. Same to %e".into(),
-        span: head,
-    });
-    code.push("%H".into());
-    description.push(Value::String {
-        val: "Hour number (00--23), zero-padded to 2 digits.(Example: 00)".into(),
-        span: head,
-    });
-    code.push("%k".into());
-    description.push(Value::String {
-        val: "Same to %H".into(),
-        span: head,
-    });
-    code.push("%I".into());
-    description.push(Value::String {
-        val: "Hour number in 12-hour clocks (01--12), zero-padded to 2 digits.(Example: 12)".into(),
-        span: head,
-    });
-    code.push("%l".into());
-    description.push(Value::String {
-        val: "Same to %I".into(),
-        span: head,
-    });
-    code.push("%P".into());
-    description.push(Value::String {
-        val: "am or pm in 12-hour clocks.(Example: am)".into(),
-        span: head,
-    });
-    code.push("%p".into());
-    description.push(Value::String {
-        val: "AM or PM in 12-hour clocks.(Example: AM)".into(),
-        span: head,
-    });
-    code.push("%M".into());
-    description.push(Value::String {
-        val: "Minute number (00--59), zero-padded to 2 digits.(Example: 34)".into(),
-        span: head,
-    });
-    code.push("%S".into());
-    description.push(Value::String {
-        val: "Second number (00--60), zero-padded to 2 digits. (Example: 60)".into(),
-        span: head,
-    });
-    code.push("%f".into());
-    description.push(Value::String {
-        val:
-            "The fractional seconds (in nanoseconds) since last whole second. (Example: 026490000)"
-                .into(),
-        span: head,
-    });
-    code.push("%R".into());
-    description.push(Value::String {
-        val: "Hour-minute format. Same to %H".into(),
-        span: head,
-    });
-    code.push("%T".into());
-    description.push(Value::String {
-        val: "Hour-minute-second format. Same to %H".into(),
-        span: head,
-    });
-    code.push("%X".into());
-    description.push(Value::String {
-        val: "Same to %T".into(),
-        span: head,
-    });
-    code.push("%r".into());
-    description.push(Value::String {
-        val: "Hour-minute-second format in 12-hour clocks. Same to %I".into(),
-        span: head,
-    });
-    code.push("%Z".into());
-    description.push(Value::String {
-        val: "Formatting only: Local time zone name.(Example: ACST)".into(),
-        span: head,
-    });
-    code.push("%z".into());
-    description.push(Value::String {
-        val: "Offset from the local time to UTC (with UTC being +0000).(Example: +0930)".into(),
-        span: head,
-    });
-    code.push("%c".into());
-    description.push(Value::String {
-        val: "ctime date & time format. Same to %a".into(),
-        span: head,
-    });
-    code.push("%s".into());
-    description.push(Value::String {
-        val:
-            "UNIX timestamp, the number of seconds since 1970-01-01 00:00 UTC. (Example: 994518299)"
-                .into(),
-        span: head,
-    });
-    code.push("%t".into());
-    description.push(Value::String {
-        val: "Literal tab (\\t).".into(),
-        span: head,
-    });
-    code.push("%n".into());
-    description.push(Value::String {
-        val: "Literal newline (\\n).)".into(),
-        span: head,
-    });
-    code.push("%%".into());
-    description.push(Value::String {
-        val: "Percent sign.".into(),
-        span: head,
-    });
+    let column_names = vec![
+        "Specification".into(),
+        "Example".into(),
+        "Description".into(),
+    ];
+    let records = vec![
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%Y".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "2001".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "The full proleptic Gregorian year, zero-padded to 4 digits".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%C".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "20".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "The proleptic Gregorian year divided by 100, zero-padded to 2 digits. 
+"
+                    .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%y".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "01".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "The proleptic Gregorian year modulo 100, zero-padded to 2 digits. 
+"
+                    .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%m".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "07".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Month number (01--12), zero-padded to 2 digits.".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%b".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Jul".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Abbreviated month name. Always 3 letters".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%B".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "July".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Full month name. Also accepts corresponding abbreviation in parsing"
+                        .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%h".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Jul".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Same to %b".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%d".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "08".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Day number (01--31), zero-padded to 2 digits".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%e".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "8".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Same to %d but space-padded. Same to %_d".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%a".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Sun".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Abbreviated weekday name. Always 3 letters".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%A".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Sunday".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Full weekday name. Also accepts corresponding abbreviation in parsing"
+                        .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%w".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "0".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Sunday = 0, Monday = 1, ..., Saturday = 6".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%u".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "7".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Monday = 1, Tuesday = 2, ..., Sunday = 7. (ISO 8601)
+"
+                    .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%U".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "28".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Week number starting with Sunday (00--53), zero-padded to 2 digits. 
+"
+                    .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%W".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "27".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Same to %U, but week 1 starts with the first Monday in that year instead"
+                        .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%G".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "2001".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Same to %Y but uses the year number in ISO 8601 week date. 
+"
+                    .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%g".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "01".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Same to %y but uses the year number in ISO 8601 week date. 
+"
+                    .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%V".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "27".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Same to %U but uses the week number in ISO 8601 week date (01--53). 
+"
+                    .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%j".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "189".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Day of the year (001--366), zero-padded to 3 digits".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%D".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "07/08/01".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Month-day-year format. Same to %m/%d/%y".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%x".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "07/08/01".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Same to %D".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%F".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "2001-07-08".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Year-month-day format (ISO 8601). Same to %Y-%m-%d".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%v".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "8-Jul-2001".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Day-month-year format. Same to %e-%b-%Y".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%H".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "00".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Hour number (00--23), zero-padded to 2 digits".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%k".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "0".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Same to %H but space-padded. Same to %_H".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%I".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "12".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Hour number in 12-hour clocks (01--12), zero-padded to 2 digits".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%l".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "12".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Same to %I but space-padded. Same to %_I".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%P".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "am".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "am or pm in 12-hour clocks".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%p".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "AM".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "AM or PM in 12-hour clocks".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%M".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "34".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Minute number (00--59), zero-padded to 2 digits".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%S".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "60".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Second number (00--60), zero-padded to 2 digits. 
+"
+                    .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%f".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "026490000".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "The fractional seconds (in nanoseconds) since last whole second. 
+"
+                    .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%.".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: ".026490".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Similar to .%f but left-aligned. 
+"
+                    .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%.".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: ".026".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Similar to .%f but left-aligned but fixed to a length of 3. 
+"
+                    .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%.".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: ".026490".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Similar to .%f but left-aligned but fixed to a length of 6. 
+"
+                    .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%.".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: ".026490000".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Similar to .%f but left-aligned but fixed to a length of 9. 
+"
+                    .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%R".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "00:34".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Hour-minute format. Same to %H:%M".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%T".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "00:34:60".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Hour-minute-second format. Same to %H:%M:%S".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%X".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "00:34:60".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Same to %T".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%r".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "12:34:60".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "AM Hour-minute-second format in 12-hour clocks. Same to %I:%M:%S %p"
+                        .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%Z".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "ACST".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Formatting only: Local time zone name".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%z".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "+0930".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Offset from the local time to UTC (with UTC being +0000)".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%:".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "+09:30".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Same to %z but with a colon".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%c".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Sun".into(),
+                    span: head,
+                },
+                Value::String {
+                    val:
+                        "Jul 8 00:34:60 2001 ctime date & time format. Same to %a %b %e %T %Y sans"
+                            .into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%s".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "994518299".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "UNIX timestamp, the number of seconds since 1970-01-01 00:00 UTC.".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%t".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Literal tab (\\t)".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names.clone(),
+            vals: vec![
+                Value::String {
+                    val: "%n".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "Literal newline (\\n)".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+        Value::Record {
+            cols: column_names,
+            vals: vec![
+                Value::String {
+                    val: "%%".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "".into(),
+                    span: head,
+                },
+                Value::String {
+                    val: "percent sign".into(),
+                    span: head,
+                },
+            ],
+            span: head,
+        },
+    ];
 
-    Value::Record {
-        cols: code,
-        vals: description,
+    Value::List {
+        vals: records,
         span: head,
     }
 }
+
 fn action(
     input: &Value,
     timezone: &Option<Spanned<Zone>>,
