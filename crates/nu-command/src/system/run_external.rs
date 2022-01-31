@@ -339,21 +339,7 @@ impl ExternalCommand {
             head
         };
 
-        //let head = head.replace("\\", "\\\\");
-
-        let new_head;
-
-        #[cfg(windows)]
-        {
-            new_head = head.replace("\\", "\\\\");
-        }
-
-        #[cfg(not(windows))]
-        {
-            new_head = head;
-        }
-
-        let mut process = std::process::Command::new(&new_head);
+        let mut process = std::process::Command::new(&head);
 
         for arg in self.args.iter() {
             let mut arg = Spanned {
@@ -400,33 +386,10 @@ impl ExternalCommand {
                             } else {
                                 arg.to_string_lossy().to_string()
                             };
-                            let new_arg;
 
-                            #[cfg(windows)]
-                            {
-                                new_arg = arg.replace("\\", "\\\\");
-                            }
-
-                            #[cfg(not(windows))]
-                            {
-                                new_arg = arg;
-                            }
-
-                            process.arg(&new_arg);
+                            process.arg(&arg);
                         } else {
-                            let new_arg;
-
-                            #[cfg(windows)]
-                            {
-                                new_arg = arg.item.replace("\\", "\\\\");
-                            }
-
-                            #[cfg(not(windows))]
-                            {
-                                new_arg = arg.item.clone();
-                            }
-
-                            process.arg(&new_arg);
+                            process.arg(&arg.item);
                         }
                     }
                 }
