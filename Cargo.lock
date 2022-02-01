@@ -1968,6 +1968,7 @@ dependencies = [
  "quick-xml 0.22.0",
  "rand",
  "rayon",
+ "reedline",
  "regex",
  "reqwest",
  "roxmltree",
@@ -1979,6 +1980,7 @@ dependencies = [
  "sha2 0.10.0",
  "shadow-rs",
  "strip-ansi-escapes",
+ "strum",
  "sysinfo",
  "terminal_size",
  "thiserror",
@@ -2863,7 +2865,7 @@ dependencies = [
 [[package]]
 name = "reedline"
 version = "0.2.0"
-source = "git+https://github.com/nushell/reedline?branch=main#1ac359694ba4456d761445f637522bd537b43cef"
+source = "git+https://github.com/nushell/reedline?branch=main#054b04cebb4cca8f1a17d737046a6a910474ec9d"
 dependencies = [
  "chrono",
  "crossterm",
@@ -3339,6 +3341,12 @@ checksum = "011cbb39cf7c1f62871aea3cc46e5817b0937b49e9447370c93cacbe93a766d8"
 dependencies = [
  "vte",
 ]
+
+[[package]]
+name = "strum"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cae14b91c7d11c9a851d3fbc80a963198998c2a64eec840477fa92d8ce9b70bb"
 
 [[package]]
 name = "supports-color"

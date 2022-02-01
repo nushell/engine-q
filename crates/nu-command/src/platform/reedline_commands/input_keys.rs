@@ -12,7 +12,7 @@ pub struct InputKeys;
 
 impl Command for InputKeys {
     fn name(&self) -> &str {
-        "input-keys"
+        "keybindings listen"
     }
 
     fn usage(&self) -> &str {
@@ -20,7 +20,7 @@ impl Command for InputKeys {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("input-keys").category(Category::Platform)
+        Signature::build(self.name()).category(Category::Platform)
     }
 
     fn run(

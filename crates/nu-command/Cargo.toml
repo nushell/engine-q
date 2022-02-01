@@ -74,6 +74,8 @@ reqwest = {version = "0.11", features = ["blocking"] }
 mime = "0.3.16"
 log = "0.4.14"
 which = { version = "4.2.2", optional = true }
+reedline = { git = "https://github.com/nushell/reedline", branch = "main" }
+strum = "0.23"
 
 [target.'cfg(unix)'.dependencies]
 umask = "1.0.0"
