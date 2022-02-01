@@ -29,10 +29,7 @@ impl Default for Selector {
     }
 }
 
-pub fn parse_selector_params(
-    call: &EvaluatedCall,
-    input: &Value,
-) -> Result<Value, LabeledError> {
+pub fn parse_selector_params(call: &EvaluatedCall, input: &Value) -> Result<Value, LabeledError> {
     let head = call.head;
     let query: String = match call.get_flag("query")? {
         Some(q2) => q2,
@@ -51,12 +48,12 @@ pub fn parse_selector_params(
     let inspect = call.has_flag("inspect");
 
     if !&query.is_empty() && ScraperSelector::parse(&query).is_err() {
-         return Err(LabeledError {
-             msg: "Cannot parse this query as a valid css selector".to_string(),
-             label: "Parse error".to_string(),
-             span: Some(head),
-         });
-     }
+        return Err(LabeledError {
+            msg: "Cannot parse this query as a valid css selector".to_string(),
+            label: "Parse error".to_string(),
+            span: Some(head),
+        });
+    }
 
     let selector = Selector {
         query,
@@ -66,39 +63,48 @@ pub fn parse_selector_params(
         inspect,
     };
 
-
-     match input {
-         Value::String { val, span } => Ok(begin_selector_query(val.to_string(), selector, *span)),
-         _ => Err(LabeledError {
-             label: "requires text input".to_string(),
-             msg: "Expected text from pipeline".to_string(),
-             span: Some(input.span()?),
-         }),
-     }
+    match input {
+        Value::String { val, span } => Ok(begin_selector_query(val.to_string(), selector, *span)),
+        _ => Err(LabeledError {
+            label: "requires text input".to_string(),
+            msg: "Expected text from pipeline".to_string(),
+            span: Some(input.span()?),
+        }),
+    }
 }
 
 fn begin_selector_query(input_html: String, selector: Selector, span: Span) -> Value {
     if let Value::List { .. } = selector.as_table {
-        return retrieve_tables(input_html.as_str(), &selector.as_table, selector.inspect, span);
-     } else {
-         match selector.attribute.is_empty() {
-             true => execute_selector_query(
-                 input_html.as_str(),
-                 selector.query.as_str(),
-                 selector.as_html,
-                 span
-             ),
-             false => execute_selector_query_with_attribute(
-                 input_html.as_str(),
-                 selector.query.as_str(),
-                 selector.attribute.as_str(),
-                 span
-             ),
-         }
+        return retrieve_tables(
+            input_html.as_str(),
+            &selector.as_table,
+            selector.inspect,
+            span,
+        );
+    } else {
+        match selector.attribute.is_empty() {
+            true => execute_selector_query(
+                input_html.as_str(),
+                selector.query.as_str(),
+                selector.as_html,
+                span,
+            ),
+            false => execute_selector_query_with_attribute(
+                input_html.as_str(),
+                selector.query.as_str(),
+                selector.attribute.as_str(),
+                span,
+            ),
+        }
     }
 }
 
-pub fn retrieve_tables(input_string: &str, columns: &Value, inspect_mode: bool, span: Span) -> Value {
+pub fn retrieve_tables(
+    input_string: &str,
+    columns: &Value,
+    inspect_mode: bool,
+    span: Span,
+) -> Value {
     let html = input_string;
     let mut cols: Vec<String> = Vec::new();
     if let Value::List { vals, .. } = &columns {
@@ -131,17 +137,16 @@ pub fn retrieve_tables(input_string: &str, columns: &Value, inspect_mode: bool, 
                 .next()
                 .expect("This should never trigger"),
             columns,
-            span
+            span,
         );
     }
 
-    let vals =
-        tables
+    let vals = tables
         .into_iter()
         .map(move |table| retrieve_table(table, columns, span))
         .collect();
 
-    Value::List { vals, span  }
+    Value::List { vals, span }
 }
 
 fn retrieve_table(mut table: WebTable, columns: &Value, span: Span) -> Value {
@@ -179,18 +184,14 @@ fn retrieve_table(mut table: WebTable, columns: &Value, span: Span) -> Value {
                 vals.push(Value::string(cell.to_string(), span))
             }
         }
-        table_out.push(Value::Record {
-            cols,
-            vals,
-            span,
-        })
+        table_out.push(Value::Record { cols, vals, span })
     } else {
         for row in &table {
             let mut vals = vec![];
             let record_cols = &cols;
             for col in &cols {
                 let val = row
-                    .get(&col)
+                    .get(col)
                     .unwrap_or(&format!("Missing column: '{}'", &col))
                     .to_string();
 
@@ -220,48 +221,53 @@ fn retrieve_table(mut table: WebTable, columns: &Value, span: Span) -> Value {
         vals: table_out,
         span,
     }
-
 }
 
 fn execute_selector_query_with_attribute(
     input_string: &str,
     query_string: &str,
     attribute: &str,
-    span: Span
+    span: Span,
 ) -> Value {
-     let doc = Html::parse_fragment(input_string);
+    let doc = Html::parse_fragment(input_string);
 
-     let vals: Vec<Value> = doc.select(&css(query_string))
-         .map(|selection| {
-             Value::string(
-                 selection.value().attr(attribute).unwrap_or("").to_string(),
-                 span,
-             )
-         })
-         .collect();
+    let vals: Vec<Value> = doc
+        .select(&css(query_string))
+        .map(|selection| {
+            Value::string(
+                selection.value().attr(attribute).unwrap_or("").to_string(),
+                span,
+            )
+        })
+        .collect();
     Value::List { vals, span }
 }
 
-fn execute_selector_query(input_string: &str, query_string: &str, as_html: bool, span: Span) -> Value {
-     let doc = Html::parse_fragment(input_string);
+fn execute_selector_query(
+    input_string: &str,
+    query_string: &str,
+    as_html: bool,
+    span: Span,
+) -> Value {
+    let doc = Html::parse_fragment(input_string);
 
-     let vals: Vec<Value> = match as_html {
-         true => doc
-             .select(&css(query_string))
-             .map(|selection| Value::string(selection.html(), span))
-             .collect(),
-         false => doc
-             .select(&css(query_string))
-             .map(|selection| {
-                 Value::string(
-                     selection
-                         .text()
-                         .fold("".to_string(), |acc, x| format!("{}{}", acc, x)),
-                     span,
-                 )
-             })
-             .collect(),
-     };
+    let vals: Vec<Value> = match as_html {
+        true => doc
+            .select(&css(query_string))
+            .map(|selection| Value::string(selection.html(), span))
+            .collect(),
+        false => doc
+            .select(&css(query_string))
+            .map(|selection| {
+                Value::string(
+                    selection
+                        .text()
+                        .fold("".to_string(), |acc, x| format!("{}{}", acc, x)),
+                    span,
+                )
+            })
+            .collect(),
+    };
 
     Value::List { vals, span }
 }

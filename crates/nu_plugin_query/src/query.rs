@@ -1,8 +1,9 @@
 use crate::query_json::execute_json_query;
 use crate::query_web::parse_selector_params;
 use crate::query_xml::execute_xpath_query;
-use nu_plugin::{EvaluatedCall, LabeledError};
-use nu_protocol::{Spanned, Value};
+use nu_engine::documentation::get_flags_section;
+use nu_plugin::{EvaluatedCall, LabeledError, Plugin};
+use nu_protocol::{Signature, Spanned, Value};
 
 #[derive(Default)]
 pub struct Query;
@@ -18,12 +19,13 @@ impl Query {
 
     pub fn query(
         &self,
-        name: &str,
+        _name: &str,
         call: &EvaluatedCall,
-        value: &Value,
-        path: Option<Spanned<String>>,
+        _value: &Value,
+        _path: Option<Spanned<String>>,
     ) -> Result<Value, LabeledError> {
-        Ok(Value::string("Hello from query", call.head))
+        let help = get_brief_subcommand_help(&Query.signature());
+        Ok(Value::string(help, call.head))
     }
 
     pub fn query_json(
@@ -53,4 +55,21 @@ impl Query {
     ) -> Result<Value, LabeledError> {
         execute_xpath_query(name, call, input, query)
     }
+}
+
+pub fn get_brief_subcommand_help(sigs: &[Signature]) -> String {
+    let mut help = String::new();
+    help.push_str(&format!("{}\n\n", sigs[0].usage));
+    help.push_str(&format!("Usage:\n  > {}\n\n", sigs[0].name));
+    help.push_str("Subcommands:\n");
+
+    for x in sigs.iter().enumerate() {
+        if x.0 == 0 {
+            continue;
+        }
+        help.push_str(&format!("  {} - {}\n", x.1.name, x.1.usage));
+    }
+
+    help.push_str(&get_flags_section(&sigs[0]));
+    help
 }
