@@ -18,7 +18,6 @@ members = [
 	"crates/nu_plugin_inc",
 	"crates/nu_plugin_gstat",
 	"crates/nu_plugin_example",
-	"crates/nu_plugin_query",
 ]
 
 [dependencies]
@@ -49,7 +48,7 @@ pretty_env_logger = "0.4.0"
 nu_plugin_inc = { version = "0.1.0", path = "./crates/nu_plugin_inc", optional = true }
 nu_plugin_example = { version = "0.1.0", path = "./crates/nu_plugin_example", optional = true }
 nu_plugin_gstat = { version = "0.1.0", path = "./crates/nu_plugin_gstat", optional = true }
-nu_plugin_query = { version = "0.1.0", path = "./crates/nu_plugin_query", optional = true }
+
 
 [dev-dependencies]
 tempfile = "3.2.0"
@@ -74,7 +73,6 @@ extra = [
 	"dataframe",
 	"gstat",
 	"zip-support",
-	"query",
 ]
 
 wasi = ["inc"]
@@ -82,12 +80,13 @@ wasi = ["inc"]
 # Stable (Default)
 inc = ["nu_plugin_inc"]
 example = ["nu_plugin_example"]
+
 which = ["nu-command/which"]
 
 # Extra
 gstat = ["nu_plugin_gstat"]
+
 zip-support = ["nu-command/zip"]
-query = ["nu_plugin_query"]
 
 # Dataframe feature for nushell
 dataframe = ["nu-command/dataframe"]
@@ -111,11 +110,6 @@ required-features = ["example"]
 name = "nu_plugin_gstat"
 path = "src/plugins/nu_plugin_extra_gstat.rs"
 required-features = ["gstat"]
-
-[[bin]]
-name = "nu_plugin_query"
-path = "src/plugins/nu_plugin_extra_query.rs"
-required-features = ["query"]
 
 # Main nu binary
 [[bin]]
