@@ -50,6 +50,14 @@ pub fn parse_selector_params(
     };
     let inspect = call.has_flag("inspect");
 
+    if !&query.is_empty() && ScraperSelector::parse(&query).is_err() {
+         return Err(LabeledError {
+             msg: "Cannot parse this query as a valid css selector".to_string(),
+             label: "Parse error".to_string(),
+             span: Some(call.head),
+         });
+     }
+
     let selector = Selector {
         query,
         as_html,
@@ -58,47 +66,36 @@ pub fn parse_selector_params(
         inspect,
     };
 
-    // if !query.is_empty() && ScraperSelector::parse(&query).is_err() {
-    //     return Err(LabeledError {
-    //         msg: "Cannot parse this query as a valid css selector".to_string(),
-    //         label: "Parse error".to_string(),
-    //         span: Some(call.head),
-    //     });
-    // }
 
-    // match input {
-    //     Value::String { val, span } => Ok(begin_selector_query(val.to_string(), selector, *span)),
-    //     _ => Err(LabeledError {
-    //         label: "requires text input".to_string(),
-    //         msg: "Expected text from pipeline".to_string(),
-    //         span: Some(input.span()?),
-    //     }),
-    // }
-
-    // put here to just be able to compile
-    Ok(Value::nothing(Span::test_data()))
+     match input {
+         Value::String { val, span } => Ok(begin_selector_query(val.to_string(), selector, *span)),
+         _ => Err(LabeledError {
+             label: "requires text input".to_string(),
+             msg: "Expected text from pipeline".to_string(),
+             span: Some(input.span()?),
+         }),
+     }
 }
 
 fn begin_selector_query(input_html: String, selector: Selector, span: Span) -> Value {
-    // if !selector.as_table.is_empty() {
-    //     retrieve_tables(input_html.as_str(), &selector.as_table, selector.inspect)
-    // } else {
-    //     match selector.attribute.is_empty() {
-    //         true => execute_selector_query(
-    //             input_html.as_str(),
-    //             selector.query.as_str(),
-    //             selector.as_html,
-    //         ),
-    //         false => execute_selector_query_with_attribute(
-    //             input_html.as_str(),
-    //             selector.query.as_str(),
-    //             selector.attribute.as_str(),
-    //         ),
-    //     }
-    // }
-
-    // put here to just be able to compile
-    Value::nothing(Span::test_data())
+     //if !selector.as_table.is_empty() {
+     //    retrieve_tables(input_html.as_str(), &selector.as_table, selector.inspect)
+     //} else {
+         match selector.attribute.is_empty() {
+             true => execute_selector_query(
+                 input_html.as_str(),
+                 selector.query.as_str(),
+                 selector.as_html,
+                 span
+             ),
+             false => execute_selector_query_with_attribute(
+                 input_html.as_str(),
+                 selector.query.as_str(),
+                 selector.attribute.as_str(),
+                 span
+             ),
+         }
+    //}
 }
 
 pub fn retrieve_tables(input_string: &str, columns: &Value, inspect_mode: bool) -> Value {
@@ -233,45 +230,43 @@ fn execute_selector_query_with_attribute(
     input_string: &str,
     query_string: &str,
     attribute: &str,
+    span: Span
 ) -> Value {
-    // let doc = Html::parse_fragment(input_string);
+     let doc = Html::parse_fragment(input_string);
 
-    // doc.select(&css(query_string))
-    //     .map(|selection| {
-    //         Value::string(
-    //             selection.value().attr(attribute).unwrap_or("").to_string(),
-    //             Span::test_data(),
-    //         )
-    //     })
-    //     .collect()
-
-    // put here to just be able to compile
-    Value::nothing(Span::test_data())
+     let vals: Vec<Value> = doc.select(&css(query_string))
+         .map(|selection| {
+             Value::string(
+                 selection.value().attr(attribute).unwrap_or("").to_string(),
+                 span,
+             )
+         })
+         .collect();
+    Value::List { vals, span }
 }
 
-fn execute_selector_query(input_string: &str, query_string: &str, as_html: bool) -> Value {
-    // let doc = Html::parse_fragment(input_string);
+fn execute_selector_query(input_string: &str, query_string: &str, as_html: bool, span: Span) -> Value {
+     let doc = Html::parse_fragment(input_string);
 
-    // match as_html {
-    //     true => doc
-    //         .select(&css(query_string))
-    //         .map(|selection| Value::string(selection.html(), Span::test_data()))
-    //         .collect(),
-    //     false => doc
-    //         .select(&css(query_string))
-    //         .map(|selection| {
-    //             Value::string(
-    //                 selection
-    //                     .text()
-    //                     .fold("".to_string(), |acc, x| format!("{}{}", acc, x)),
-    //                 Span::test_data(),
-    //             )
-    //         })
-    //         .collect(),
-    // }
+     let vals: Vec<Value> = match as_html {
+         true => doc
+             .select(&css(query_string))
+             .map(|selection| Value::string(selection.html(), Span::test_data()))
+             .collect(),
+         false => doc
+             .select(&css(query_string))
+             .map(|selection| {
+                 Value::string(
+                     selection
+                         .text()
+                         .fold("".to_string(), |acc, x| format!("{}{}", acc, x)),
+                     Span::test_data(),
+                 )
+             })
+             .collect(),
+     };
 
-    // put here to just be able to compile
-    Value::nothing(Span::test_data())
+    Value::List { vals, span }
 }
 
 pub fn css(selector: &str) -> ScraperSelector {
