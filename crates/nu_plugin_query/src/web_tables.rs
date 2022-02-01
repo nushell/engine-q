@@ -2,8 +2,6 @@ use crate::query_web::css;
 use scraper::{element_ref::ElementRef, Html, Selector as ScraperSelector};
 use std::collections::HashMap;
 
-// Borrowed from here
-// https://github.com/mk12/table-extract/blob/master/src/lib.rs
 pub type Headers = HashMap<String, usize>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -480,7 +478,8 @@ fn contains_str(slice: &[String], item: &str) -> bool {
 //     </td>
 //     <td><code class="mw-highlight mw-highlight-lang-text mw-content-ltr" id="" style="" dir="ltr">.xlsx</code>
 //     </td>
-//     <td>The default Excel 2007 and later workbook format. In reality, a <a href="/wiki/Zip_(file_format)" class="mw-redirect" title="Zip (file format)">Zip</a> compressed archive with a directory structure of <a href="/wiki/XML" title="XML">XML</a> text documents. Functions as the primary replacement for the former binary .xls format, although it does not support Excel macros for security reasons. Saving as .xlsx offers file size reduction over .xls<sup id="cite_ref-38" class="reference"><a href="&#35;cite_note-38">[38]</a></sup>
+//     <td>The default Excel 2007 and later workbook format. In reality, a <a href="/wiki/Zip_(file_format)" class="mw-redirect" title="Zip (file format)">Zip</a> compressed archive with a directory structure of <a href="/wiki/XML" title="XML">XML</a> text documents.
+//Functions as the primary replacement for the former binary .xls format, although it does not support Excel macros for security reasons. Saving as .xlsx offers file size reduction over .xls<sup id="cite_ref-38" class="reference"><a href="&#35;cite_note-38">[38]</a></sup>
 //     </td></tr>
 //     <tr>
 //     <td>Excel Macro-enabled Workbook
@@ -494,7 +493,8 @@ fn contains_str(slice: &[String], item: &str) -> bool {
 //     </td>
 //     <td><code class="mw-highlight mw-highlight-lang-text mw-content-ltr" id="" style="" dir="ltr">.xlsb</code>
 //     </td>
-//     <td>As Excel Macro-enabled Workbook, but storing information in binary form rather than XML documents for opening and saving documents more quickly and efficiently. Intended especially for very large documents with tens of thousands of rows, and/or several hundreds of columns. This format is very useful for shrinking large Excel files as is often the case when doing data analysis.
+//     <td>As Excel Macro-enabled Workbook, but storing information in binary form rather than XML documents for opening and saving documents more quickly and efficiently. Intended especially for very large documents with tens of thousands of rows, and/or several hundreds
+//of columns. This format is very useful for shrinking large Excel files as is often the case when doing data analysis.
 //     </td></tr>
 //     <tr>
 //     <td>Excel Macro-enabled Template
@@ -1196,7 +1196,9 @@ fn contains_str(slice: &[String], item: &str) -> bool {
 //             UntaggedValue::row(indexmap! {
 //                 "Format".to_string() => UntaggedValue::string("Excel Workbook").into(),
 //                 "Extension".to_string() => UntaggedValue::string(".xlsx").into(),
-//                 "Description".to_string() => UntaggedValue::string("The default Excel 2007 and later workbook format. In reality, a Zip compressed archive with a directory structure of XML text documents. Functions as the primary replacement for the former binary .xls format, although it does not support Excel macros for security reasons. Saving as .xlsx offers file size reduction over .xls[38]").into(),
+//                 "Description".to_string() => UntaggedValue::string("The default Excel 2007 and later workbook format. In reality, a Zip compressed archive with a directory structure of XML text documents. Functions as the primary
+//
+//replacement for the former binary .xls format, although it does not support Excel macros for security reasons. Saving as .xlsx offers file size reduction over .xls[38]").into(),
 //             }).into(),
 //             UntaggedValue::row(indexmap! {
 //                 "Format".to_string() => UntaggedValue::string("Excel Macro-enabled Workbook").into(),

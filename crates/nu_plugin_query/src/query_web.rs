@@ -1,6 +1,6 @@
 use crate::web_tables::WebTable;
 use nu_plugin::{EvaluatedCall, LabeledError};
-use nu_protocol::{Span, Spanned, Value};
+use nu_protocol::{Span, Value};
 use scraper::{Html, Selector as ScraperSelector};
 
 pub struct Selector {
@@ -30,11 +30,10 @@ impl Default for Selector {
 }
 
 pub fn parse_selector_params(
-    name: &str,
     call: &EvaluatedCall,
     input: &Value,
-    rest: Option<Spanned<String>>,
 ) -> Result<Value, LabeledError> {
+    let head = call.head;
     let query: String = match call.get_flag("query")? {
         Some(q2) => q2,
         None => "".to_string(),
@@ -46,15 +45,16 @@ pub fn parse_selector_params(
     };
     let as_table: Value = match call.get_flag("as_table")? {
         Some(v) => v,
-        None => Value::nothing(Span::test_data()),
+        None => Value::nothing(head),
     };
+
     let inspect = call.has_flag("inspect");
 
     if !&query.is_empty() && ScraperSelector::parse(&query).is_err() {
          return Err(LabeledError {
              msg: "Cannot parse this query as a valid css selector".to_string(),
              label: "Parse error".to_string(),
-             span: Some(call.head),
+             span: Some(head),
          });
      }
 
@@ -78,9 +78,9 @@ pub fn parse_selector_params(
 }
 
 fn begin_selector_query(input_html: String, selector: Selector, span: Span) -> Value {
-     //if !selector.as_table.is_empty() {
-     //    retrieve_tables(input_html.as_str(), &selector.as_table, selector.inspect)
-     //} else {
+    if let Value::List { .. } = selector.as_table {
+        return retrieve_tables(input_html.as_str(), &selector.as_table, selector.inspect, span);
+     } else {
          match selector.attribute.is_empty() {
              true => execute_selector_query(
                  input_html.as_str(),
@@ -95,135 +95,132 @@ fn begin_selector_query(input_html: String, selector: Selector, span: Span) -> V
                  span
              ),
          }
-    //}
+    }
 }
 
-pub fn retrieve_tables(input_string: &str, columns: &Value, inspect_mode: bool) -> Value {
-    // let html = input_string;
-    // // let mut cols = Vec::new();
-    // // if let Value::Table(t) = &columns.value {
-    // //     for x in t {
-    // //         cols.push(x.convert_to_string());
-    // //     }
-    // // }
-    // let cols = columns;
+pub fn retrieve_tables(input_string: &str, columns: &Value, inspect_mode: bool, span: Span) -> Value {
+    let html = input_string;
+    let mut cols: Vec<String> = Vec::new();
+    if let Value::List { vals, .. } = &columns {
+        for x in vals {
+            // TODO Find a way to get the Config object here
+            if let Value::String { val, .. } = x {
+                cols.push(val.to_string())
+            }
+        }
+    }
 
-    // if inspect_mode {
-    //     eprintln!("Passed in Column Headers = {:#?}", &cols,);
-    // }
+    if inspect_mode {
+        eprintln!("Passed in Column Headers = {:#?}", &cols,);
+    }
 
-    // let tables = match WebTable::find_by_headers(html, &cols) {
-    //     Some(t) => {
-    //         if inspect_mode {
-    //             eprintln!("Table Found = {:#?}", &t);
-    //         }
-    //         t
-    //     }
-    //     None => vec![WebTable::empty()],
-    // };
+    let tables = match WebTable::find_by_headers(html, &cols) {
+        Some(t) => {
+            if inspect_mode {
+                eprintln!("Table Found = {:#?}", &t);
+            }
+            t
+        }
+        None => vec![WebTable::empty()],
+    };
 
-    // if tables.len() == 1 {
-    //     return retrieve_table(
-    //         tables
-    //             .into_iter()
-    //             .next()
-    //             .expect("This should never trigger"),
-    //         columns,
-    //     );
-    // }
+    if tables.len() == 1 {
+        return retrieve_table(
+            tables
+                .into_iter()
+                .next()
+                .expect("This should never trigger"),
+            columns,
+            span
+        );
+    }
 
-    // tables
-    //     .into_iter()
-    //     .map(move |table| Value::Record {
-    //         cols: vec![],
-    //         vals: retrieve_table(table, columns),
-    //         span: Span::test_data(),
-    //     })
-    //     .collect()
+    let vals =
+        tables
+        .into_iter()
+        .map(move |table| retrieve_table(table, columns, span))
+        .collect();
 
-    // put here to just be able to compile
-    Value::nothing(Span::test_data())
+    Value::List { vals, span  }
 }
 
-fn retrieve_table(mut table: WebTable, columns: &Value) -> Value {
-    // // let mut cols = Vec::new();
-    // // if let UntaggedValue::Table(t) = &columns.value {
-    // //     for x in t {
-    // //         cols.push(x.convert_to_string());
-    // //     }
-    // // }
-    // let cols = columns;
+fn retrieve_table(mut table: WebTable, columns: &Value, span: Span) -> Value {
+    let mut cols: Vec<String> = Vec::new();
+    if let Value::List { vals, .. } = &columns {
+        for x in vals {
+            // TODO Find a way to get the Config object here
+            if let Value::String { val, .. } = x {
+                cols.push(val.to_string())
+            }
+        }
+    }
 
-    // // if cols.is_empty() && !table.headers().is_empty() {
-    // //     for col in table.headers().keys() {
-    // //         cols.push(col.to_string());
-    // //     }
-    // // }
+    if cols.is_empty() && !table.headers().is_empty() {
+        for col in table.headers().keys() {
+            cols.push(col.to_string());
+        }
+    }
 
-    // let mut table_out = Vec::new();
-    // // sometimes there are tables where the first column is the headers, kind of like
-    // // a table has ben rotated ccw 90 degrees, in these cases all columns will be missing
-    // // we keep track of this with this variable so we can deal with it later
-    // let mut at_least_one_row_filled = false;
-    // // if columns are still empty, let's just make a single column table with the data
-    // if cols.is_empty() {
-    //     at_least_one_row_filled = true;
-    //     let table_with_no_empties: Vec<_> = table.iter().filter(|item| !item.is_empty()).collect();
+    let mut table_out = Vec::new();
+    // sometimes there are tables where the first column is the headers, kind of like
+    // a table has ben rotated ccw 90 degrees, in these cases all columns will be missing
+    // we keep track of this with this variable so we can deal with it later
+    let mut at_least_one_row_filled = false;
+    // if columns are still empty, let's just make a single column table with the data
+    if cols.is_empty() {
+        at_least_one_row_filled = true;
+        let table_with_no_empties: Vec<_> = table.iter().filter(|item| !item.is_empty()).collect();
 
-    //     let mut cols = vec![];
-    //     let mut vals = vec![];
-    //     for row in &table_with_no_empties {
-    //         for (counter, cell) in row.iter().enumerate() {
-    //             cols.push(format!("Column{}", counter));
-    //             vals.push(Value::string(cell.to_string(), Span::test_data()))
-    //         }
-    //     }
-    //     table_out.push(Value::Record {
-    //         cols,
-    //         vals,
-    //         span: Span::test_data(),
-    //     })
-    // } else {
-    //     let mut cols = vec![];
-    //     let mut vals = vec![];
-    //     for row in &table {
-    //         for col in &cols {
-    //             let key = col.to_string();
-    //             let val = row
-    //                 .get(col)
-    //                 .unwrap_or(&format!("Missing column: '{}'", &col))
-    //                 .to_string();
+        let mut cols = vec![];
+        let mut vals = vec![];
+        for row in &table_with_no_empties {
+            for (counter, cell) in row.iter().enumerate() {
+                cols.push(format!("Column{}", counter));
+                vals.push(Value::string(cell.to_string(), span))
+            }
+        }
+        table_out.push(Value::Record {
+            cols,
+            vals,
+            span,
+        })
+    } else {
+        for row in &table {
+            let mut vals = vec![];
+            let record_cols = &cols;
+            for col in &cols {
+                let val = row
+                    .get(&col)
+                    .unwrap_or(&format!("Missing column: '{}'", &col))
+                    .to_string();
 
-    //             if !at_least_one_row_filled && val != format!("Missing column: '{}'", &col) {
-    //                 at_least_one_row_filled = true;
-    //             }
-    //             cols.push(key);
-    //             vals.push(Value::string(val, Span::test_data()));
-    //         }
-    //     }
-    //     table_out.push(Value::Record {
-    //         cols,
-    //         vals,
-    //         span: Span::test_data(),
-    //     })
-    // }
-    // if !at_least_one_row_filled {
-    //     let mut data2 = Vec::new();
-    //     for x in &table.data {
-    //         data2.push(x.join(", "));
-    //     }
-    //     table.data = vec![data2];
-    //     return retrieve_table(table, columns);
-    // }
-    // // table_out
+                if !at_least_one_row_filled && val != format!("Missing column: '{}'", &col) {
+                    at_least_one_row_filled = true;
+                }
+                vals.push(Value::string(val, span));
+            }
+            table_out.push(Value::Record {
+                cols: record_cols.to_vec(),
+                vals,
+                span,
+            })
+        }
+    }
+    if !at_least_one_row_filled {
+        let mut data2 = Vec::new();
+        for x in &table.data {
+            data2.push(x.join(", "));
+        }
+        table.data = vec![data2];
+        return retrieve_table(table, columns, span);
+    }
+    // table_out
 
-    // Value::List {
-    //     vals: table.data,
-    //     span: Span::test_data(),
-    // }
+    Value::List {
+        vals: table_out,
+        span,
+    }
 
-    // put here to just be able to compile
-    Value::nothing(Span::test_data())
 }
 
 fn execute_selector_query_with_attribute(
@@ -251,7 +248,7 @@ fn execute_selector_query(input_string: &str, query_string: &str, as_html: bool,
      let vals: Vec<Value> = match as_html {
          true => doc
              .select(&css(query_string))
-             .map(|selection| Value::string(selection.html(), Span::test_data()))
+             .map(|selection| Value::string(selection.html(), span))
              .collect(),
          false => doc
              .select(&css(query_string))
@@ -260,7 +257,7 @@ fn execute_selector_query(input_string: &str, query_string: &str, as_html: bool,
                      selection
                          .text()
                          .fold("".to_string(), |acc, x| format!("{}{}", acc, x)),
-                     Span::test_data(),
+                     span,
                  )
              })
              .collect(),
