@@ -37,12 +37,12 @@ impl Query {
     }
     pub fn query_web(
         &self,
-        name: &str,
+        _name: &str,
         call: &EvaluatedCall,
         input: &Value,
-        rest: Option<Spanned<String>>,
+        _rest: Option<Spanned<String>>,
     ) -> Result<Value, LabeledError> {
-        parse_selector_params(name, call, input, rest)
+        parse_selector_params(call, input)
     }
     pub fn query_xml(
         &self,
