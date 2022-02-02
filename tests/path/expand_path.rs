@@ -4,6 +4,7 @@ use nu_test_support::playground::Playground;
 
 use nu_path::expand_path_with;
 
+#[cfg(not(windows))]
 #[test]
 fn expand_path_with_and_without_relative() {
     let relative_to = "/foo/bar";
@@ -25,6 +26,7 @@ fn expand_path_with_relative() {
     assert_eq!(PathBuf::from("/"), expand_path_with(path, relative_to),);
 }
 
+#[cfg(not(windows))]
 #[test]
 fn expand_path_no_change() {
     let path = "/foo/bar";
