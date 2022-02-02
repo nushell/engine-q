@@ -31,14 +31,10 @@ fn eval_call(
     input: PipelineData,
 ) -> Result<PipelineData, ShellError> {
     let decl = engine_state.get_decl(call.decl_id);
+    let signature = decl.signature();
 
     if call.named.iter().any(|(flag, _)| flag.item == "help") {
-        let full_help = get_full_help(
-            &decl.signature(),
-            &decl.examples(),
-            engine_state,
-            caller_stack,
-        );
+        let full_help = get_full_help(&signature, &decl.examples(), engine_state, caller_stack);
         Ok(Value::String {
             val: full_help,
             span: call.head,
@@ -49,11 +45,10 @@ fn eval_call(
 
         let mut callee_stack = caller_stack.gather_captures(&block.captures);
 
-        for (param_idx, param) in decl
-            .signature()
+        for (param_idx, param) in signature
             .required_positional
             .iter()
-            .chain(decl.signature().optional_positional.iter())
+            .chain(signature.optional_positional.iter())
             .enumerate()
         {
             let var_id = param
@@ -68,13 +63,14 @@ fn eval_call(
             }
         }
 
-        if let Some(rest_positional) = decl.signature().rest_positional {
+        if let Some(rest_positional) = &signature.rest_positional {
             let mut rest_items = vec![];
 
-            for arg in call.positional.iter().skip(
-                decl.signature().required_positional.len()
-                    + decl.signature().optional_positional.len(),
-            ) {
+            for arg in call
+                .positional
+                .iter()
+                .skip(signature.required_positional.len() + signature.optional_positional.len())
+            {
                 let result = eval_expression(engine_state, caller_stack, arg)?;
                 rest_items.push(result);
             }
@@ -96,7 +92,7 @@ fn eval_call(
             )
         }
 
-        for named in decl.signature().named {
+        for named in &signature.named {
             if let Some(var_id) = named.var_id {
                 let mut found = false;
                 for call_named in &call.named {
