@@ -921,45 +921,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "engine-q"
-version = "0.1.0"
-dependencies = [
- "assert_cmd",
- "crossterm",
- "crossterm_winapi",
- "ctrlc",
- "hamcrest2",
- "itertools",
- "log",
- "miette",
- "nu-ansi-term",
- "nu-cli",
- "nu-color-config",
- "nu-command",
- "nu-engine",
- "nu-json",
- "nu-parser",
- "nu-path",
- "nu-plugin",
- "nu-pretty-hex",
- "nu-protocol",
- "nu-system",
- "nu-table",
- "nu-term-grid",
- "nu-test-support",
- "nu_plugin_example",
- "nu_plugin_gstat",
- "nu_plugin_inc",
- "nu_plugin_query",
- "pretty_assertions",
- "pretty_env_logger",
- "reedline",
- "rstest",
- "serial_test",
- "tempfile",
-]
-
-[[package]]
 name = "env_logger"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2067,6 +2028,45 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f6bb902e437b6d86e03cce10a7e2af662292c5dfef23b65899ea3ac9354ad44"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "nu"
+version = "0.1.0"
+dependencies = [
+ "assert_cmd",
+ "crossterm",
+ "crossterm_winapi",
+ "ctrlc",
+ "hamcrest2",
+ "itertools",
+ "log",
+ "miette",
+ "nu-ansi-term",
+ "nu-cli",
+ "nu-color-config",
+ "nu-command",
+ "nu-engine",
+ "nu-json",
+ "nu-parser",
+ "nu-path",
+ "nu-plugin",
+ "nu-pretty-hex",
+ "nu-protocol",
+ "nu-system",
+ "nu-table",
+ "nu-term-grid",
+ "nu-test-support",
+ "nu_plugin_example",
+ "nu_plugin_gstat",
+ "nu_plugin_inc",
+ "nu_plugin_query",
+ "pretty_assertions",
+ "pretty_env_logger",
+ "reedline",
+ "rstest",
+ "serial_test",
+ "tempfile",
 ]
 
 [[package]]
