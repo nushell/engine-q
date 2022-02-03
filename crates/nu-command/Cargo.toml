@@ -19,6 +19,7 @@ nu-protocol = { path = "../nu-protocol" }
 nu-system = { path = "../nu-system" }
 nu-table = { path = "../nu-table" }
 nu-term-grid = { path = "../nu-term-grid" }
+nu-test-support = { path = "../nu-test-support" }
 
 # Potential dependencies for extras
 base64 = "0.13.0"
@@ -95,3 +96,9 @@ dataframe = ["polars", "num"]
 
 [build-dependencies]
 shadow-rs = "0.8.1"
+
+[dev-dependencies]
+hamcrest2 = "0.3.0"
+dirs-next = "2.0.0"
+quickcheck = "1.0.3"
+quickcheck_macros = "1.0.0"
