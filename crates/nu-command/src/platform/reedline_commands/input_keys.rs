@@ -47,7 +47,7 @@ impl Command for InputKeys {
     fn examples(&self) -> Vec<Example> {
         vec![Example {
             description: "Type and see key event codes",
-            example: "input-keys",
+            example: "keybindings listen",
             result: None,
         }]
     }
