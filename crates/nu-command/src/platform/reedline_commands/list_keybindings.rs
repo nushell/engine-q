@@ -90,7 +90,7 @@ fn get_records(entry_type: &str, span: &Span) -> Vec<Value> {
 
     values
         .iter()
-        .map(|edit| edit.split("\n"))
+        .map(|edit| edit.split('\n'))
         .flat_map(|edit| edit.map(|edit| convert_to_record(edit, entry_type, span)))
         .collect()
 }
