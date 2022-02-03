@@ -4,8 +4,8 @@ use nu_engine::CallExt;
 use nu_protocol::{
     ast::Call,
     engine::{Command, EngineState, Stack},
-    Category, Example, IntoInterruptiblePipelineData, IntoPipelineData, PipelineData, ShellError,
-    Signature, Spanned, SyntaxShape,
+    Category, Example, IntoInterruptiblePipelineData, PipelineData, ShellError, Signature, Spanned,
+    SyntaxShape, Value,
 };
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -19,7 +19,7 @@ const GLOB_PARAMS: MatchOptions = MatchOptions {
 #[derive(Clone)]
 pub struct Du;
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct DuArgs {
     path: Option<Spanned<PathBuf>>,
     all: bool,
@@ -79,7 +79,7 @@ impl Command for Du {
         engine_state: &EngineState,
         stack: &mut Stack,
         call: &Call,
-        input: PipelineData,
+        _input: PipelineData,
     ) -> Result<PipelineData, ShellError> {
         let tag = call.head;
         let args = DuArgs {
@@ -87,25 +87,20 @@ impl Command for Du {
             all: call.has_flag("all"),
             deref: call.has_flag("deref"),
             exclude: call.get_flag(engine_state, stack, "exclude")?,
-            max_depth: match call.get_flag(engine_state, stack, "max-depth")? {
-                Some(n) => Some((n as u64).try_into().unwrap()),
-                None => None,
-            },
+            max_depth: call
+                .get_flag::<i64>(engine_state, stack, "max-depth")?
+                .map(|n| (n as u64).try_into().expect("error converting i64 to u64")),
             min_size: call.get_flag(engine_state, stack, "min_size")?,
         };
 
         let exclude = args.exclude.map_or(Ok(None), move |x| {
             Pattern::new(&x.item).map(Some).map_err(|e| {
-                ShellError::SpannedLabeledError(
-                    e.msg.to_string(),
-                    "glob error".to_string(),
-                    x.span.clone(),
-                )
+                ShellError::SpannedLabeledError(e.msg.to_string(), "glob error".to_string(), x.span)
             })
         })?;
 
         let include_files = args.all;
-        let paths = match args.path {
+        let mut paths = match args.path {
             Some(p) => {
                 let p = p.item.to_str().expect("Why isn't this encoded properly?");
                 glob::glob_with(p, GLOB_PARAMS)
@@ -113,11 +108,7 @@ impl Command for Du {
             None => glob::glob_with("*", GLOB_PARAMS),
         }
         .map_err(|e| {
-            ShellError::SpannedLabeledError(
-                e.msg.to_string(),
-                "glob error".to_string(),
-                tag.clone(),
-            )
+            ShellError::SpannedLabeledError(e.msg.to_string(), "glob error".to_string(), tag)
         })?
         .filter(move |p| {
             if include_files {
@@ -138,36 +129,32 @@ impl Command for Du {
         let min_size = args.min_size.map(|f| f as u64);
 
         let params = DirBuilder {
-            tag: tag.clone(),
+            tag,
             min: min_size,
             deref,
             exclude,
             all,
         };
 
-        let inp = paths;
-
-        Ok(inp
-            .flat_map(move |path| match path {
-                Ok(p) => {
-                    let mut output = vec![];
-                    if p.is_dir() {
-                        // output.push(Ok(ReturnSuccess::Value(
-                        //     DirInfo::new(p, &params, max_depth, ctrl_c.clone()).into(),
-                        // )));
-                        output.push(Ok(
-                            DirInfo::new(p, &params, max_depth, engine_state.ctrlc).into()
-                        ))
-                    } else if let Ok(v) = FileInfo::new(p, deref, tag.clone()) {
-                        // output.push(Ok(ReturnSuccess::Value(v.into())));
-                        output.push(Ok(v.into()))
+        let mut output: Vec<Value> = vec![];
+        for p in paths.by_ref() {
+            match p {
+                Ok(a) => {
+                    if a.is_dir() {
+                        output.push(
+                            DirInfo::new(a, &params, max_depth, engine_state.ctrlc.clone()).into(),
+                        );
+                    } else if let Ok(v) = FileInfo::new(a, deref, tag) {
+                        output.push(v.into());
                     }
-
-                    output
                 }
-                Err(e) => vec![Err(e)],
-            })
-            .into_pipeline_data(engine_state.ctrlc))
+                Err(e) => {
+                    output.push(Value::Error { error: e });
+                }
+            }
+        }
+
+        Ok(output.into_pipeline_data(engine_state.ctrlc.clone()))
     }
 
     fn examples(&self) -> Vec<Example> {

@@ -1,11 +1,11 @@
 use filesize::file_real_size_fast;
 use glob::Pattern;
-// use indexmap::IndexMap;
 use nu_protocol::{ShellError, Span, Value};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+#[derive(Debug, Clone)]
 pub struct DirBuilder {
     pub tag: Span,
     pub min: Option<u64>,
@@ -32,6 +32,7 @@ impl DirBuilder {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct DirInfo {
     dirs: Vec<DirInfo>,
     files: Vec<FileInfo>,
@@ -42,6 +43,7 @@ pub struct DirInfo {
     tag: Span,
 }
 
+#[derive(Debug, Clone)]
 pub struct FileInfo {
     path: PathBuf,
     size: u64,
@@ -89,7 +91,7 @@ impl DirInfo {
             files: Vec::new(),
             size: 0,
             blocks: 0,
-            tag: params.tag.clone(),
+            tag: params.tag,
             path,
         };
 
@@ -105,16 +107,13 @@ impl DirInfo {
             Ok(d) => {
                 for f in d {
                     match ctrl_c {
-                        Some(cc) => {
+                        Some(ref cc) => {
                             if cc.load(Ordering::SeqCst) {
                                 break;
                             }
                         }
                         None => continue,
                     }
-                    // if ctrl_c.load(Ordering::SeqCst) {
-                    //     break;
-                    // }
 
                     match f {
                         Ok(i) => match i.file_type() {
@@ -162,7 +161,7 @@ impl DirInfo {
             .as_ref()
             .map_or(true, |x| !x.matches_path(&f));
         if include {
-            match FileInfo::new(f, params.deref, self.tag.clone()) {
+            match FileInfo::new(f, params.deref, self.tag) {
                 Ok(file) => {
                     let inc = params.min.map_or(true, |s| file.size >= s);
                     if inc {
@@ -215,19 +214,19 @@ impl From<DirInfo> for Value {
         cols.push("files".into());
         vals.push(value_from_vec(d.files, &d.tag));
 
-        if !d.errors.is_empty() {
-            let v = d
-                .errors
-                .into_iter()
-                .map(move |e| Value::Error { error: e })
-                .collect::<Vec<Value>>();
+        // if !d.errors.is_empty() {
+        //     let v = d
+        //         .errors
+        //         .into_iter()
+        //         .map(move |e| Value::Error { error: e })
+        //         .collect::<Vec<Value>>();
 
-            cols.push("errors".into());
-            vals.push(Value::List {
-                vals: v,
-                span: d.tag,
-            })
-        }
+        //     cols.push("errors".into());
+        //     vals.push(Value::List {
+        //         vals: v,
+        //         span: d.tag,
+        //     })
+        // }
 
         Value::Record {
             cols,
@@ -266,8 +265,8 @@ impl From<FileInfo> for Value {
         cols.push("files".into());
         vals.push(Value::nothing(Span::test_data()));
 
-        cols.push("errors".into());
-        vals.push(Value::nothing(Span::test_data()));
+        // cols.push("errors".into());
+        // vals.push(Value::nothing(Span::test_data()));
 
         Value::Record {
             cols,
@@ -285,11 +284,9 @@ where
         Value::nothing(*tag)
     } else {
         let values = vec.into_iter().map(Into::into).collect::<Vec<Value>>();
-        // UntaggedValue::Table(values)
         Value::List {
             vals: values,
             span: *tag,
         }
     }
-    // .into_value(tag)
 }

@@ -11,6 +11,7 @@ mod term_size;
 pub use ansi::{Ansi, AnsiGradient, AnsiStrip};
 pub use clear::Clear;
 pub use dir_info::{DirBuilder, DirInfo, FileInfo};
+pub use du::Du;
 pub use input::Input;
 pub use input_keys::InputKeys;
 pub use kill::Kill;
