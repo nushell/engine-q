@@ -86,16 +86,18 @@ fn into_filesize(
     call: &Call,
     input: PipelineData,
 ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
+    let head = call.head;
     let column_paths: Vec<CellPath> = call.rest(engine_state, stack, 0)?;
 
     input.map(
         move |v| {
             if column_paths.is_empty() {
-                action(&v)
+                action(&v, head)
             } else {
                 let mut ret = v;
                 for path in &column_paths {
-                    let r = ret.update_cell_path(&path.members, Box::new(action));
+                    let r =
+                        ret.update_cell_path(&path.members, Box::new(move |old| action(old, head)));
                     if let Err(error) = r {
                         return Value::Error { error };
                     }
@@ -108,7 +110,7 @@ fn into_filesize(
     )
 }
 
-pub fn action(input: &Value) -> Value {
+pub fn action(input: &Value, span: Span) -> Value {
     if let Ok(value_span) = input.span() {
         match input {
             Value::Filesize { .. } => input.clone(),
@@ -138,7 +140,7 @@ pub fn action(input: &Value) -> Value {
         Value::Error {
             error: ShellError::UnsupportedInput(
                 "unable to find span on 'into filesize' value".into(),
-                Span::test_data(),
+                span,
             ),
         }
     }
