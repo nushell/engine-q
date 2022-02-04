@@ -86,10 +86,12 @@ impl Command for Ls {
 
         let mut glob_peek = glob.peekable();
         if glob_peek.peek().is_none() {
-            return Err(ShellError::LabeledError(
-                format!("No matches found for {}", &pattern.item),
-                "no matches found".to_string(),
-            ));
+            if &pattern.item != &cwd.join("*").to_string_lossy().to_string() {
+                return Err(ShellError::LabeledError(
+                    format!("No matches found for {}", &pattern.item),
+                    "no matches found".to_string(),
+                ));
+            }
         }
         let hidden_dir_specified = is_hidden_dir(&pattern.item);
         let mut hidden_dirs = vec![];
