@@ -84,10 +84,17 @@ impl Command for Ls {
 
         let (prefix, glob) = nu_engine::glob_from(&pattern, &cwd, call_span)?;
 
+        let mut glob_peek = glob.peekable();
+        if glob_peek.peek().is_none() {
+            return Err(ShellError::LabeledError(
+                format!("No matches found for {}", &pattern.item),
+                "no matches found".to_string(),
+            ));
+        }
         let hidden_dir_specified = is_hidden_dir(&pattern.item);
         let mut hidden_dirs = vec![];
 
-        Ok(glob
+        Ok(glob_peek
             .into_iter()
             .filter_map(move |x| match x {
                 Ok(path) => {
