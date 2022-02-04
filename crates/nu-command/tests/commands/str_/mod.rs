@@ -29,7 +29,7 @@ fn error_trim_multiple_chars() {
     let actual = nu!(
         cwd: ".", pipeline(
         r#"
-        echo 'does it work now?!' | str trim -c '?!'
+        echo "does it work now?!" | str trim -c "?!"
         "#
         )
     );

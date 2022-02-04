@@ -23,7 +23,6 @@ mod hash_;
 mod headers;
 mod help;
 mod histogram;
-mod insert;
 mod into_filesize;
 mod into_int;
 mod keep;
