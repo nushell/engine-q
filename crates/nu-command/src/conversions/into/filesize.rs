@@ -139,7 +139,7 @@ pub fn action(input: &Value, span: Span) -> Value {
     } else {
         Value::Error {
             error: ShellError::UnsupportedInput(
-                "unable to find span on 'into filesize' value".into(),
+                "'into filesize' for unsupported type".into(),
                 span,
             ),
         }
