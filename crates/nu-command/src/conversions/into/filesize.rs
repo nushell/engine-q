@@ -86,18 +86,16 @@ fn into_filesize(
     call: &Call,
     input: PipelineData,
 ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
-    let head = call.head;
     let column_paths: Vec<CellPath> = call.rest(engine_state, stack, 0)?;
 
     input.map(
         move |v| {
             if column_paths.is_empty() {
-                action(&v, head)
+                action(&v)
             } else {
                 let mut ret = v;
                 for path in &column_paths {
-                    let r =
-                        ret.update_cell_path(&path.members, Box::new(move |old| action(old, head)));
+                    let r = ret.update_cell_path(&path.members, Box::new(action));
                     if let Err(error) = r {
                         return Value::Error { error };
                     }
@@ -110,35 +108,42 @@ fn into_filesize(
     )
 }
 
-pub fn action(input: &Value, _span: Span) -> Value {
-    let value_span = input.span().expect("unable to get input value span");
-    match input {
-        Value::Filesize { .. } => input.clone(),
-        Value::Int { val, .. } => Value::Filesize {
-            val: *val,
-            span: value_span,
-        },
-        Value::Float { val, .. } => Value::Filesize {
-            val: *val as i64,
-            span: value_span,
-        },
-        Value::String { val, .. } => match int_from_string(val, value_span) {
-            Ok(val) => Value::Filesize {
-                val,
+pub fn action(input: &Value) -> Value {
+    if let Ok(value_span) = input.span() {
+        match input {
+            Value::Filesize { .. } => input.clone(),
+            Value::Int { val, .. } => Value::Filesize {
+                val: *val,
                 span: value_span,
             },
-            Err(error) => Value::Error { error },
-        },
-        _ => Value::Error {
+            Value::Float { val, .. } => Value::Filesize {
+                val: *val as i64,
+                span: value_span,
+            },
+            Value::String { val, .. } => match int_from_string(val, value_span) {
+                Ok(val) => Value::Filesize {
+                    val,
+                    span: value_span,
+                },
+                Err(error) => Value::Error { error },
+            },
+            _ => Value::Error {
+                error: ShellError::UnsupportedInput(
+                    "'into filesize' for unsupported type".into(),
+                    value_span,
+                ),
+            },
+        }
+    } else {
+        Value::Error {
             error: ShellError::UnsupportedInput(
-                "'into filesize' for unsupported type".into(),
-                value_span,
+                "unable to find span on 'into filesize' value".into(),
+                Span::test_data(),
             ),
-        },
+        }
     }
 }
 fn int_from_string(a_string: &str, span: Span) -> Result<i64, ShellError> {
-    // let trimmed = a_string.trim();
     match a_string.trim().parse::<bytesize::ByteSize>() {
         Ok(n) => Ok(n.0 as i64),
         Err(_) => Err(ShellError::CantConvert("int".into(), "string".into(), span)),
