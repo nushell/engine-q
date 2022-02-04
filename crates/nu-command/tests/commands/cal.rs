@@ -1,17 +1,15 @@
 use nu_test_support::{nu, pipeline};
 
-// FIXME: jt: needs more work
-#[ignore]
 #[test]
 fn cal_full_year() {
     let actual = nu!(
         cwd: ".", pipeline(
         r#"
-        cal -y --full-year 2010 | first | to json
+        cal -y --full-year 2010 | first | to json -r
         "#
     ));
 
-    let first_week_2010_json = r#"{"year":2010,"sunday":null,"monday":null,"tuesday":null,"wednesday":null,"thursday":null,"friday":1,"saturday":2}"#;
+    let first_week_2010_json = r#"{"year": 2010,"sunday": null,"monday": null,"tuesday": null,"wednesday": null,"thursday": null,"friday": 1,"saturday": 2}"#;
 
     assert_eq!(actual.out, first_week_2010_json);
 }
