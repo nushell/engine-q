@@ -75,7 +75,7 @@ impl Command for SkipUntil {
 
 #[cfg(test)]
 mod tests {
-    use skip_until::*;
+    use crate::SkipUntil;
 
     #[test]
     fn test_examples() {

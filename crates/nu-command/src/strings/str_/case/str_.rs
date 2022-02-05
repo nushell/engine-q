@@ -38,7 +38,7 @@ impl Command for Str {
 
 #[cfg(test)]
 mod test {
-    use str_::*;
+    use crate::Str;
 
     #[test]
     fn test_examples() {

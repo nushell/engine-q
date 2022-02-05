@@ -89,7 +89,7 @@ impl Command for Keep {
 
 #[cfg(test)]
 mod tests {
-    use keep::*;
+    use crate::Keep;
 
     #[test]
     fn test_examples() {

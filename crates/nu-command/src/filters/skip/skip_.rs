@@ -80,7 +80,7 @@ impl Command for Skip {
 
 #[cfg(test)]
 mod tests {
-    use skip::*;
+    use crate::Skip;
 
     #[test]
     fn test_examples() {

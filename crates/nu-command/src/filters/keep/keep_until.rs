@@ -76,7 +76,7 @@ impl Command for KeepUntil {
 
 #[cfg(test)]
 mod tests {
-    use keep_until::*;
+    use crate::KeepUntil;
 
     #[test]
     fn test_examples() {

@@ -76,7 +76,7 @@ impl Command for KeepWhile {
 
 #[cfg(test)]
 mod tests {
-    use keep_while::*;
+    use crate::KeepWhile;
 
     #[test]
     fn test_examples() {

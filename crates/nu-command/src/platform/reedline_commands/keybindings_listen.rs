@@ -141,7 +141,7 @@ fn print_events_helper(event: Event) -> Result<Value, ShellError> {
 
 #[cfg(test)]
 mod tests {
-    use keybindings_listen::KeybindingsListen;
+    use crate::KeybindingsListen;
 
     #[test]
     fn examples_work_as_expected() {
