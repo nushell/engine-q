@@ -20,7 +20,7 @@ impl Command for Metadata {
 
     fn signature(&self) -> nu_protocol::Signature {
         Signature::build("metadata")
-            .required(
+            .optional(
                 "expression",
                 SyntaxShape::Any,
                 "the expression you want metadata for",
@@ -71,19 +71,45 @@ impl Command for Metadata {
                 Ok(build_metadata_record(&val, &input.metadata(), head).into_pipeline_data())
             }
             None => {
-                // Force a standard error when we know this isn't going to work
-                let _: Value = call.req(engine_state, stack, 0)?;
-                unreachable!("The previous line will return an error")
+                let mut cols = vec![];
+                let mut vals = vec![];
+                if let Some(x) = &input.metadata() {
+                    match x {
+                        PipelineMetadata {
+                            data_source: DataSource::Ls,
+                        } => {
+                            cols.push("source".into());
+                            vals.push(Value::String {
+                                val: "ls".into(),
+                                span: head,
+                            })
+                        }
+                    }
+                }
+
+                Ok(Value::Record {
+                    cols,
+                    vals,
+                    span: head,
+                }
+                .into_pipeline_data())
             }
         }
     }
 
     fn examples(&self) -> Vec<Example> {
-        vec![Example {
-            description: "Get the metadata of a variable",
-            example: "metadata $a",
-            result: None,
-        }]
+        vec![
+            Example {
+                description: "Get the metadata of a variable",
+                example: "metadata $a",
+                result: None,
+            },
+            Example {
+                description: "Get the metadata of the input",
+                example: "ls | metadata",
+                result: None,
+            },
+        ]
     }
 }
 
