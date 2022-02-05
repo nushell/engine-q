@@ -1,7 +1,7 @@
 pub mod column;
-pub mod command;
+pub mod drop;
 pub mod nth;
 
 pub use column::DropColumn;
-pub use command::Drop;
+pub use drop::Drop;
 pub use nth::DropNth;

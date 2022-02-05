@@ -80,7 +80,7 @@ impl Command for Skip {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use skip::*;
 
     #[test]
     fn test_examples() {

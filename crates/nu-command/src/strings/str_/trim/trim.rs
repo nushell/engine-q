@@ -321,7 +321,7 @@ fn trim(s: &str, char_: Option<char>, closure_flags: &ClosureFlags) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use trim::*;
 
     #[test]
     fn test_examples() {

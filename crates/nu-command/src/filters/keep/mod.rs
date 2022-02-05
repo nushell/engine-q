@@ -1,7 +1,7 @@
-mod command;
-mod until;
-mod while_;
+mod keep;
+mod keep_until;
+mod keep_while;
 
-pub use command::Keep;
-pub use until::KeepUntil;
-pub use while_::KeepWhile;
+pub use keep::Keep;
+pub use keep_until::KeepUntil;
+pub use keep_while::KeepWhile;

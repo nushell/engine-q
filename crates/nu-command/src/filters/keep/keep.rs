@@ -89,7 +89,7 @@ impl Command for Keep {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use keep::*;
 
     #[test]
     fn test_examples() {

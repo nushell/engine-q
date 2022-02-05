@@ -1,4 +1,4 @@
-mod command;
+mod date;
 mod format;
 mod humanize;
 mod list_timezone;
@@ -8,7 +8,7 @@ mod to_table;
 mod to_timezone;
 mod utils;
 
-pub use command::Date;
+pub use date::Date;
 pub use format::SubCommand as DateFormat;
 pub use humanize::SubCommand as DateHumanize;
 pub use list_timezone::SubCommand as DateListTimezones;

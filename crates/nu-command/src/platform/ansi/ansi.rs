@@ -445,7 +445,7 @@ fn build_ansi_hashmap(v: &'static [AnsiCode]) -> HashMap<&'static str, &'static 
 
 #[cfg(test)]
 mod tests {
-    use super::AnsiCommand;
+    use ansi::AnsiCommand;
 
     #[test]
     fn examples_work_as_expected() {

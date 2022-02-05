@@ -7,11 +7,11 @@ use nu_protocol::{
 };
 
 #[derive(Clone)]
-pub struct KeepWhile;
+pub struct SkipWhile;
 
-impl Command for KeepWhile {
+impl Command for SkipWhile {
     fn name(&self) -> &str {
-        "keep while"
+        "skip while"
     }
 
     fn signature(&self) -> Signature {
@@ -19,21 +19,21 @@ impl Command for KeepWhile {
             .required(
                 "predicate",
                 SyntaxShape::RowCondition,
-                "the predicate that kept element must not match",
+                "the predicate that skipped element must match",
             )
             .category(Category::Filters)
     }
 
     fn usage(&self) -> &str {
-        "Keep elements of the input while a predicate is true."
+        "Skip elements of the input while a predicate is true."
     }
 
     fn examples(&self) -> Vec<Example> {
         vec![Example {
-            description: "Keep while the element is negative",
-            example: "echo [-1 -2 9 1] | keep while $it < 0",
+            description: "Skip while the element is negative",
+            example: "echo [-2 0 2 -1] | skip while $it < 0",
             result: Some(Value::List {
-                vals: vec![Value::test_int(-1), Value::test_int(-2)],
+                vals: vec![Value::test_int(0), Value::test_int(2), Value::test_int(-1)],
                 span: Span::test_data(),
             }),
         }]
@@ -52,7 +52,6 @@ impl Command for KeepWhile {
 
         let block = engine_state.get_block(capture_block.block_id).clone();
         let var_id = block.signature.get_positional(0).and_then(|arg| arg.var_id);
-
         let mut stack = stack.captures_to_stack(&capture_block.captures);
 
         let ctrlc = engine_state.ctrlc.clone();
@@ -60,7 +59,7 @@ impl Command for KeepWhile {
 
         Ok(input
             .into_iter()
-            .take_while(move |value| {
+            .skip_while(move |value| {
                 if let Some(var_id) = var_id {
                     stack.add_var(var_id, value.clone());
                 }
@@ -76,12 +75,12 @@ impl Command for KeepWhile {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use skip_while::*;
 
     #[test]
     fn test_examples() {
         use crate::test_examples;
 
-        test_examples(KeepWhile)
+        test_examples(SkipWhile)
     }
 }
